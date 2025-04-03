@@ -6,7 +6,9 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/khanghh/cas-go/config"
+	"github.com/khanghh/cas-go/internal/controller"
 	"github.com/khanghh/cas-go/params"
 	"github.com/urfave/cli/v2"
 )
@@ -68,6 +70,8 @@ func run(ctx *cli.Context) error {
 	}
 	initLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
+	auth := controller.NewAuthController()
+
 	router := fiber.New(fiber.Config{
 		Prefork:       true,
 		CaseSensitive: true,
@@ -77,9 +81,15 @@ func run(ctx *cli.Context) error {
 		WriteTimeout:  params.ServerWriteTimeout,
 	})
 
-	router.Static("/static/*", config.StaticDir)
-	slog.Info("Starting CAS Gateway", "address", config.ListenAddr)
-	return router.Listen(config.ListenAddr)
+	router.Use(cors.New(cors.Config{
+		AllowOrigins: config.Server.AllowOrigins,
+	}))
+	router.Static("/static/*", config.Server.StaticDir)
+	router.Get("/login", auth.GetLoginHandler)
+	router.Post("/logout", auth.PostLogoutHandler)
+
+	slog.Info("Starting CAS Gateway", "address", config.Server.ListenAddr)
+	return router.Listen(config.Server.ListenAddr)
 }
 
 func main() {

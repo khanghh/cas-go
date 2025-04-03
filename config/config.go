@@ -17,19 +17,24 @@ type MysqlConfig struct {
 	ConnMaxLifetime int    `yaml:"connMaxLifetime"`
 }
 
+type ServerConfig struct {
+	ListenAddr   string   `yaml:"listenAddr"`
+	StaticDir    string   `yaml:"staticDir"`
+	AllowOrigins []string `yaml:"allowOrigins"`
+}
+
 type Config struct {
-	Debug      bool        `yaml:"debug"`
-	ListenAddr string      `yaml:"address"`
-	StaticDir  string      `yaml:"staticDir"`
-	Mysql      MysqlConfig `yaml:"mysql"`
+	Debug  bool         `yaml:"debug"`
+	Server ServerConfig `yaml:"server"`
+	Mysql  MysqlConfig  `yaml:"mysql"`
 }
 
 func (c *Config) Sanitize() error {
-	if c.ListenAddr == "" {
-		c.ListenAddr = DefaultListenAddr
+	if c.Server.ListenAddr == "" {
+		c.Server.ListenAddr = DefaultListenAddr
 	}
-	if c.StaticDir == "" {
-		c.StaticDir = DefaultStaticDir
+	if c.Server.StaticDir == "" {
+		c.Server.StaticDir = DefaultStaticDir
 	}
 	return nil
 }
