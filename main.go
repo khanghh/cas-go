@@ -1,12 +1,17 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/template/html/v2"
 	"github.com/khanghh/cas-go/config"
 	"github.com/khanghh/cas-go/internal/controller"
 	"github.com/khanghh/cas-go/params"
@@ -31,6 +36,9 @@ var (
 		Usage: "Enable debug logging",
 	}
 )
+
+//go:embed templates/*.html
+var templateFS embed.FS
 
 func init() {
 	app = cli.NewApp()
@@ -62,6 +70,14 @@ func initLogger(debug bool) error {
 	return nil
 }
 
+func getHtmlRenderer(config *config.Config) fiber.Views {
+	if config.Server.TemplateDir != "" {
+		return html.NewFileSystem(http.Dir(config.Server.TemplateDir), ".html")
+	}
+	renderFS, _ := fs.Sub(templateFS, "templates")
+	return html.NewFileSystem(http.FS(renderFS), ".html")
+}
+
 func run(ctx *cli.Context) error {
 	config, err := config.LoadConfig(ctx.String(configFileFlag.Name))
 	if err != nil {
@@ -79,10 +95,11 @@ func run(ctx *cli.Context) error {
 		IdleTimeout:   params.ServerIdleTimeout,
 		ReadTimeout:   params.ServerReadTimeout,
 		WriteTimeout:  params.ServerWriteTimeout,
+		Views:         getHtmlRenderer(config),
 	})
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: config.Server.AllowOrigins,
+		AllowOrigins: strings.Join(config.Server.AllowOrigins, ", "),
 	}))
 	router.Static("/static/*", config.Server.StaticDir)
 	router.Get("/login", auth.GetLoginHandler)

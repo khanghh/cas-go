@@ -20,6 +20,7 @@ type MysqlConfig struct {
 type ServerConfig struct {
 	ListenAddr   string   `yaml:"listenAddr"`
 	StaticDir    string   `yaml:"staticDir"`
+	TemplateDir  string   `yaml:"templateDir"`
 	AllowOrigins []string `yaml:"allowOrigins"`
 }
 
