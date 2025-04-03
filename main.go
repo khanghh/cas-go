@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/gofiber/fiber"
+	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/config"
 	"github.com/khanghh/cas-go/params"
-	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 )
 
@@ -30,15 +30,10 @@ var (
 	}
 )
 
-type appConfig struct {
-	Address string `yaml:"address"`
-	Debug   bool   `yaml:"debug"`
-}
-
 func init() {
 	app = cli.NewApp()
 	app.EnableBashCompletion = true
-	app.Usage = "Central Authenticate Service"
+	app.Usage = "CAS Gateway"
 	app.Flags = []cli.Flag{
 		configFileFlag,
 		debugFlag,
@@ -55,23 +50,6 @@ func init() {
 	app.Action = run
 }
 
-func loadConfig(ctx *cli.Context) (*appConfig, error) {
-	configFile := ctx.String(configFileFlag.Name)
-	viper.SetConfigFile(configFile)
-	viper.SetConfigType("yaml")
-
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
-	}
-
-	var config appConfig
-	if err := viper.Unmarshal(&config); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-}
-
 func initLogger(debug bool) error {
 	logLevel := slog.LevelInfo
 	if debug {
@@ -83,17 +61,25 @@ func initLogger(debug bool) error {
 }
 
 func run(ctx *cli.Context) error {
-	config, err := loadConfig(ctx)
+	config, err := config.LoadConfig(ctx.String(configFileFlag.Name))
 	if err != nil {
 		slog.Error("Could not load config file.", "error", err)
 		return err
 	}
 	initLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
-	router := fiber.New()
+	router := fiber.New(fiber.Config{
+		Prefork:       true,
+		CaseSensitive: true,
+		BodyLimit:     params.ServerBodyLimit,
+		IdleTimeout:   params.ServerIdleTimeout,
+		ReadTimeout:   params.ServerReadTimeout,
+		WriteTimeout:  params.ServerWriteTimeout,
+	})
 
-	slog.Info("Starting CAS sever", "address", config.Address)
-	return router.Listen(config.Address)
+	router.Static("/static/*", config.StaticDir)
+	slog.Info("Starting CAS Gateway", "address", config.ListenAddr)
+	return router.Listen(config.ListenAddr)
 }
 
 func main() {

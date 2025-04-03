@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := cas-server
+.DEFAULT_GOAL := cas-gateway
 
 BUILD_DIR=$(CURDIR)/build/bin
 COMMIT=$(shell git rev-parse HEAD)
@@ -7,7 +7,7 @@ TAG=$(shell git describe --tags)
 
 LDFLAGS=-ldflags "-w -s -X 'main.gitCommit=$(COMMIT)' -X 'main.gitDate=$(DATE)' -X 'main.gitTag=$(TAG)'"
 
-cas-server:
+cas-gateway:
 	@echo "Building target: $@" 
 	go build $(LDFLAGS) -o $(BUILD_DIR)/$@ $(CURDIR)/main.go
 	@echo "Done building."
@@ -15,4 +15,4 @@ cas-server:
 clean:
 	@rm -rf $(BUILD_DIR)/*
 
-all: cas-server
+all: cas-gateway
