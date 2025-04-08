@@ -64,7 +64,6 @@ Temporary Items
 
 ### VisualStudioCode ###
 .vscode/*
-!.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
@@ -95,3 +94,4 @@ Temporary Items
 tmp/
 build/bin
 config.yaml
+./templates
