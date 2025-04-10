@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md p-6 bg-white shadow-md rounded-lg">
+        <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
+
+        <!-- SSO Login Buttons -->
+        <div class="space-y-4">
+            <!-- Google SSO -->
+            <a href="YOUR_GOOGLE_OAUTH_URL" class="flex items-center justify-center bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition duration-300">
+                <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="currentColor"><path d="M23.49 12.3c0-.73-.06-1.35-.18-1.97H12v3.85h6.18c-.26 1.46-1.03 2.7-2.18 3.18v2.65h3.54c2.08-1.91 3.26-4.75 3.26-8.03zM12 7.08c1.29 0 2.4.44 3.22 1.18l2.4-2.4C16.88 4.33 14.92 3.68 12 3.68c-3.2 0-5.93 2.13-6.9 5.03H2.09v3.88h4.01C6.17 11.22 8.89 9.28 12 9.28z"></path></svg>
+                <span>Sign in with Google</span>
+            </a>
+
+            <!-- Facebook SSO -->
+            <a href="YOUR_FACEBOOK_OAUTH_URL" class="flex items-center justify-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-facebook-icon lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                <span>Sign in with Facebook</span>
+            </a>
+
+            <!-- Microsoft SSO -->
+            <a href="YOUR_MICROSOFT_OAUTH_URL" class="flex items-center justify-center bg-blue-800 text-white py-2 px-4 rounded-md hover:bg-blue-900 transition duration-300">
+                <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.25 2.25h19.5v19.5h-19.5z" fill="none"></path><path d="M10.5 2.25h-3v7.5h3v-7.5zM2.25 10.5v3h7.5v-3h-7.5zM2.25 14.25v7.5h7.5v-7.5h-7.5zM10.5 14.25h3v-3h-3v3zM17.25 14.25v7.5h7.5v-7.5h-7.5zM17.25 2.25v7.5h7.5v-7.5h-7.5z"></path></svg>
+                <span>Sign in with Microsoft</span>
+            </a>
+
+            <!-- Apple SSO -->
+            <a href="YOUR_APPLE_OAUTH_URL" class="flex items-center justify-center bg-black text-white py-2 px-4 rounded-md hover:bg-gray-800 transition duration-300">
+                <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M16.93 16.93c-1.48 1.48-3.57 2.45-5.93 2.45-1.85 0-3.58-.64-5.06-1.72-1.15-.77-2.11-1.81-2.84-3.02-.38-.56-.68-1.17-.93-1.81-.15-.48-.24-.99-.29-1.51-.07-.53-.1-1.06-.1-1.61 0-3.7 2.88-6.48 5.89-6.48 2.5 0 3.75 1.71 4.5 2.86 1.42-1.15 2.4-2.73 2.4-4.61 0-4.31-3.73-7.89-8.03-7.89-2.35 0-4.33.88-5.75 2.59-1.22 1.44-2.02 3.34-2.02 5.35 0 1.4.41 2.84 1.13 4.06 1.14 2.02 3.05 3.44 5.15 3.44 1.46 0 2.83-.46 4.02-1.29 1.23-.86 2.16-1.98 2.83-3.31-1.06-.12-2.05-.73-2.74-1.53-1.06-1.09-1.66-2.69-1.66-4.37 0-2.5 1.89-4.79 4.48-4.79 2.41 0 4.45 1.75 5.11 4.1.06.19.1.38.12.58.17 1.39-.13 2.71-.79 3.83-1.5-.06-2.98 1.28-3.79 3.1z"></path></svg>
+                <span>Sign in with Apple</span>
+            </a>
+        </div>
+
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600">Don't have an account? <a href="#" class="text-blue-500 hover:text-blue-700">Sign up</a></p>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied | Unauthorized Request</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-lg p-8 bg-white shadow-xl rounded-xl text-center transition-all duration-300 hover:shadow-2xl">
+        <div class="flex justify-center mb-6">
+            <div class="p-4 bg-red-50 rounded-full">
+                <svg class="w-16 h-16 text-red-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
+                </svg>
+            </div>
+        </div>
+        
+
+        <h1 class="text-3xl font-bold text-gray-800 mb-3">Service Not Authorized</h1>
+        <p class="text-lg text-gray-600 mb-4">The requested service URL is not permitted for authentication.</p>
+        
+        <div class="bg-gray-50 p-4 rounded-lg mb-6 text-left">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 text-gray-500 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <p class="text-gray-700">The URL you requested is not permitted due to security restrictions. This could be because:</p>
+                    <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                        <li>The service is not whitelisted</li>
+                        <li>Your account lacks proper permissions</li>
+                        <li>The request violated security policies</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row justify-center gap-3">
+            <a href="/" class="px-5 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Return to Home
+            </a>
+            <a href="mailto:support@yourdomain.com" class="px-5 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                Contact Support
+            </a>
+        </div>
+        
+        <div class="mt-6 text-sm text-gray-500">
+            <p>Error code: 403_FORBIDDEN</p>
+            <p class="mt-1">Reference ID: <span class="font-mono">#ERR-<script>document.write(Math.floor(100000 + Math.random() * 900000))</script></span></p>
+        </div>
+    </div>
+</body>
+</html>
