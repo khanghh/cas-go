@@ -1,21 +1,22 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
 	"log/slog"
-	"net/http"
 	"os"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/template/html/v2"
-	"github.com/khanghh/cas-go/config"
-	"github.com/khanghh/cas-go/internal/controller"
+	"github.com/khanghh/cas-go/internal/config"
+	"github.com/khanghh/cas-go/internal/handler"
+	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/params"
 	"github.com/urfave/cli/v2"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 var (
@@ -37,9 +38,6 @@ var (
 	}
 )
 
-//go:embed templates/*.html
-var templateFS embed.FS
-
 func init() {
 	app = cli.NewApp()
 	app.EnableBashCompletion = true
@@ -60,22 +58,33 @@ func init() {
 	app.Action = run
 }
 
-func initLogger(debug bool) error {
+func mustInitLogger(debug bool) {
 	logLevel := slog.LevelInfo
 	if debug {
 		logLevel = slog.LevelDebug
 	}
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})
 	slog.SetDefault(slog.New(handler))
-	return nil
 }
 
-func getHtmlRenderer(config *config.Config) fiber.Views {
-	if config.Server.TemplateDir != "" {
-		return html.NewFileSystem(http.Dir(config.Server.TemplateDir), ".html")
+func mustInitDatabase(dbConfig config.DatabaseConfig) *gorm.DB {
+	db, err := gorm.Open(mysql.Open(dbConfig.DataSourceName), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix:   dbConfig.TablePrefix,
+			SingularTable: true,
+		},
+	})
+	if err != nil {
+		slog.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
-	renderFS, _ := fs.Sub(templateFS, "templates")
-	return html.NewFileSystem(http.FS(renderFS), ".html")
+
+	if err := db.AutoMigrate(model.Models...); err != nil {
+		slog.Error("Database migration failed", "error", err)
+		os.Exit(1)
+	}
+
+	return db
 }
 
 func run(ctx *cli.Context) error {
@@ -84,9 +93,11 @@ func run(ctx *cli.Context) error {
 		slog.Error("Could not load config file.", "error", err)
 		return err
 	}
-	initLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
-	auth := controller.NewAuthController()
+	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
+	mustInitDatabase(config.Database)
+
+	auth := handler.NewAuthHandler([]string{})
 
 	router := fiber.New(fiber.Config{
 		Prefork:       true,
@@ -95,17 +106,16 @@ func run(ctx *cli.Context) error {
 		IdleTimeout:   params.ServerIdleTimeout,
 		ReadTimeout:   params.ServerReadTimeout,
 		WriteTimeout:  params.ServerWriteTimeout,
-		Views:         getHtmlRenderer(config),
+		Views:         render.NewHtmlEngine(config.Server.TemplateDir),
 	})
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.Server.AllowOrigins, ", "),
 	}))
 	router.Static("/static/*", config.Server.StaticDir)
-	router.Get("/login", auth.GetLoginHandler)
-	router.Post("/logout", auth.PostLogoutHandler)
+	router.Get("/login", auth.GetLogin)
+	router.Post("/logout", auth.PostLogout)
 
-	slog.Info("Starting CAS Gateway", "address", config.Server.ListenAddr)
 	return router.Listen(config.Server.ListenAddr)
 }
 

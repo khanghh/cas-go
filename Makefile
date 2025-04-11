@@ -9,6 +9,7 @@ LDFLAGS=-ldflags "-w -s -X 'main.gitCommit=$(COMMIT)' -X 'main.gitDate=$(DATE)' 
 
 cas-gateway:
 	@echo "Building target: $@" 
+	go run ./build/tools/gen_query/main.go
 	go build $(LDFLAGS) -o $(BUILD_DIR)/$@ $(CURDIR)/main.go
 	@echo "Done building."
 
