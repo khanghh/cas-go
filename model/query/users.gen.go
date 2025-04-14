@@ -30,7 +30,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewField(tableName, "deleted_at")
-	_user.Username = field.NewString(tableName, "username")
+	_user.Name = field.NewString(tableName, "name")
 	_user.DisplayName = field.NewString(tableName, "display_name")
 	_user.Email = field.NewString(tableName, "email")
 	_user.EmailVerified = field.NewBool(tableName, "email_verified")
@@ -44,14 +44,14 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 }
 
 type user struct {
-	userDo userDo
+	userDo
 
 	ALL           field.Asterisk
 	ID            field.Uint
 	CreatedAt     field.Time
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
-	Username      field.String
+	Name          field.String
 	DisplayName   field.String
 	Email         field.String
 	EmailVerified field.Bool
@@ -78,7 +78,7 @@ func (u *user) updateTableName(table string) *user {
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
-	u.Username = field.NewString(table, "username")
+	u.Name = field.NewString(table, "name")
 	u.DisplayName = field.NewString(table, "display_name")
 	u.Email = field.NewString(table, "email")
 	u.EmailVerified = field.NewBool(table, "email_verified")
@@ -90,14 +90,6 @@ func (u *user) updateTableName(table string) *user {
 
 	return u
 }
-
-func (u *user) WithContext(ctx context.Context) *userDo { return u.userDo.WithContext(ctx) }
-
-func (u user) TableName() string { return u.userDo.TableName() }
-
-func (u user) Alias() string { return u.userDo.Alias() }
-
-func (u user) Columns(cols ...field.Expr) gen.Columns { return u.userDo.Columns(cols...) }
 
 func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := u.fieldMap[fieldName]
@@ -114,7 +106,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt
-	u.fieldMap["username"] = u.Username
+	u.fieldMap["name"] = u.Name
 	u.fieldMap["display_name"] = u.DisplayName
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["email_verified"] = u.EmailVerified

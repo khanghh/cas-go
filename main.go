@@ -5,13 +5,21 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/gofiber/storage/memory/v2"
+	"github.com/gofiber/storage/redis/v3"
 	"github.com/khanghh/cas-go/internal/config"
-	"github.com/khanghh/cas-go/internal/handler"
+	"github.com/khanghh/cas-go/internal/handlers"
+	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/internal/repositories"
+	"github.com/khanghh/cas-go/internal/services"
 	"github.com/khanghh/cas-go/model"
+	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
 	"github.com/urfave/cli/v2"
 	"gorm.io/driver/mysql"
@@ -68,7 +76,7 @@ func mustInitLogger(debug bool) {
 }
 
 func mustInitDatabase(dbConfig config.DatabaseConfig) *gorm.DB {
-	db, err := gorm.Open(mysql.Open(dbConfig.DataSourceName), &gorm.Config{
+	db, err := gorm.Open(mysql.Open(dbConfig.Dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   dbConfig.TablePrefix,
 			SingularTable: true,
@@ -87,6 +95,16 @@ func mustInitDatabase(dbConfig config.DatabaseConfig) *gorm.DB {
 	return db
 }
 
+func mustInitSessionStorage(config *config.Config) fiber.Storage {
+	var storage fiber.Storage
+	if config.Session.RedisUrl != "" {
+		storage = redis.New(redis.Config{URL: config.Session.RedisUrl})
+	} else {
+		storage = memory.New(memory.Config{GCInterval: 10 * time.Second})
+	}
+	return sessions.NewSessionStorage(storage, config.Session.StorageKeyPrefix)
+}
+
 func run(ctx *cli.Context) error {
 	config, err := config.LoadConfig(ctx.String(configFileFlag.Name))
 	if err != nil {
@@ -95,9 +113,32 @@ func run(ctx *cli.Context) error {
 	}
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
-	mustInitDatabase(config.Database)
 
-	auth := handler.NewAuthHandler([]string{})
+	query.SetDefault(mustInitDatabase(config.Database))
+	sessionStore := session.New(session.Config{
+		Storage:        mustInitSessionStorage(config),
+		CookieSecure:   config.Session.CookieSecure,
+		CookieHTTPOnly: config.Session.CookieHttpOnly,
+		CookieSameSite: config.Session.CookieSameSite,
+		KeyLookup:      fmt.Sprintf("cookie:%s", config.Session.CookieName),
+		KeyGenerator:   sessions.GenerateSessionID,
+	})
+
+	// repositories
+	var (
+		userRepo = repositories.NewUserRepository(query.Q)
+	)
+
+	// services
+	var (
+		authService = services.NewAuthService(&userRepo)
+	)
+
+	// middlewares and handlers
+	var (
+		withSession = sessions.WithSessionMiddleware(sessionStore)
+		authHandler = handlers.NewAuthHandler(authService)
+	)
 
 	router := fiber.New(fiber.Config{
 		Prefork:       true,
@@ -106,17 +147,17 @@ func run(ctx *cli.Context) error {
 		IdleTimeout:   params.ServerIdleTimeout,
 		ReadTimeout:   params.ServerReadTimeout,
 		WriteTimeout:  params.ServerWriteTimeout,
-		Views:         render.NewHtmlEngine(config.Server.TemplateDir),
+		Views:         render.NewHtmlEngine(config.TemplateDir),
 	})
 
 	router.Use(cors.New(cors.Config{
-		AllowOrigins: strings.Join(config.Server.AllowOrigins, ", "),
+		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
-	router.Static("/static/*", config.Server.StaticDir)
-	router.Get("/login", auth.GetLogin)
-	router.Post("/logout", auth.PostLogout)
+	router.Static("/static/*", config.StaticDir)
+	router.Get("/login", withSession(authHandler.GetLogin))
+	router.Post("/logout", withSession(authHandler.PostLogout))
 
-	return router.Listen(config.Server.ListenAddr)
+	return router.Listen(config.ListenAddr)
 }
 
 func main() {

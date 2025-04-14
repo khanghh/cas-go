@@ -46,7 +46,7 @@ func newToken(db *gorm.DB, opts ...gen.DOOption) token {
 }
 
 type token struct {
-	tokenDo tokenDo
+	tokenDo
 
 	ALL          field.Asterisk
 	ID           field.Uint
@@ -96,14 +96,6 @@ func (t *token) updateTableName(table string) *token {
 
 	return t
 }
-
-func (t *token) WithContext(ctx context.Context) *tokenDo { return t.tokenDo.WithContext(ctx) }
-
-func (t token) TableName() string { return t.tokenDo.TableName() }
-
-func (t token) Alias() string { return t.tokenDo.Alias() }
-
-func (t token) Columns(cols ...field.Expr) gen.Columns { return t.tokenDo.Columns(cols...) }
 
 func (t *token) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := t.fieldMap[fieldName]

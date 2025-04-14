@@ -39,7 +39,7 @@ func newRealm(db *gorm.DB, opts ...gen.DOOption) realm {
 }
 
 type realm struct {
-	realmDo realmDo
+	realmDo
 
 	ALL         field.Asterisk
 	ID          field.Uint
@@ -75,14 +75,6 @@ func (r *realm) updateTableName(table string) *realm {
 
 	return r
 }
-
-func (r *realm) WithContext(ctx context.Context) *realmDo { return r.realmDo.WithContext(ctx) }
-
-func (r realm) TableName() string { return r.realmDo.TableName() }
-
-func (r realm) Alias() string { return r.realmDo.Alias() }
-
-func (r realm) Columns(cols ...field.Expr) gen.Columns { return r.realmDo.Columns(cols...) }
 
 func (r *realm) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := r.fieldMap[fieldName]

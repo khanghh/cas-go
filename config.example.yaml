@@ -1,11 +1,9 @@
 debug: false
-
-server:
-  listenAddr : "0.0.0.0:3000" 
-  staticDir: "./static"
-  templateDir: "./templates"
-  allowOrigins:
-    - "http://localhost:8080"
+listenAddr : "0.0.0.0:3000" 
+staticDir: "./static"
+templateDir: "./templates"
+allowOrigins:
+  - "http://localhost:8080"
 
 database:
   dataSourceName: user:password@tcp(localhost:3306)/cas?charset=utf8mb4&parseTime=True&loc=Local
@@ -13,6 +11,10 @@ database:
   maxOpenConns: 10
   connMaxIdleTime: 10
   connMaxLifetime: 10
+
+redis: 
+  enabled: true
+  url: redis://<user>:<pass>@localhost:6379/<db>
 
 oauth: 
   google:

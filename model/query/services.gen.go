@@ -42,7 +42,7 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 }
 
 type service struct {
-	serviceDo serviceDo
+	serviceDo
 
 	ALL          field.Asterisk
 	ID           field.Uint
@@ -84,14 +84,6 @@ func (s *service) updateTableName(table string) *service {
 
 	return s
 }
-
-func (s *service) WithContext(ctx context.Context) *serviceDo { return s.serviceDo.WithContext(ctx) }
-
-func (s service) TableName() string { return s.serviceDo.TableName() }
-
-func (s service) Alias() string { return s.serviceDo.Alias() }
-
-func (s service) Columns(cols ...field.Expr) gen.Columns { return s.serviceDo.Columns(cols...) }
 
 func (s *service) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := s.fieldMap[fieldName]
