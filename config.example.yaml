@@ -5,6 +5,14 @@ templateDir: "./templates"
 allowOrigins:
   - "http://localhost:8080"
 
+session:
+  cookieName: "sid"
+  cookieSecure: false
+  cookieMaxAge: false
+  cookieHttpOnly: true
+  storageKeyPrefix: "cas:sid:"
+  redisUrl: redis://<user>:<pass>@localhost:6379/<db>
+
 database:
   dataSourceName: user:password@tcp(localhost:3306)/cas?charset=utf8mb4&parseTime=True&loc=Local
   maxIdleConns: 10
