@@ -37,6 +37,11 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Password = field.NewString(tableName, "password")
 	_user.Disabled = field.NewBool(tableName, "disabled")
 	_user.LastLoginAt = field.NewTime(tableName, "last_login_at")
+	_user.OAuths = userHasManyOAuths{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("OAuths", "model.UserOAuth"),
+	}
 
 	_user.fillFieldMap()
 
@@ -58,6 +63,7 @@ type user struct {
 	Password      field.String
 	Disabled      field.Bool
 	LastLoginAt   field.Time
+	OAuths        userHasManyOAuths
 
 	fieldMap map[string]field.Expr
 }
@@ -101,7 +107,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 11)
+	u.fieldMap = make(map[string]field.Expr, 12)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -113,6 +119,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["disabled"] = u.Disabled
 	u.fieldMap["last_login_at"] = u.LastLoginAt
+
 }
 
 func (u user) clone(db *gorm.DB) user {
@@ -123,6 +130,77 @@ func (u user) clone(db *gorm.DB) user {
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
 	return u
+}
+
+type userHasManyOAuths struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a userHasManyOAuths) Where(conds ...field.Expr) *userHasManyOAuths {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a userHasManyOAuths) WithContext(ctx context.Context) *userHasManyOAuths {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a userHasManyOAuths) Session(session *gorm.Session) *userHasManyOAuths {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a userHasManyOAuths) Model(m *model.User) *userHasManyOAuthsTx {
+	return &userHasManyOAuthsTx{a.db.Model(m).Association(a.Name())}
+}
+
+type userHasManyOAuthsTx struct{ tx *gorm.Association }
+
+func (a userHasManyOAuthsTx) Find() (result []*model.UserOAuth, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a userHasManyOAuthsTx) Append(values ...*model.UserOAuth) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a userHasManyOAuthsTx) Replace(values ...*model.UserOAuth) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a userHasManyOAuthsTx) Delete(values ...*model.UserOAuth) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a userHasManyOAuthsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a userHasManyOAuthsTx) Count() int64 {
+	return a.tx.Count()
 }
 
 type userDo struct{ gen.DO }

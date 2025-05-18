@@ -35,6 +35,7 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.ClientSecret = field.NewString(tableName, "client_secret")
 	_service.ServiceUrl = field.NewString(tableName, "service_url")
 	_service.CallbackUrl = field.NewString(tableName, "callback_url")
+	_service.AutoLogin = field.NewBool(tableName, "auto_login")
 
 	_service.fillFieldMap()
 
@@ -54,6 +55,7 @@ type service struct {
 	ClientSecret field.String
 	ServiceUrl   field.String
 	CallbackUrl  field.String
+	AutoLogin    field.Bool
 
 	fieldMap map[string]field.Expr
 }
@@ -79,6 +81,7 @@ func (s *service) updateTableName(table string) *service {
 	s.ClientSecret = field.NewString(table, "client_secret")
 	s.ServiceUrl = field.NewString(table, "service_url")
 	s.CallbackUrl = field.NewString(table, "callback_url")
+	s.AutoLogin = field.NewBool(table, "auto_login")
 
 	s.fillFieldMap()
 
@@ -95,7 +98,7 @@ func (s *service) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *service) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 9)
+	s.fieldMap = make(map[string]field.Expr, 10)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt
@@ -105,6 +108,7 @@ func (s *service) fillFieldMap() {
 	s.fieldMap["client_secret"] = s.ClientSecret
 	s.fieldMap["service_url"] = s.ServiceUrl
 	s.fieldMap["callback_url"] = s.CallbackUrl
+	s.fieldMap["auto_login"] = s.AutoLogin
 }
 
 func (s service) clone(db *gorm.DB) service {

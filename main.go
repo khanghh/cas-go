@@ -12,12 +12,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
+	"github.com/khanghh/cas-go/internal/auth"
 	"github.com/khanghh/cas-go/internal/config"
 	"github.com/khanghh/cas-go/internal/handlers"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
-	"github.com/khanghh/cas-go/internal/repositories"
-	"github.com/khanghh/cas-go/internal/services"
+	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
@@ -95,14 +95,28 @@ func mustInitDatabase(dbConfig config.DatabaseConfig) *gorm.DB {
 	return db
 }
 
-func mustInitSessionStorage(config *config.Config) fiber.Storage {
-	var storage fiber.Storage
-	if config.Session.RedisUrl != "" {
-		storage = redis.New(redis.Config{URL: config.Session.RedisUrl})
+func mustInitCacheStorage(config *config.Config) fiber.Storage {
+	if config.RedisUrl != "" {
+		return redis.New(redis.Config{URL: config.RedisUrl})
 	} else {
-		storage = memory.New(memory.Config{GCInterval: 10 * time.Second})
+		return memory.New(memory.Config{GCInterval: 10 * time.Second})
 	}
-	return sessions.NewSessionStorage(storage, config.Session.StorageKeyPrefix)
+}
+
+func mustInitOAuthProviders(config *config.Config) []auth.OAuthProvider {
+	var providers []auth.OAuthProvider
+	for providerName, providerCfg := range config.AuthProviders.OAuth {
+		if providerName == auth.OAuthProviderGoogle {
+			provider := auth.NewGoogleOauthProvider(providerName, providerCfg.ClientId, providerCfg.ClientSecret)
+			providers = append(providers, provider)
+		} else if providerName == auth.OAuthProviderDiscord {
+			// TODO: add discord oauth provider
+		} else {
+			slog.Error("Unsupported OAuth provider", "provider", providerName)
+			os.Exit(1)
+		}
+	}
+	return providers
 }
 
 func run(ctx *cli.Context) error {
@@ -114,9 +128,11 @@ func run(ctx *cli.Context) error {
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
+	cacheStorage := mustInitCacheStorage(config)
 	query.SetDefault(mustInitDatabase(config.Database))
 	sessionStore := session.New(session.Config{
-		Storage:        mustInitSessionStorage(config),
+		Storage:        sessions.NewSessionStorage(cacheStorage, config.Session.StorageKeyPrefix),
+		Expiration:     config.Session.SessionMaxAge,
 		CookieSecure:   config.Session.CookieSecure,
 		CookieHTTPOnly: config.Session.CookieHttpOnly,
 		CookieSameSite: config.Session.CookieSameSite,
@@ -124,20 +140,26 @@ func run(ctx *cli.Context) error {
 		KeyGenerator:   sessions.GenerateSessionID,
 	})
 
-	// repositories
+	// repositories and dependencies
 	var (
-		userRepo = repositories.NewUserRepository(query.Q)
+		userRepo       = repository.NewUserRepository(query.Q)
+		oauthRepo      = repository.NewOAuthRepository(query.Q)
+		serviceRepo    = repository.NewMockServiceRepository(query.Q)
+		tokenRepo      = repository.NewTokenRepository(query.Q)
+		oauthProviders = mustInitOAuthProviders(config)
 	)
 
 	// services
 	var (
-		authService = services.NewAuthService(&userRepo)
+		// userService         = user.NewUserService(userRepo)
+		authenticateService = auth.NewAuthenticateService(userRepo, oauthRepo, oauthProviders)
+		authorizeService    = auth.NewAuthorizeService(cacheStorage, serviceRepo, tokenRepo)
 	)
 
 	// middlewares and handlers
 	var (
 		withSession = sessions.WithSessionMiddleware(sessionStore)
-		authHandler = handlers.NewAuthHandler(authService)
+		authHandler = handlers.NewAuthHandler(authenticateService, authorizeService)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -155,7 +177,9 @@ func run(ctx *cli.Context) error {
 	}))
 	router.Static("/static/*", config.StaticDir)
 	router.Get("/login", withSession(authHandler.GetLogin))
+	router.Post("/login", withSession(authHandler.PostLogin))
 	router.Post("/logout", withSession(authHandler.PostLogout))
+	router.Get("/oauth/:provider/callback", withSession(authHandler.GetOAuthCallback))
 
 	return router.Listen(config.ListenAddr)
 }

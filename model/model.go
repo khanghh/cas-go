@@ -1,5 +1,5 @@
 package model
 
 var Models = []interface{}{
-	&Realm{}, &User{}, &Service{}, &Token{},
+	&User{}, &UserOAuth{}, &Service{}, &Token{},
 }

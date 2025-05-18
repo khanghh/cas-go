@@ -22,23 +22,39 @@ type DatabaseConfig struct {
 }
 
 type SessionConfig struct {
+	SessionMaxAge    time.Duration `yaml:"sessionMaxAge"`
 	CookieName       string        `yaml:"cookieName"`
-	CookieMaxAge     time.Duration `yaml:"cookieMaxAge"`
 	CookieSecure     bool          `yaml:"cookieSecure"`
 	CookieHttpOnly   bool          `yaml:"cookieHttpOnly"`
 	CookieSameSite   string        `yaml:"cookieSameSite"`
 	StorageKeyPrefix string        `yaml:"storageKeyPrefix"`
-	RedisUrl         string        `yaml:"redisUrl"`
+}
+
+type LdapConfig struct {
+	Address  string `yaml:"address"`
+	BaseDn   string `yaml:"baseDn"`
+	Password string `yaml:"password"`
+}
+
+type OAuthProviderConfig struct {
+	ClientId     string   `yaml:"clientId"`
+	ClientSecret string   `yaml:"clientSecret"`
+	Scope        []string `yaml:"scope"`
 }
 
 type Config struct {
-	Debug        bool           `yaml:"debug"`
-	ListenAddr   string         `yaml:"listenAddr"`
-	StaticDir    string         `yaml:"staticDir"`
-	TemplateDir  string         `yaml:"templateDir"`
-	AllowOrigins []string       `yaml:"allowOrigins"`
-	Session      SessionConfig  `yaml:"session"`
-	Database     DatabaseConfig `yaml:"database"`
+	Debug         bool           `yaml:"debug"`
+	ListenAddr    string         `yaml:"listenAddr"`
+	StaticDir     string         `yaml:"staticDir"`
+	TemplateDir   string         `yaml:"templateDir"`
+	AllowOrigins  []string       `yaml:"allowOrigins"`
+	RedisUrl      string         `yaml:"redisUrl"`
+	Session       SessionConfig  `yaml:"session"`
+	Database      DatabaseConfig `yaml:"database"`
+	AuthProviders struct {
+		OAuth map[string]OAuthProviderConfig `yaml:"oauth"`
+		Ldap  LdapConfig                     `yaml:"ldap"`
+	} `yaml:"authProviders"`
 }
 
 func (c *Config) Sanitize() error {
@@ -48,8 +64,8 @@ func (c *Config) Sanitize() error {
 	if c.StaticDir == "" {
 		c.StaticDir = DefaultStaticDir
 	}
-	if c.Session.CookieMaxAge == 0 {
-		c.Session.CookieMaxAge = DefaultCookieMaxAge
+	if c.Session.SessionMaxAge == 0 {
+		c.Session.SessionMaxAge = DefaultCookieMaxAge
 	}
 	if c.Session.CookieSameSite == "" {
 		c.Session.CookieSameSite = "Strict"

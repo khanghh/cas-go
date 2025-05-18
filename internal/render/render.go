@@ -20,10 +20,16 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 	return html.NewFileSystem(http.FS(renderFS), ".html")
 }
 
-func RenderLoginPage(ctx *fiber.Ctx) error {
-	return ctx.Render("login", fiber.Map{})
+func RenderLoginPage(ctx *fiber.Ctx, serviceUrl string, oauthLoginUrls map[string]string) error {
+	return ctx.Render("login", fiber.Map{
+		"serviceURL":            serviceUrl,
+		"loginWithGoogleUrl":    oauthLoginUrls["google"],
+		"loginWithFacebookUrl":  oauthLoginUrls["facebook"],
+		"loginWithMicrosoftUrl": oauthLoginUrls["microsoft"],
+		"loginWithAppleUrl":     oauthLoginUrls["apple"],
+	})
 }
 
-func RenderUnauthorizedServiceErrorPage(ctx *fiber.Ctx) error {
+func RenderUnauthorizedServiceErrorPage(ctx *fiber.Ctx, code int) error {
 	return ctx.Render("unauthorized-service", fiber.Map{})
 }
