@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
@@ -64,7 +65,7 @@ require (
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/oauth2 v0.25.0 // indirect
+	golang.org/x/oauth2 v0.29.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect

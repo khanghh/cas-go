@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"log/slog"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
@@ -59,6 +60,10 @@ func injectSession(store *session.Store, next fiber.Handler) fiber.Handler {
 			return err
 		}
 
+		if !session.Fresh() {
+			session.LastSeen = time.Now()
+			return session.Save()
+		}
 		return nil
 	}
 }

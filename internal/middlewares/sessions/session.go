@@ -13,11 +13,11 @@ const (
 )
 
 type SessionInfo struct {
-	IP        string
-	User      string
-	Email     string
-	LoginTime time.Time
-	LastSeen  time.Time
+	IP         string
+	UserId     uint
+	LoginTime  time.Time
+	LastSeen   time.Time
+	ExpireTime time.Time
 }
 
 type Session struct {
