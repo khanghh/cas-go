@@ -31,11 +31,10 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_service.DeletedAt = field.NewField(tableName, "deleted_at")
 	_service.DisplayName = field.NewString(tableName, "display_name")
-	_service.ClientId = field.NewString(tableName, "client_id")
-	_service.ClientSecret = field.NewString(tableName, "client_secret")
 	_service.ServiceUrl = field.NewString(tableName, "service_url")
 	_service.CallbackUrl = field.NewString(tableName, "callback_url")
 	_service.AutoLogin = field.NewBool(tableName, "auto_login")
+	_service.PublicKey = field.NewString(tableName, "public_key")
 
 	_service.fillFieldMap()
 
@@ -45,17 +44,16 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 type service struct {
 	serviceDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	DisplayName  field.String
-	ClientId     field.String
-	ClientSecret field.String
-	ServiceUrl   field.String
-	CallbackUrl  field.String
-	AutoLogin    field.Bool
+	ALL         field.Asterisk
+	ID          field.Uint
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
+	DisplayName field.String
+	ServiceUrl  field.String
+	CallbackUrl field.String
+	AutoLogin   field.Bool
+	PublicKey   field.String
 
 	fieldMap map[string]field.Expr
 }
@@ -77,11 +75,10 @@ func (s *service) updateTableName(table string) *service {
 	s.UpdatedAt = field.NewTime(table, "updated_at")
 	s.DeletedAt = field.NewField(table, "deleted_at")
 	s.DisplayName = field.NewString(table, "display_name")
-	s.ClientId = field.NewString(table, "client_id")
-	s.ClientSecret = field.NewString(table, "client_secret")
 	s.ServiceUrl = field.NewString(table, "service_url")
 	s.CallbackUrl = field.NewString(table, "callback_url")
 	s.AutoLogin = field.NewBool(table, "auto_login")
+	s.PublicKey = field.NewString(table, "public_key")
 
 	s.fillFieldMap()
 
@@ -98,17 +95,16 @@ func (s *service) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *service) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 10)
+	s.fieldMap = make(map[string]field.Expr, 9)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt
 	s.fieldMap["deleted_at"] = s.DeletedAt
 	s.fieldMap["display_name"] = s.DisplayName
-	s.fieldMap["client_id"] = s.ClientId
-	s.fieldMap["client_secret"] = s.ClientSecret
 	s.fieldMap["service_url"] = s.ServiceUrl
 	s.fieldMap["callback_url"] = s.CallbackUrl
 	s.fieldMap["auto_login"] = s.AutoLogin
+	s.fieldMap["public_key"] = s.PublicKey
 }
 
 func (s service) clone(db *gorm.DB) service {

@@ -13,6 +13,7 @@ type OAuthRepository interface {
 	WithTx(tx *query.Query) OAuthRepository
 	First(ctx context.Context, conds ...gen.Condition) (*model.UserOAuth, error)
 	Upsert(ctx context.Context, userOAuth *model.UserOAuth) error
+	Find(ctx context.Context, conds ...gen.Condition) ([]*model.UserOAuth, error)
 }
 
 type oauthRepository struct {
@@ -20,11 +21,11 @@ type oauthRepository struct {
 }
 
 func (r *oauthRepository) First(ctx context.Context, conds ...gen.Condition) (*model.UserOAuth, error) {
-	panic("TODO: Implement")
+	return r.query.UserOAuth.WithContext(ctx).Where(conds...).First()
 }
 
 func (r *oauthRepository) WithTx(tx *query.Query) OAuthRepository {
-	panic("TODO: Implement")
+	return NewOAuthRepository(tx)
 }
 
 func (r *oauthRepository) Upsert(ctx context.Context, userOAuth *model.UserOAuth) error {
@@ -32,6 +33,10 @@ func (r *oauthRepository) Upsert(ctx context.Context, userOAuth *model.UserOAuth
 		Clauses(clause.OnConflict{UpdateAll: true}).
 		Returning(userOAuth).
 		Create(userOAuth)
+}
+
+func (r *oauthRepository) Find(ctx context.Context, conds ...gen.Condition) ([]*model.UserOAuth, error) {
+	return r.query.UserOAuth.WithContext(ctx).Where(conds...).Find()
 }
 
 func NewOAuthRepository(query *query.Query) OAuthRepository {
