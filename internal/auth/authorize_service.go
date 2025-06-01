@@ -2,34 +2,106 @@ package auth
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/khanghh/cas-go/internal/repository"
-	"github.com/khanghh/cas-go/model"
-	"github.com/khanghh/cas-go/model/query"
+	"github.com/khanghh/cas-go/params"
 )
 
-type AuthorizeService struct {
-	ticketStorage fiber.Storage
-	serviceRepo   repository.ServiceRepository
-	tokenRepo     repository.TokenRepository
-}
-
 type ServiceTicket struct {
+	TicketId    string    `json:"ticketId"`
+	UserId      uint      `json:"userId"`
+	Service     string    `json:"serviceUrl"`
+	CallbackUrl string    `json:"callbackUrl"`
+	CreateTime  time.Time `json:"createTime"`
 }
 
-func (s *AuthorizeService) GetService(ctx context.Context, serviceUrl string) (*model.Service, error) {
-	return s.serviceRepo.First(ctx, query.Service.ServiceUrl.Eq(serviceUrl))
+type AuthorizeService struct {
+	ticketStore *TicketStore
+	serviceRepo repository.ServiceRepository
+	tokenRepo   repository.TokenRepository
 }
 
-func (s *AuthorizeService) AuthorizeUserService(ctx context.Context, user *model.User, serviceUrl string) (string, error) {
-	return "", nil
+func mustDecodeBase64(s string) []byte {
+	b, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return []byte{}
+	}
+	return b
 }
 
-func NewAuthorizeService(ticketStorage fiber.Storage, serviceRepo repository.ServiceRepository, tokenRepo repository.TokenRepository) *AuthorizeService {
+func (s *AuthorizeService) validateTicketSignature(publicKey, signature, serviceURL, ticketId, timestamp string) bool {
+	sig := mustDecodeBase64(signature)
+	if len(sig) != ed25519.SignatureSize {
+		return false
+	}
+
+	pubKey := mustDecodeBase64(publicKey)
+	if len(pubKey) != ed25519.PublicKeySize {
+		return false
+	}
+
+	data := serviceURL + ticketId + timestamp
+	hash := sha256.Sum256([]byte(data))
+	message := hex.EncodeToString(hash[:])
+	return ed25519.Verify(pubKey, []byte(message), sig)
+}
+
+func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceUrl string, ticketId string, timestamp string, signature string) (bool, error) {
+	ticket, err := s.ticketStore.GetTicket(ticketId)
+	if err != nil {
+		return false, ErrTicketNotFound
+	}
+
+	if ticket.Service != serviceUrl {
+		return false, ErrServiceUrlMismatch
+	}
+
+	service, err := s.serviceRepo.GetService(ctx, serviceUrl)
+	if err != nil {
+		return false, ErrServiceNotFound
+	}
+
+	if s.validateTicketSignature(service.PublicKey, signature, serviceUrl, ticketId, timestamp) {
+		if err := s.ticketStore.RemoveTicket(ticketId); err != nil {
+			return false, ErrTicketExpired
+		}
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, serviceUrl string) (*ServiceTicket, error) {
+	service, err := s.serviceRepo.GetService(ctx, serviceUrl)
+	if err != nil {
+		return nil, ErrServiceNotFound
+	}
+
+	st := &ServiceTicket{
+		TicketId:    uuid.NewString(),
+		UserId:      userId,
+		Service:     serviceUrl,
+		CallbackUrl: service.CallbackUrl,
+		CreateTime:  time.Now(),
+	}
+
+	if err := s.ticketStore.CreateTicket(st, params.SerivceTicketExpireDuration); err != nil {
+		return nil, err
+	}
+
+	return st, nil
+}
+
+func NewAuthorizeService(ticketStore *TicketStore, serviceRepo repository.ServiceRepository, tokenRepo repository.TokenRepository) *AuthorizeService {
 	return &AuthorizeService{
-		ticketStorage: ticketStorage,
-		serviceRepo:   serviceRepo,
-		tokenRepo:     tokenRepo,
+		ticketStore: ticketStore,
+		serviceRepo: serviceRepo,
+		tokenRepo:   tokenRepo,
 	}
 }
