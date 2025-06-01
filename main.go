@@ -13,11 +13,14 @@ import (
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/khanghh/cas-go/internal/auth"
+	"github.com/khanghh/cas-go/internal/common"
 	"github.com/khanghh/cas-go/internal/config"
 	"github.com/khanghh/cas-go/internal/handlers"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
+	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/repository"
+	"github.com/khanghh/cas-go/internal/user"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
@@ -49,7 +52,7 @@ var (
 func init() {
 	app = cli.NewApp()
 	app.EnableBashCompletion = true
-	app.Usage = "CAS Gateway"
+	app.Usage = "CAS Server"
 	app.Flags = []cli.Flag{
 		configFileFlag,
 		debugFlag,
@@ -103,14 +106,12 @@ func mustInitCacheStorage(config *config.Config) fiber.Storage {
 	}
 }
 
-func mustInitOAuthProviders(config *config.Config) []auth.OAuthProvider {
-	var providers []auth.OAuthProvider
+func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
+	var providers []oauth.OAuthProvider
 	for providerName, providerCfg := range config.AuthProviders.OAuth {
-		if providerName == auth.OAuthProviderGoogle {
-			provider := auth.NewGoogleOauthProvider(providerName, providerCfg.ClientId, providerCfg.ClientSecret)
+		if providerName == "google" {
+			provider := oauth.NewGoogleOauthProvider(providerName, providerCfg.ClientId, providerCfg.ClientSecret)
 			providers = append(providers, provider)
-		} else if providerName == auth.OAuthProviderDiscord {
-			// TODO: add discord oauth provider
 		} else {
 			slog.Error("Unsupported OAuth provider", "provider", providerName)
 			os.Exit(1)
@@ -128,10 +129,13 @@ func run(ctx *cli.Context) error {
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
-	cacheStorage := mustInitCacheStorage(config)
 	query.SetDefault(mustInitDatabase(config.Database))
+	cacheStorage := mustInitCacheStorage(config)
+	sessionStorage := common.NewKVStorage(cacheStorage, params.SessionStorageKeyPreix)
+	ticketStorage := common.NewKVStorage(cacheStorage, params.TicketStorageKeyPrefix)
+
 	sessionStore := session.New(session.Config{
-		Storage:        sessions.NewSessionStorage(cacheStorage, config.Session.StorageKeyPrefix),
+		Storage:        sessionStorage,
 		Expiration:     config.Session.SessionMaxAge,
 		CookieSecure:   config.Session.CookieSecure,
 		CookieHTTPOnly: config.Session.CookieHttpOnly,
@@ -144,22 +148,23 @@ func run(ctx *cli.Context) error {
 	var (
 		userRepo       = repository.NewUserRepository(query.Q)
 		oauthRepo      = repository.NewOAuthRepository(query.Q)
-		serviceRepo    = repository.NewMockServiceRepository(query.Q)
+		serviceRepo    = repository.NewServiceRepository(query.Q)
 		tokenRepo      = repository.NewTokenRepository(query.Q)
 		oauthProviders = mustInitOAuthProviders(config)
 	)
 
 	// services
 	var (
-		// userService         = user.NewUserService(userRepo)
-		authenticateService = auth.NewAuthenticateService(userRepo, oauthRepo, oauthProviders)
-		authorizeService    = auth.NewAuthorizeService(cacheStorage, serviceRepo, tokenRepo)
+		userService      = user.NewUserService(userRepo)
+		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
+		authorizeService = auth.NewAuthorizeService(ticketStorage, serviceRepo, tokenRepo)
+		oauthService     = oauth.NewOAuthService(userRepo, oauthRepo, oauthProviders, "sessionKey")
 	)
 
 	// middlewares and handlers
 	var (
 		withSession = sessions.WithSessionMiddleware(sessionStore)
-		authHandler = handlers.NewAuthHandler(authenticateService, authorizeService)
+		authHandler = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, oauthService)
 	)
 
 	router := fiber.New(fiber.Config{

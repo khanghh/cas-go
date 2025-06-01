@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	"github.com/khanghh/cas-go/params"
 	"github.com/spf13/viper"
 )
 
@@ -22,12 +23,11 @@ type DatabaseConfig struct {
 }
 
 type SessionConfig struct {
-	SessionMaxAge    time.Duration `yaml:"sessionMaxAge"`
-	CookieName       string        `yaml:"cookieName"`
-	CookieSecure     bool          `yaml:"cookieSecure"`
-	CookieHttpOnly   bool          `yaml:"cookieHttpOnly"`
-	CookieSameSite   string        `yaml:"cookieSameSite"`
-	StorageKeyPrefix string        `yaml:"storageKeyPrefix"`
+	SessionMaxAge  time.Duration `yaml:"sessionMaxAge"`
+	CookieName     string        `yaml:"cookieName"`
+	CookieSecure   bool          `yaml:"cookieSecure"`
+	CookieHttpOnly bool          `yaml:"cookieHttpOnly"`
+	CookieSameSite string        `yaml:"cookieSameSite"`
 }
 
 type LdapConfig struct {
@@ -43,15 +43,16 @@ type OAuthProviderConfig struct {
 }
 
 type Config struct {
-	Debug         bool           `yaml:"debug"`
-	ListenAddr    string         `yaml:"listenAddr"`
-	StaticDir     string         `yaml:"staticDir"`
-	TemplateDir   string         `yaml:"templateDir"`
-	AllowOrigins  []string       `yaml:"allowOrigins"`
-	RedisUrl      string         `yaml:"redisUrl"`
-	Session       SessionConfig  `yaml:"session"`
-	Database      DatabaseConfig `yaml:"database"`
-	AuthProviders struct {
+	Debug              bool           `yaml:"debug"`
+	ListenAddr         string         `yaml:"listenAddr"`
+	StaticDir          string         `yaml:"staticDir"`
+	TemplateDir        string         `yaml:"templateDir"`
+	AllowOrigins       []string       `yaml:"allowOrigins"`
+	RedisUrl           string         `yaml:"redisUrl"`
+	Session            SessionConfig  `yaml:"session"`
+	Database           DatabaseConfig `yaml:"database"`
+	StateEncryptionKey string         `yaml:"stateEncryptionKey"`
+	AuthProviders      struct {
 		OAuth map[string]OAuthProviderConfig `yaml:"oauth"`
 		Ldap  LdapConfig                     `yaml:"ldap"`
 	} `yaml:"authProviders"`
@@ -69,6 +70,10 @@ func (c *Config) Sanitize() error {
 	}
 	if c.Session.CookieSameSite == "" {
 		c.Session.CookieSameSite = "Strict"
+	}
+
+	if c.StateEncryptionKey == "" {
+		c.StateEncryptionKey = params.DefaultStateEncryptionKey
 	}
 	return nil
 }

@@ -2,11 +2,11 @@ package auth
 
 import (
 	"context"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/model"
-	"github.com/khanghh/cas-go/model/query"
 )
 
 type AuthorizeService struct {
@@ -16,14 +16,17 @@ type AuthorizeService struct {
 }
 
 type ServiceTicket struct {
+	TicketId   string
+	ServiceUrl string
+	ExpireTime time.Time
 }
 
-func (s *AuthorizeService) GetService(ctx context.Context, serviceUrl string) (*model.Service, error) {
-	return s.serviceRepo.First(ctx, query.Service.ServiceUrl.Eq(serviceUrl))
+func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceTicket string, timestamp string, signature string) (bool, error) {
+	return false, nil
 }
 
-func (s *AuthorizeService) AuthorizeUserService(ctx context.Context, user *model.User, serviceUrl string) (string, error) {
-	return "", nil
+func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, user *model.User, service *model.Service) (*ServiceTicket, error) {
+	return nil, nil
 }
 
 func NewAuthorizeService(ticketStorage fiber.Storage, serviceRepo repository.ServiceRepository, tokenRepo repository.TokenRepository) *AuthorizeService {
