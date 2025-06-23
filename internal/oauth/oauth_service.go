@@ -10,10 +10,9 @@ import (
 )
 
 type OAuthService struct {
-	userRepo           repository.UserRepository
-	oauthRepo          repository.OAuthRepository
-	oauthProviders     []OAuthProvider
-	stateEncryptionKey string
+	userRepo       repository.UserRepository
+	oauthRepo      repository.OAuthRepository
+	oauthProviders []OAuthProvider
 }
 
 func (s *OAuthService) getOAuthProvider(name string) OAuthProvider {
@@ -65,15 +64,10 @@ func (s *OAuthService) GetOrCreateUserOAuth(ctx context.Context, providerName st
 	return &userOAuth, nil
 }
 
-func (o *OAuthService) CreateUserOAuth(ctx context.Context) (*model.UserOAuth, error) {
-	panic("TODO: Implement")
-}
-
-func NewOAuthService(userRepo repository.UserRepository, oauthRepo repository.OAuthRepository, oauthProviders []OAuthProvider, stateEncryptionKey string) *OAuthService {
+func NewOAuthService(userRepo repository.UserRepository, oauthRepo repository.OAuthRepository, oauthProviders []OAuthProvider) *OAuthService {
 	return &OAuthService{
-		userRepo:           userRepo,
-		oauthRepo:          oauthRepo,
-		oauthProviders:     oauthProviders,
-		stateEncryptionKey: stateEncryptionKey,
+		userRepo:       userRepo,
+		oauthRepo:      oauthRepo,
+		oauthProviders: oauthProviders,
 	}
 }

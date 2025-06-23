@@ -130,10 +130,12 @@ func run(ctx *cli.Context) error {
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
 	query.SetDefault(mustInitDatabase(config.Database))
-	cacheStorage := mustInitCacheStorage(config)
-	sessionStorage := common.NewKVStorage(cacheStorage, params.SessionStorageKeyPreix)
-	ticketStorage := common.NewKVStorage(cacheStorage, params.TicketStorageKeyPrefix)
 
+	cacheStorage := mustInitCacheStorage(config)
+	ticketStorage := common.NewKVStorage(cacheStorage, params.TicketStorageKeyPrefix)
+	sessionStorage := common.NewKVStorage(cacheStorage, params.SessionStorageKeyPrefix)
+
+	ticketStore := auth.NewTicketStore(ticketStorage)
 	sessionStore := session.New(session.Config{
 		Storage:        sessionStorage,
 		Expiration:     config.Session.SessionMaxAge,
@@ -157,8 +159,8 @@ func run(ctx *cli.Context) error {
 	var (
 		userService      = user.NewUserService(userRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
-		authorizeService = auth.NewAuthorizeService(ticketStorage, serviceRepo, tokenRepo)
-		oauthService     = oauth.NewOAuthService(userRepo, oauthRepo, oauthProviders, "sessionKey")
+		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo, tokenRepo)
+		oauthService     = oauth.NewOAuthService(userRepo, oauthRepo, oauthProviders)
 	)
 
 	// middlewares and handlers

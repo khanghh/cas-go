@@ -12,7 +12,7 @@ type UserRepository interface {
 	WithTx(tx *query.Query) UserRepository
 	First(ctx context.Context, conds ...gen.Condition) (*model.User, error)
 	Create(ctx context.Context, user *model.User) error
-	Updates(ctx context.Context, columns map[string]interface{}) (gen.ResultInfo, error)
+	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
 }
 
 type userRepository struct {
@@ -27,8 +27,8 @@ func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 	return r.query.User.WithContext(ctx).Create(user)
 }
 
-func (r *userRepository) Updates(ctx context.Context, columns map[string]interface{}) (gen.ResultInfo, error) {
-	return r.query.User.WithContext(ctx).Updates(columns)
+func (r *userRepository) Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error) {
+	return r.query.User.WithContext(ctx).Where(conds...).Updates(columns)
 }
 
 func (r *userRepository) WithTx(tx *query.Query) UserRepository {

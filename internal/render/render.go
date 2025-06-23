@@ -30,6 +30,6 @@ func RenderLoginPage(ctx *fiber.Ctx, serviceUrl string, oauthLoginUrls map[strin
 	})
 }
 
-func RenderUnauthorizedServiceErrorPage(ctx *fiber.Ctx, code int) error {
+func RenderUnauthorizedErrorPage(ctx *fiber.Ctx, code int) error {
 	return ctx.Render("unauthorized-service", fiber.Map{})
 }
