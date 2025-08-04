@@ -25,17 +25,18 @@ const (
 )
 
 type ServiceRegistry interface {
-	RegisterService(ctx context.Context, service *model.Service) error
+	RegisterService(ctx context.Context, service *model.Service) (string, error)
 	GetService(ctx context.Context, serviceUrl string) (*model.Service, error)
 }
 
 type UserService interface {
 	GetUserById(ctx context.Context, userId uint) (*model.User, error)
+	SetLastLoginTime(ctx context.Context, userId uint, lastLoginTime time.Time) error
 }
 
 type AuthorizeService interface {
-	GenerateServiceTicket(ctx context.Context, user *model.User, service *model.Service) (*auth.ServiceTicket, error)
-	ValidateServiceTicket(ctx context.Context, serviceTicket string, timestamp string, signature string) (bool, error)
+	GenerateServiceTicket(ctx context.Context, userId uint, serviceUrl string) (*auth.ServiceTicket, error)
+	ValidateServiceTicket(ctx context.Context, serviceUrl string, ticketId string, timestamp string, signature string) (bool, error)
 }
 
 type OAuthService interface {
@@ -49,6 +50,7 @@ type AuthState struct {
 	Action     string
 }
 
+// AuthHandler handles authentication and authorization
 type AuthHandler struct {
 	serviceRegistry    ServiceRegistry
 	authorizeService   AuthorizeService
@@ -114,8 +116,11 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceUrl := params.GetString(ctx, "service")
 
 	session := sessions.Get(ctx)
-	if session.UserId != 0 {
-		return h.handleAuthorizeServiceAccess(ctx, session.UserId, serviceUrl)
+	if session != nil && session.UserId != 0 {
+		user, err := h.userService.GetUserById(ctx.Context(), session.UserId)
+		if user != nil && err == nil {
+			return h.handleAuthorizeServiceAccess(ctx, user, serviceUrl)
+		}
 	}
 
 	// Render login page
@@ -132,30 +137,19 @@ func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	err := session.Destroy()
-	if err != nil {
+	if err := session.Destroy(); err != nil {
 		return err
 	}
 	return ctx.Redirect("/")
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, userId uint, serviceUrl string) error {
-	user, err := h.userService.GetUserById(ctx.Context(), userId)
-	if err != nil {
-		return render.RenderUnauthorizedServiceErrorPage(ctx, 2)
-	}
-
-	service, err := h.serviceRegistry.GetService(ctx.Context(), serviceUrl)
-	if err != nil {
-		return render.RenderUnauthorizedServiceErrorPage(ctx, 2)
-	}
-
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user, service)
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceUrl string) error {
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceUrl)
 	if err != nil {
 		return err
 	}
 
-	callbackUrl := fmt.Sprintf("%s?ticket=%s", service.CallbackUrl, ticket.TicketId)
+	callbackUrl := fmt.Sprintf("%s?ticket=%s", ticket.CallbackUrl, ticket.TicketId)
 	return ctx.Redirect(callbackUrl)
 }
 
@@ -169,6 +163,7 @@ func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceUrl string) error {
 func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
 	user, err := h.userService.GetUserById(ctx.Context(), userOAuth.UserId)
 	if err != nil {
+		// TODO: create user and link with userOAuth if not exists
 		return err
 	}
 
@@ -177,8 +172,12 @@ func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAut
 		UserId:    user.ID,
 		LoginTime: time.Now(),
 	}
-	err = sessions.Get(ctx).Save(sessionInfo)
-	if err != nil {
+
+	if err := sessions.Get(ctx).Save(sessionInfo); err != nil {
+		return err
+	}
+
+	if err := h.userService.SetLastLoginTime(ctx.Context(), user.ID, time.Now()); err != nil {
 		return err
 	}
 
@@ -191,6 +190,7 @@ func (c *AuthHandler) handleOAuthLink(ctx *fiber.Ctx, userOAuth *model.UserOAuth
 
 func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 	code := ctx.Query("code")
+	encryptedState := ctx.Query("state")
 	provider := ctx.Params("provider")
 
 	userOAuth, err := h.oauthService.GetOrCreateUserOAuth(ctx.Context(), provider, code)
@@ -198,7 +198,7 @@ func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	state, err := h.decryptState(ctx.Query("state"))
+	state, err := h.decryptState(encryptedState)
 	if err != nil {
 		return err
 	}

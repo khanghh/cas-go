@@ -11,12 +11,12 @@ type KVStorage struct {
 	keyPrefix string
 }
 
-func (s *KVStorage) Set(key string, val []byte, exp time.Duration) error {
-	return s.Storage.Set(s.keyPrefix+key, val, exp)
-}
-
 func (s *KVStorage) Get(key string) ([]byte, error) {
 	return s.Storage.Get(s.keyPrefix + key)
+}
+
+func (s *KVStorage) Set(key string, val []byte, exp time.Duration) error {
+	return s.Storage.Set(s.keyPrefix+key, val, exp)
 }
 
 func (s *KVStorage) Delete(key string) error {
