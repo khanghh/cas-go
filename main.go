@@ -78,7 +78,7 @@ func mustInitLogger(debug bool) {
 	slog.SetDefault(slog.New(handler))
 }
 
-func mustInitDatabase(dbConfig config.DatabaseConfig) *gorm.DB {
+func mustInitDatabase(dbConfig config.MySQLConfig) *gorm.DB {
 	db, err := gorm.Open(mysql.Open(dbConfig.Dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   dbConfig.TablePrefix,
@@ -129,7 +129,7 @@ func run(ctx *cli.Context) error {
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
-	query.SetDefault(mustInitDatabase(config.Database))
+	query.SetDefault(mustInitDatabase(config.MySQL))
 
 	cacheStorage := mustInitCacheStorage(config)
 	ticketStorage := common.NewKVStorage(cacheStorage, params.TicketStorageKeyPrefix)
@@ -141,7 +141,6 @@ func run(ctx *cli.Context) error {
 		Expiration:     config.Session.SessionMaxAge,
 		CookieSecure:   config.Session.CookieSecure,
 		CookieHTTPOnly: config.Session.CookieHttpOnly,
-		CookieSameSite: config.Session.CookieSameSite,
 		KeyLookup:      fmt.Sprintf("cookie:%s", config.Session.CookieName),
 		KeyGenerator:   sessions.GenerateSessionID,
 	})

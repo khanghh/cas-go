@@ -13,7 +13,7 @@ const (
 	DefaultCookieMaxAge = 7 * 24 * time.Hour
 )
 
-type DatabaseConfig struct {
+type MySQLConfig struct {
 	Dsn             string `yaml:"dsn"`
 	TablePrefix     string `yaml:"tablePrefix"`
 	MaxIdleConns    int    `yaml:"maxIdleConns"`
@@ -25,9 +25,8 @@ type DatabaseConfig struct {
 type SessionConfig struct {
 	SessionMaxAge  time.Duration `yaml:"sessionMaxAge"`
 	CookieName     string        `yaml:"cookieName"`
-	CookieSecure   bool          `yaml:"cookieSecure"`
 	CookieHttpOnly bool          `yaml:"cookieHttpOnly"`
-	CookieSameSite string        `yaml:"cookieSameSite"`
+	CookieSecure   bool          `yaml:"cookieSecure"`
 }
 
 type LdapConfig struct {
@@ -43,15 +42,15 @@ type OAuthProviderConfig struct {
 }
 
 type Config struct {
-	Debug              bool           `yaml:"debug"`
-	ListenAddr         string         `yaml:"listenAddr"`
-	StaticDir          string         `yaml:"staticDir"`
-	TemplateDir        string         `yaml:"templateDir"`
-	AllowOrigins       []string       `yaml:"allowOrigins"`
-	RedisUrl           string         `yaml:"redisUrl"`
-	Session            SessionConfig  `yaml:"session"`
-	Database           DatabaseConfig `yaml:"database"`
-	StateEncryptionKey string         `yaml:"stateEncryptionKey"`
+	Debug              bool          `yaml:"debug"`
+	ListenAddr         string        `yaml:"listenAddr"`
+	StaticDir          string        `yaml:"staticDir"`
+	TemplateDir        string        `yaml:"templateDir"`
+	AllowOrigins       []string      `yaml:"allowOrigins"`
+	RedisUrl           string        `yaml:"redisUrl"`
+	Session            SessionConfig `yaml:"session"`
+	MySQL              MySQLConfig   `yaml:"mysql"`
+	StateEncryptionKey string        `yaml:"stateEncryptionKey"`
 	AuthProviders      struct {
 		OAuth map[string]OAuthProviderConfig `yaml:"oauth"`
 		Ldap  LdapConfig                     `yaml:"ldap"`
@@ -67,9 +66,6 @@ func (c *Config) Sanitize() error {
 	}
 	if c.Session.SessionMaxAge == 0 {
 		c.Session.SessionMaxAge = DefaultCookieMaxAge
-	}
-	if c.Session.CookieSameSite == "" {
-		c.Session.CookieSameSite = "Strict"
 	}
 
 	if c.StateEncryptionKey == "" {
