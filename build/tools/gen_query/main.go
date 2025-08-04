@@ -85,15 +85,10 @@ func genConstants(outPath string, models ...interface{}) {
 		modelsData = append(modelsData, modelData)
 	}
 
-	execPath, err := os.Executable()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
 	data := map[string]interface{}{
 		"PackageName": packageName,
 		"Models":      modelsData,
-		"ScriptName":  execPath,
+		"ScriptName":  "/build/tools/gen_query/main.go",
 	}
 
 	err = tmpl.Execute(file, data)
