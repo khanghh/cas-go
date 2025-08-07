@@ -14,6 +14,7 @@ const (
 type SessionInfo struct {
 	IP         string
 	UserId     uint
+	OAuthId    uint
 	LoginTime  time.Time
 	LastSeen   time.Time
 	ExpireTime time.Time

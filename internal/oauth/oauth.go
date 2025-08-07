@@ -21,7 +21,7 @@ type OAuthUserInfo struct {
 
 type OAuthProvider interface {
 	Name() string
-	GetOAuthUrl(callbackUrl string, state string) string
+	GetAuthCodeUrl(state string) string
 	ExchangeToken(ctx context.Context, code string) (*OAuthToken, error)
 	GetUserInfo(ctx context.Context, token *OAuthToken) (*OAuthUserInfo, error)
 }

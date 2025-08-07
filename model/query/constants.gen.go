@@ -22,11 +22,12 @@ const ColUserOAuthID = "id"
 const ColUserOAuthCreatedAt = "created_at"
 const ColUserOAuthUpdatedAt = "updated_at"
 const ColUserOAuthDeletedAt = "deleted_at"
-const ColUserOAuthOAuthId = "oauth_id"
 const ColUserOAuthUserId = "user_id"
 const ColUserOAuthProvider = "provider"
+const ColUserOAuthProfileId = "profile_id"
 const ColUserOAuthEmail = "email"
 const ColUserOAuthName = "name"
+const ColUserOAuthDisplayName = "display_name"
 const ColUserOAuthPicture = "picture"
 
 // Columns of Service

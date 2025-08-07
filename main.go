@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -109,10 +110,12 @@ func mustInitCacheStorage(config *config.Config) fiber.Storage {
 func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
 	var providers []oauth.OAuthProvider
 	for providerName, providerCfg := range config.AuthProviders.OAuth {
-		if providerName == "google" {
-			provider := oauth.NewGoogleOauthProvider(providerName, providerCfg.ClientId, providerCfg.ClientSecret)
+		callbackUrl, _ := url.JoinPath(config.BaseUrl, "oauth", providerName, "callback")
+		switch providerName {
+		case "google":
+			provider := oauth.NewGoogleOAuthProvider(callbackUrl, providerCfg.ClientId, providerCfg.ClientSecret)
 			providers = append(providers, provider)
-		} else {
+		default:
 			slog.Error("Unsupported OAuth provider", "provider", providerName)
 			os.Exit(1)
 		}
@@ -148,7 +151,7 @@ func run(ctx *cli.Context) error {
 	// repositories and dependencies
 	var (
 		userRepo       = repository.NewUserRepository(query.Q)
-		oauthRepo      = repository.NewOAuthRepository(query.Q)
+		userOAuthRepo  = repository.NewUserOAuthRepository(query.Q)
 		serviceRepo    = repository.NewServiceRepository(query.Q)
 		tokenRepo      = repository.NewTokenRepository(query.Q)
 		oauthProviders = mustInitOAuthProviders(config)
@@ -156,16 +159,15 @@ func run(ctx *cli.Context) error {
 
 	// services
 	var (
-		userService      = user.NewUserService(userRepo)
+		userService      = user.NewUserService(userRepo, userOAuthRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo, tokenRepo)
-		oauthService     = oauth.NewOAuthService(userRepo, oauthRepo, oauthProviders)
 	)
 
 	// middlewares and handlers
 	var (
 		withSession = sessions.WithSessionMiddleware(sessionStore)
-		authHandler = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, oauthService)
+		authHandler = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, oauthProviders, config.StateEncryptionKey)
 	)
 
 	router := fiber.New(fiber.Config{

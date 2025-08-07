@@ -32,17 +32,12 @@ type ServiceRegistry interface {
 type UserService interface {
 	GetUserById(ctx context.Context, userId uint) (*model.User, error)
 	SetLastLoginTime(ctx context.Context, userId uint, lastLoginTime time.Time) error
+	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
 }
 
 type AuthorizeService interface {
 	GenerateServiceTicket(ctx context.Context, userId uint, serviceUrl string) (*auth.ServiceTicket, error)
 	ValidateServiceTicket(ctx context.Context, serviceUrl string, ticketId string, timestamp string, signature string) (bool, error)
-}
-
-type OAuthService interface {
-	OAuthProviders() []oauth.OAuthProvider
-	GetOrCreateUserOAuth(ctx context.Context, providerName string, authCode string) (*model.UserOAuth, error)
-	GetUserOAuths(ctx context.Context, userId uint) ([]*model.UserOAuth, error)
 }
 
 type AuthState struct {
@@ -55,17 +50,26 @@ type AuthHandler struct {
 	serviceRegistry    ServiceRegistry
 	authorizeService   AuthorizeService
 	userService        UserService
-	oauthService       OAuthService
+	oauthProviders     map[string]oauth.OAuthProvider
 	stateEncryptionKey string
 }
 
+func makeOAuthProvidersMap(oauthProviders []oauth.OAuthProvider) map[string]oauth.OAuthProvider {
+	oauthProvidersMap := make(map[string]oauth.OAuthProvider)
+	for _, provider := range oauthProviders {
+		oauthProvidersMap[provider.Name()] = provider
+	}
+	return oauthProvidersMap
+}
+
 // NewAuthHandler returns a new instance of AuthHandler.
-func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeService, userService UserService, oauthService OAuthService) *AuthHandler {
+func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeService, userService UserService, oauthProviders []oauth.OAuthProvider, stateEncryptionKey string) *AuthHandler {
 	return &AuthHandler{
-		serviceRegistry:  serviceRegistry,
-		authorizeService: authorizeService,
-		userService:      userService,
-		oauthService:     oauthService,
+		serviceRegistry:    serviceRegistry,
+		authorizeService:   authorizeService,
+		userService:        userService,
+		oauthProviders:     makeOAuthProvidersMap(oauthProviders),
+		stateEncryptionKey: stateEncryptionKey,
 	}
 }
 
@@ -102,16 +106,6 @@ func (s *AuthHandler) decryptState(encryptedState string) (*AuthState, error) {
 	return &state, err
 }
 
-func (h *AuthHandler) generateOAuthLoginUrls(ctx *fiber.Ctx, oauthProviders []oauth.OAuthProvider, state AuthState) map[string]string {
-	encryptedState := h.encryptState(state)
-	oauthLoginUrls := make(map[string]string)
-	for _, provider := range oauthProviders {
-		oauthCallbackUrl, _ := url.JoinPath(ctx.BaseURL(), "oauth", provider.Name(), "callback")
-		oauthLoginUrls[provider.Name()] = provider.GetOAuthUrl(oauthCallbackUrl, encryptedState)
-	}
-	return oauthLoginUrls
-}
-
 func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceUrl := params.GetString(ctx, "service")
 
@@ -123,11 +117,16 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 		}
 	}
 
-	// Render login page
-	oauthLoginUrls := h.generateOAuthLoginUrls(ctx, h.oauthService.OAuthProviders(), AuthState{
+	encryptedState := h.encryptState(AuthState{
 		ServiceUrl: serviceUrl,
 		Action:     oauthActionLogin,
 	})
+
+	// Render login page
+	oauthLoginUrls := make(map[string]string)
+	for providerName, provider := range h.oauthProviders {
+		oauthLoginUrls[providerName] = provider.GetAuthCodeUrl(encryptedState)
+	}
 	return render.RenderLoginPage(ctx, serviceUrl, oauthLoginUrls)
 }
 
@@ -143,6 +142,13 @@ func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {
 	return ctx.Redirect("/")
 }
 
+func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceUrl string) error {
+	redirectUrl, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
+	rawQuery := url.Values{"service": {serviceUrl}}
+	redirectUrl.RawQuery = rawQuery.Encode()
+	return ctx.Redirect(redirectUrl.String())
+}
+
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceUrl string) error {
 	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceUrl)
 	if err != nil {
@@ -151,13 +157,6 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.U
 
 	callbackUrl := fmt.Sprintf("%s?ticket=%s", ticket.CallbackUrl, ticket.TicketId)
 	return ctx.Redirect(callbackUrl)
-}
-
-func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceUrl string) error {
-	redirectUrl, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
-	rawQuery := url.Values{"service": {serviceUrl}}
-	redirectUrl.RawQuery = rawQuery.Encode()
-	return ctx.Redirect(redirectUrl.String())
 }
 
 func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
@@ -190,17 +189,38 @@ func (c *AuthHandler) handleOAuthLink(ctx *fiber.Ctx, userOAuth *model.UserOAuth
 
 func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 	code := ctx.Query("code")
+	providerName := ctx.Params("provider")
 	encryptedState := ctx.Query("state")
-	provider := ctx.Params("provider")
 
-	userOAuth, err := h.oauthService.GetOrCreateUserOAuth(ctx.Context(), provider, code)
-	if err != nil {
-		return err
+	provider, ok := h.oauthProviders[providerName]
+	if !ok {
+		return fmt.Errorf("Unsupported OAuth provider: %s", providerName)
 	}
 
 	state, err := h.decryptState(encryptedState)
 	if err != nil {
 		return err
+	}
+
+	oauthToken, err := provider.ExchangeToken(ctx.Context(), code)
+	if err != nil {
+		return err
+	}
+
+	oauthUserInfo, err := provider.GetUserInfo(ctx.Context(), oauthToken)
+	if err != nil {
+		return err
+	}
+
+	userOAuth, err := h.userService.GetOrCreateUserOAuth(ctx.Context(), &model.UserOAuth{
+		Provider:  providerName,
+		ProfileId: oauthUserInfo.ID,
+		Email:     oauthUserInfo.Email,
+		Name:      oauthUserInfo.Name,
+		Picture:   oauthUserInfo.Picture,
+	})
+	if err != nil {
+		return nil
 	}
 
 	switch state.Action {
