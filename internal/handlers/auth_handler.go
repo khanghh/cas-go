@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	oauthActionLogin = "login"
-	oauthActionLink  = "link"
+	oauthActionLogin    = "login"
+	oauthActionRegister = "register"
+	oauthActionLink     = "link"
 )
 
 type ServiceRegistry interface {
@@ -128,6 +129,17 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 		oauthLoginUrls[providerName] = provider.GetAuthCodeUrl(encryptedState)
 	}
 	return render.RenderLoginPage(ctx, serviceUrl, oauthLoginUrls)
+}
+
+func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
+	encryptedState := h.encryptState(AuthState{
+		Action: oauthActionRegister,
+	})
+	oauthLoginUrls := make(map[string]string)
+	for providerName, provider := range h.oauthProviders {
+		oauthLoginUrls[providerName] = provider.GetAuthCodeUrl(encryptedState)
+	}
+	return render.RenderRegisterPage(ctx, oauthLoginUrls)
 }
 
 func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {

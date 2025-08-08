@@ -123,6 +123,13 @@ func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
 	return providers
 }
 
+func mustInitHtmlEngine(config *config.Config) fiber.Views {
+	render.InitValues(fiber.Map{
+		"appName": config.AppName,
+	})
+	return render.NewHtmlEngine(config.TemplateDir)
+}
+
 func run(ctx *cli.Context) error {
 	config, err := config.LoadConfig(ctx.String(configFileFlag.Name))
 	if err != nil {
@@ -177,7 +184,7 @@ func run(ctx *cli.Context) error {
 		IdleTimeout:   params.ServerIdleTimeout,
 		ReadTimeout:   params.ServerReadTimeout,
 		WriteTimeout:  params.ServerWriteTimeout,
-		Views:         render.NewHtmlEngine(config.TemplateDir),
+		Views:         mustInitHtmlEngine(config),
 	})
 
 	router.Use(cors.New(cors.Config{
@@ -185,6 +192,7 @@ func run(ctx *cli.Context) error {
 	}))
 	router.Static("/static/*", config.StaticDir)
 	router.Get("/login", withSession(authHandler.GetLogin))
+	router.Get("/register", withSession(authHandler.GetRegister))
 	router.Post("/login", withSession(authHandler.PostLogin))
 	router.Post("/logout", withSession(authHandler.PostLogout))
 	router.Get("/oauth/:provider/callback", withSession(authHandler.GetOAuthCallback))
