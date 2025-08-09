@@ -30,9 +30,9 @@ func newUserOAuth(db *gorm.DB, opts ...gen.DOOption) userOAuth {
 	_userOAuth.CreatedAt = field.NewTime(tableName, "created_at")
 	_userOAuth.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_userOAuth.DeletedAt = field.NewField(tableName, "deleted_at")
-	_userOAuth.UserId = field.NewUint(tableName, "user_id")
+	_userOAuth.UserID = field.NewUint(tableName, "user_id")
 	_userOAuth.Provider = field.NewString(tableName, "provider")
-	_userOAuth.ProfileId = field.NewString(tableName, "profile_id")
+	_userOAuth.ProfileID = field.NewString(tableName, "profile_id")
 	_userOAuth.Email = field.NewString(tableName, "email")
 	_userOAuth.Name = field.NewString(tableName, "name")
 	_userOAuth.DisplayName = field.NewString(tableName, "display_name")
@@ -51,9 +51,9 @@ type userOAuth struct {
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
-	UserId      field.Uint
+	UserID      field.Uint
 	Provider    field.String
-	ProfileId   field.String
+	ProfileID   field.String
 	Email       field.String
 	Name        field.String
 	DisplayName field.String
@@ -78,9 +78,9 @@ func (u *userOAuth) updateTableName(table string) *userOAuth {
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
-	u.UserId = field.NewUint(table, "user_id")
+	u.UserID = field.NewUint(table, "user_id")
 	u.Provider = field.NewString(table, "provider")
-	u.ProfileId = field.NewString(table, "profile_id")
+	u.ProfileID = field.NewString(table, "profile_id")
 	u.Email = field.NewString(table, "email")
 	u.Name = field.NewString(table, "name")
 	u.DisplayName = field.NewString(table, "display_name")
@@ -106,9 +106,9 @@ func (u *userOAuth) fillFieldMap() {
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt
-	u.fieldMap["user_id"] = u.UserId
+	u.fieldMap["user_id"] = u.UserID
 	u.fieldMap["provider"] = u.Provider
-	u.fieldMap["profile_id"] = u.ProfileId
+	u.fieldMap["profile_id"] = u.ProfileID
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["display_name"] = u.DisplayName

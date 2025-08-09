@@ -41,7 +41,7 @@ func (r *userOAuthRepository) CreateIfNotExists(ctx context.Context, userOAuth *
 	return r.query.UserOAuth.WithContext(ctx).
 		Where(
 			query.UserOAuth.Provider.Eq(userOAuth.Provider),
-			query.UserOAuth.ProfileId.Eq(userOAuth.ProfileId),
+			query.UserOAuth.ProfileID.Eq(userOAuth.ProfileID),
 		).
 		Attrs(field.Attrs(userOAuth)).
 		FirstOrCreate()

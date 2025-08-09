@@ -31,8 +31,8 @@ type ServiceRegistry interface {
 }
 
 type UserService interface {
-	GetUserById(ctx context.Context, userId uint) (*model.User, error)
-	SetLastLoginTime(ctx context.Context, userId uint, lastLoginTime time.Time) error
+	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
+	SetLastLoginTime(ctx context.Context, userID uint, lastLoginTime time.Time) error
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
 }
 
@@ -112,7 +112,7 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 
 	session := sessions.Get(ctx)
 	if session.UserID != 0 {
-		user, err := h.userService.GetUserById(ctx.Context(), session.UserID)
+		user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 		if user != nil && err == nil {
 			return h.handleAuthorizeServiceAccess(ctx, user, serviceUrl)
 		}
@@ -169,7 +169,7 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.U
 }
 
 func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
-	user, err := h.userService.GetUserById(ctx.Context(), userOAuth.UserId)
+	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
 	if err != nil {
 		// TODO: create user and link with userOAuth if not exists
 		return err
@@ -220,7 +220,7 @@ func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 
 	userOAuth, err := h.userService.GetOrCreateUserOAuth(ctx.Context(), &model.UserOAuth{
 		Provider:  providerName,
-		ProfileId: oauthUserInfo.ID,
+		ProfileID: oauthUserInfo.ID,
 		Email:     oauthUserInfo.Email,
 		Name:      oauthUserInfo.Name,
 		Picture:   oauthUserInfo.Picture,

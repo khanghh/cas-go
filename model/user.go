@@ -16,5 +16,5 @@ type User struct {
 	Password      string      `gorm:"size:64;not null"`
 	Disabled      bool        `gorm:"default:false;not null"`
 	LastLoginAt   *time.Time  `gorm:"index"`
-	OAuths        []UserOAuth `gorm:"foreignKey:UserId;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
+	OAuths        []UserOAuth `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
