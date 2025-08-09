@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
+	"github.com/khanghh/cas-go/model"
 )
 
 //go:embed templates/*.html
@@ -37,13 +38,20 @@ func RenderLoginPage(ctx *fiber.Ctx, serviceUrl string, oauthLoginUrls map[strin
 	})
 }
 
-func RenderRegisterPage(ctx *fiber.Ctx, oauthLoginUrls map[string]string) error {
+func RenderRegisterPage(ctx *fiber.Ctx) error {
 	return ctx.Render("register", fiber.Map{
-		"appName":               values["appName"],
-		"loginWithGoogleUrl":    oauthLoginUrls["google"],
-		"loginWithFacebookUrl":  oauthLoginUrls["facebook"],
-		"loginWithMicrosoftUrl": oauthLoginUrls["microsoft"],
-		"loginWithAppleUrl":     oauthLoginUrls["apple"],
+		"appName": values["appName"],
+	})
+}
+
+func RenderOAuthRegisterPage(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+	return ctx.Render("oauth_register", fiber.Map{
+		"appName":           values["appName"],
+		"fullName":          userOAuth.Name,
+		"email":             userOAuth.Email,
+		"provider":          userOAuth.Provider,
+		"picture":           userOAuth.Picture,
+		"suggestedUsername": "aaa",
 	})
 }
 

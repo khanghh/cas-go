@@ -1,13 +1,9 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/gob"
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,12 +15,6 @@ import (
 	"github.com/khanghh/cas-go/model"
 )
 
-const (
-	oauthActionLogin    = "login"
-	oauthActionRegister = "register"
-	oauthActionLink     = "link"
-)
-
 type ServiceRegistry interface {
 	RegisterService(ctx context.Context, service *model.Service) (string, error)
 	GetService(ctx context.Context, serviceUrl string) (*model.Service, error)
@@ -32,6 +22,7 @@ type ServiceRegistry interface {
 
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
+	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
 	SetLastLoginTime(ctx context.Context, userID uint, lastLoginTime time.Time) error
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
 }
@@ -39,11 +30,6 @@ type UserService interface {
 type AuthorizeService interface {
 	GenerateServiceTicket(ctx context.Context, userId uint, serviceUrl string) (*auth.ServiceTicket, error)
 	ValidateServiceTicket(ctx context.Context, serviceUrl string, ticketId string, timestamp string, signature string) (bool, error)
-}
-
-type AuthState struct {
-	ServiceUrl string
-	Action     string
 }
 
 // AuthHandler handles authentication and authorization
@@ -74,39 +60,6 @@ func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeS
 	}
 }
 
-func xorEncrypt(data []byte, key string) []byte {
-	keyLen := len(key)
-	encrypted := make([]byte, len(data))
-	for i := 0; i < len(data); i++ {
-		encrypted[i] = data[i] ^ key[i%keyLen]
-	}
-	return encrypted
-}
-
-// encryptState encrypts the state before passing to the oauth provider
-func (s *AuthHandler) encryptState(state AuthState) string {
-	var buffer bytes.Buffer
-	gob.NewEncoder(&buffer).Encode(state)
-	encryptedState := xorEncrypt(buffer.Bytes(), s.stateEncryptionKey)
-	return base64.URLEncoding.EncodeToString(encryptedState)
-}
-
-// decryptState decrypts the state previously encrypted passed to the oauth provider
-func (s *AuthHandler) decryptState(encryptedState string) (*AuthState, error) {
-	encryptedBytes, err := base64.URLEncoding.DecodeString(encryptedState)
-	if err != nil {
-		return nil, err
-	}
-	decryptedBytes := xorEncrypt(encryptedBytes, s.stateEncryptionKey)
-	reader := strings.NewReader(string(decryptedBytes))
-	var state AuthState
-	err = gob.NewDecoder(reader).Decode(&state)
-	if err != nil {
-		return nil, err
-	}
-	return &state, err
-}
-
 func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceUrl := params.GetString(ctx, "service")
 
@@ -118,12 +71,11 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 		}
 	}
 
+	// Render login page
 	encryptedState := h.encryptState(AuthState{
 		ServiceUrl: serviceUrl,
 		Action:     oauthActionLogin,
 	})
-
-	// Render login page
 	oauthLoginUrls := make(map[string]string)
 	for providerName, provider := range h.oauthProviders {
 		oauthLoginUrls[providerName] = provider.GetAuthCodeUrl(encryptedState)
@@ -132,14 +84,16 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
-	encryptedState := h.encryptState(AuthState{
-		Action: oauthActionRegister,
-	})
-	oauthLoginUrls := make(map[string]string)
-	for providerName, provider := range h.oauthProviders {
-		oauthLoginUrls[providerName] = provider.GetAuthCodeUrl(encryptedState)
+	session := sessions.Get(ctx)
+	if session.OAuthID != 0 {
+		userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
+		if err != nil {
+			return err
+		}
+		return render.RenderOAuthRegisterPage(ctx, userOAuth)
+
 	}
-	return render.RenderRegisterPage(ctx, oauthLoginUrls)
+	return render.RenderRegisterPage(ctx)
 }
 
 func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
@@ -169,20 +123,32 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.U
 }
 
 func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
+	sessions.Set(ctx, sessions.SessionData{
+		IP:      ctx.IP(),
+		OAuthID: userOAuth.ID,
+	})
+
+	// oauth user is not registered, redirect to register page to finished registration
+	if userOAuth.UserID == 0 {
+		return ctx.Redirect("/register")
+	}
+
 	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
 	if err != nil {
-		// TODO: create user and link with userOAuth if not exists
-		return err
+		// associated user with oauth profile was disabled, redirect to login
+		return h.redirectLogin(ctx, state.ServiceUrl)
 	}
 
-	session := sessions.SessionData{
+	// handle login success
+	loginTime := time.Now()
+	sessions.Set(ctx, sessions.SessionData{
 		IP:        ctx.IP(),
 		UserID:    user.ID,
-		LoginTime: time.Now(),
-	}
-	sessions.Set(ctx, session)
+		OAuthID:   userOAuth.ID,
+		LoginTime: loginTime,
+	})
 
-	if err := h.userService.SetLastLoginTime(ctx.Context(), user.ID, session.LoginTime); err != nil {
+	if err := h.userService.SetLastLoginTime(ctx.Context(), user.ID, loginTime); err != nil {
 		return err
 	}
 

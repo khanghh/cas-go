@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Complete Registration - {{.appName}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-lg overflow-hidden w-full max-w-md">
+    <div class="p-8">
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold text-gray-800">Welcome, {{.fullName}}</h1>
+        <p class="text-gray-600 mt-2">Complete your registration to continue</p>
+      </div>
+
+      <form class="space-y-6" method="POST" action="/oauth/finish_register">
+        <div>
+          <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
+          <input type="email" id="email" name="email" value="{{.email}}" readonly
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed" />
+        </div>
+
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <input type="text" id="username" name="username" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+            placeholder="yourusername" value="{{.suggestedUsername}}">
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" id="password" name="password" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+            placeholder="••••••••">
+        </div>
+
+        <div>
+          <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <input type="password" id="confirm_password" name="confirm_password" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+            placeholder="••••••••">
+        </div>
+
+        <div>
+          <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number (optional)</label>
+          <div class="flex">
+            <select name="country_code" id="country_code"
+              class="w-28 px-2 py-3 rounded-l-lg border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200">
+              <option value="+1">+1 🇺🇸</option>
+              <option value="+44">+44 🇬🇧</option>
+              <option value="+91">+91 🇮🇳</option>
+              <option value="+81">+81 🇯🇵</option>
+              <option value="+84">+84 🇻🇳</option>
+            </select>
+            <input type="tel" id="phone" name="phone"
+              class="w-full px-4 py-3 rounded-r-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+              placeholder="123-456-7890">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 w-full">
+            Finish Registration
+          </button>
+        </div>
+
+        <div class="text-center mt-4">
+          <a href="/dashboard" class="text-sm text-blue-600 hover:underline">Skip for now</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+
+</html>
