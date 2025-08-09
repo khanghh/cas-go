@@ -14,7 +14,6 @@ const ColUserEmail = "email"
 const ColUserEmailVerified = "email_verified"
 const ColUserPassword = "password"
 const ColUserDisabled = "disabled"
-const ColUserLastLoginAt = "last_login_at"
 const ColUserOAuths = "oauths"
 
 // Columns of UserOAuth

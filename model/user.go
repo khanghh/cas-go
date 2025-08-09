@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -15,6 +13,5 @@ type User struct {
 	EmailVerified bool        `gorm:"default:false;not null"`
 	Password      string      `gorm:"size:64;not null"`
 	Disabled      bool        `gorm:"default:false;not null"`
-	LastLoginAt   *time.Time  `gorm:"index"`
 	OAuths        []UserOAuth `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }

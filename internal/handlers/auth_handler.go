@@ -23,7 +23,6 @@ type ServiceRegistry interface {
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
 	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
-	SetLastLoginTime(ctx context.Context, userID uint, lastLoginTime time.Time) error
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
 }
 
@@ -148,11 +147,7 @@ func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAut
 		LoginTime: loginTime,
 	})
 
-	if err := h.userService.SetLastLoginTime(ctx.Context(), user.ID, loginTime); err != nil {
-		return err
-	}
-
-	return h.redirectLogin(ctx, state.ServiceUrl)
+	return h.handleAuthorizeServiceAccess(ctx, user, state.ServiceUrl)
 }
 
 func (c *AuthHandler) handleOAuthLink(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
