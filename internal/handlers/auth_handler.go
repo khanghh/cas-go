@@ -111,8 +111,8 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceUrl := params.GetString(ctx, "service")
 
 	session := sessions.Get(ctx)
-	if session != nil && session.UserId != 0 {
-		user, err := h.userService.GetUserById(ctx.Context(), session.UserId)
+	if session.UserID != 0 {
+		user, err := h.userService.GetUserById(ctx.Context(), session.UserID)
 		if user != nil && err == nil {
 			return h.handleAuthorizeServiceAccess(ctx, user, serviceUrl)
 		}
@@ -147,10 +147,7 @@ func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {
-	session := sessions.Get(ctx)
-	if err := session.Destroy(); err != nil {
-		return err
-	}
+	sessions.Destroy(ctx)
 	return ctx.Redirect("/")
 }
 
@@ -178,17 +175,14 @@ func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAut
 		return err
 	}
 
-	sessionInfo := sessions.SessionInfo{
+	session := sessions.SessionData{
 		IP:        ctx.IP(),
-		UserId:    user.ID,
+		UserID:    user.ID,
 		LoginTime: time.Now(),
 	}
+	sessions.Set(ctx, session)
 
-	if err := sessions.Get(ctx).Save(sessionInfo); err != nil {
-		return err
-	}
-
-	if err := h.userService.SetLastLoginTime(ctx.Context(), user.ID, time.Now()); err != nil {
+	if err := h.userService.SetLastLoginTime(ctx.Context(), user.ID, session.LoginTime); err != nil {
 		return err
 	}
 

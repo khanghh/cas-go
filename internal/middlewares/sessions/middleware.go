@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"crypto/rand"
+	"encoding/gob"
 	"encoding/hex"
 	"log/slog"
 	"time"
@@ -11,10 +12,24 @@ import (
 )
 
 const (
-	sessionContextKey = "session"
+	injectSessionKey = "session"
+	sessionDataKey   = "data"
 )
 
 type Middleware func(next fiber.Handler) fiber.Handler
+
+type SessionData struct {
+	IP         string    // client ip address
+	UserID     uint      // user id
+	OAuthID    uint      // user oauth id
+	LoginTime  time.Time // last login time
+	LastSeen   time.Time // last request time
+	ExpireTime time.Time // session expire time
+}
+
+func init() {
+	gob.Register(SessionData{})
+}
 
 func GenerateSessionID() string {
 	b := make([]byte, 16)
@@ -25,45 +40,41 @@ func GenerateSessionID() string {
 	return hex.EncodeToString(b)
 }
 
-func Get(ctx *fiber.Ctx) *Session {
-	session, ok := ctx.Locals(sessionContextKey).(*Session)
-	if ok {
-		return session
-	}
-	return nil
+func Get(ctx *fiber.Ctx) SessionData {
+	session := ctx.Locals(injectSessionKey).(*session.Session)
+	data, _ := session.Get(sessionDataKey).(SessionData)
+	return data
 }
 
-func getFromStore(store *session.Store, ctx *fiber.Ctx) (*Session, error) {
-	sess, err := store.Get(ctx)
-	if err != nil {
-		return nil, err
-	}
-	sessionInfo, ok := sess.Get(sessionInfoKey).(SessionInfo)
-	if ok {
-		return &Session{
-			Session:     sess,
-			SessionInfo: sessionInfo,
-		}, nil
-	}
-	return &Session{Session: sess}, nil
+func Set(ctx *fiber.Ctx, data SessionData) {
+	session := ctx.Locals(injectSessionKey).(*session.Session)
+	session.Set(sessionDataKey, data)
+}
+
+func Destroy(ctx *fiber.Ctx) error {
+	sess := ctx.Locals(injectSessionKey).(*session.Session)
+	return sess.Destroy()
 }
 
 func injectSession(store *session.Store, next fiber.Handler) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		session, err := getFromStore(store, ctx)
+		session, err := store.Get(ctx)
 		if err != nil {
 			return err
 		}
 
-		ctx.Locals(sessionContextKey, session)
+		ctx.Locals(injectSessionKey, session)
 		if err := next(ctx); err != nil {
 			return err
 		}
 
-		if !session.Fresh() {
-			session.LastSeen = time.Now()
+		data, ok := session.Get(sessionDataKey).(SessionData)
+		if ok {
+			data.LastSeen = time.Now()
+			session.Set(sessionDataKey, data)
 			return session.Save()
 		}
+
 		return nil
 	}
 }
