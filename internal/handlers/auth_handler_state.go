@@ -14,7 +14,7 @@ const (
 )
 
 type AuthState struct {
-	ServiceUrl string
+	ServiceURL string
 	Action     string
 }
 

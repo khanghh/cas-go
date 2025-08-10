@@ -11,8 +11,8 @@ type TicketStore struct {
 	storage fiber.Storage
 }
 
-func (s *TicketStore) GetTicket(ticketId string) (*ServiceTicket, error) {
-	blob, err := s.storage.Get(ticketId)
+func (s *TicketStore) GetTicket(ticketID string) (*ServiceTicket, error) {
+	blob, err := s.storage.Get(ticketID)
 	if err != nil {
 		return nil, err
 	}
@@ -25,11 +25,11 @@ func (s *TicketStore) GetTicket(ticketId string) (*ServiceTicket, error) {
 
 func (s *TicketStore) CreateTicket(ticket *ServiceTicket, expireDuration time.Duration) error {
 	blob, _ := json.Marshal(ticket)
-	return s.storage.Set(ticket.TicketId, blob, expireDuration)
+	return s.storage.Set(ticket.TicketID, blob, expireDuration)
 }
 
-func (s *TicketStore) RemoveTicket(ticketId string) error {
-	return s.storage.Delete(ticketId)
+func (s *TicketStore) RemoveTicket(ticketID string) error {
+	return s.storage.Delete(ticketID)
 }
 
 func NewTicketStore(storage fiber.Storage) *TicketStore {

@@ -27,14 +27,14 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 	return html.NewFileSystem(http.FS(renderFS), ".html")
 }
 
-func RenderLoginPage(ctx *fiber.Ctx, serviceUrl string, oauthLoginUrls map[string]string) error {
+func RenderLoginPage(ctx *fiber.Ctx, serviceURL string, oauthLoginURLs map[string]string) error {
 	return ctx.Render("login", fiber.Map{
 		"appName":               values["appName"],
-		"serviceURL":            serviceUrl,
-		"loginWithGoogleUrl":    oauthLoginUrls["google"],
-		"loginWithFacebookUrl":  oauthLoginUrls["facebook"],
-		"loginWithMicrosoftUrl": oauthLoginUrls["microsoft"],
-		"loginWithAppleUrl":     oauthLoginUrls["apple"],
+		"serviceURL":            serviceURL,
+		"loginWithGoogleURL":    oauthLoginURLs["google"],
+		"loginWithFacebookURL":  oauthLoginURLs["facebook"],
+		"loginWithMicrosoftURL": oauthLoginURLs["microsoft"],
+		"loginWithAppleURL":     oauthLoginURLs["apple"],
 	})
 }
 

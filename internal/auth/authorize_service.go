@@ -14,10 +14,9 @@ import (
 )
 
 type ServiceTicket struct {
-	TicketId    string    `json:"ticketId"`
-	UserId      uint      `json:"userId"`
-	Service     string    `json:"serviceUrl"`
-	CallbackUrl string    `json:"callbackUrl"`
+	TicketID    string    `json:"ticketID"`
+	UserID      uint      `json:"userID"`
+	CallbackURL string    `json:"callbackURL"`
 	CreateTime  time.Time `json:"createTime"`
 }
 
@@ -35,7 +34,7 @@ func mustDecodeBase64(s string) []byte {
 	return b
 }
 
-func (s *AuthorizeService) validateTicketSignature(publicKey, signature, serviceURL, ticketId, timestamp string) bool {
+func (s *AuthorizeService) validateTicketSignature(publicKey, signature, serviceURL, ticketID, timestamp string) bool {
 	sig := mustDecodeBase64(signature)
 	if len(sig) != ed25519.SignatureSize {
 		return false
@@ -46,28 +45,28 @@ func (s *AuthorizeService) validateTicketSignature(publicKey, signature, service
 		return false
 	}
 
-	data := serviceURL + ticketId + timestamp
+	data := serviceURL + ticketID + timestamp
 	hash := sha256.Sum256([]byte(data))
 	message := hex.EncodeToString(hash[:])
 	return ed25519.Verify(pubKey, []byte(message), sig)
 }
 
-func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceUrl string, ticketId string, timestamp string, signature string) (bool, error) {
+func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL string, ticketId string, timestamp string, signature string) (bool, error) {
 	ticket, err := s.ticketStore.GetTicket(ticketId)
 	if err != nil {
 		return false, ErrTicketNotFound
 	}
 
-	if ticket.Service != serviceUrl {
+	if ticket.CallbackURL != serviceURL {
 		return false, ErrServiceUrlMismatch
 	}
 
-	service, err := s.serviceRepo.GetService(ctx, serviceUrl)
+	service, err := s.serviceRepo.GetService(ctx, serviceURL)
 	if err != nil {
 		return false, ErrServiceNotFound
 	}
 
-	if s.validateTicketSignature(service.PublicKey, signature, serviceUrl, ticketId, timestamp) {
+	if s.validateTicketSignature(service.PublicKey, signature, serviceURL, ticketId, timestamp) {
 		if err := s.ticketStore.RemoveTicket(ticketId); err != nil {
 			return false, ErrTicketExpired
 		}
@@ -77,17 +76,16 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceUrl
 	return false, nil
 }
 
-func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, serviceUrl string) (*ServiceTicket, error) {
-	service, err := s.serviceRepo.GetService(ctx, serviceUrl)
+func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, svcCallbackURL string) (*ServiceTicket, error) {
+	service, err := s.serviceRepo.GetService(ctx, svcCallbackURL)
 	if err != nil {
 		return nil, ErrServiceNotFound
 	}
 
 	st := &ServiceTicket{
-		TicketId:    uuid.NewString(),
-		UserId:      userId,
-		Service:     serviceUrl,
-		CallbackUrl: service.CallbackUrl,
+		TicketID:    uuid.NewString(),
+		UserID:      userId,
+		CallbackURL: service.CallbackURL,
 		CreateTime:  time.Now(),
 	}
 

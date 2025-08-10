@@ -36,7 +36,7 @@ type LdapConfig struct {
 }
 
 type OAuthProviderConfig struct {
-	ClientId     string   `yaml:"clientId"`
+	ClientID     string   `yaml:"clientID"`
 	ClientSecret string   `yaml:"clientSecret"`
 	Scope        []string `yaml:"scope"`
 }
@@ -44,12 +44,12 @@ type OAuthProviderConfig struct {
 type Config struct {
 	Debug              bool          `yaml:"debug"`
 	AppName            string        `yaml:"appName"`
-	BaseUrl            string        `yaml:"baseUrl"`
+	BaseURL            string        `yaml:"baseURL"`
 	ListenAddr         string        `yaml:"listenAddr"`
 	StaticDir          string        `yaml:"staticDir"`
 	TemplateDir        string        `yaml:"templateDir"`
 	AllowOrigins       []string      `yaml:"allowOrigins"`
-	RedisUrl           string        `yaml:"redisUrl"`
+	RedisURL           string        `yaml:"redisURL"`
 	Session            SessionConfig `yaml:"session"`
 	MySQL              MySQLConfig   `yaml:"mysql"`
 	StateEncryptionKey string        `yaml:"stateEncryptionKey"`

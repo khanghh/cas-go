@@ -1,4 +1,5 @@
 debug: false
+baseURL: http://localhost:3000
 listenAddr : ":3000" 
 staticDir: "./static"
 templateDir: "./templates"
@@ -11,7 +12,7 @@ session:
   cookieSecure: false
   cookieHttpOnly: true
 
-redisUrl: redis://default:123456@localhost:6379/0
+redisURL: redis://default:123456@localhost:6379/0
 
 mysql:
   dsn: user:password@tcp(localhost:3306)/cas?charset=utf8mb4&parseTime=True&loc=Local

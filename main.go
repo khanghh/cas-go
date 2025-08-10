@@ -100,8 +100,8 @@ func mustInitDatabase(dbConfig config.MySQLConfig) *gorm.DB {
 }
 
 func mustInitCacheStorage(config *config.Config) fiber.Storage {
-	if config.RedisUrl != "" {
-		return redis.New(redis.Config{URL: config.RedisUrl})
+	if config.RedisURL != "" {
+		return redis.New(redis.Config{URL: config.RedisURL})
 	} else {
 		return memory.New(memory.Config{GCInterval: 10 * time.Second})
 	}
@@ -110,10 +110,10 @@ func mustInitCacheStorage(config *config.Config) fiber.Storage {
 func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
 	var providers []oauth.OAuthProvider
 	for providerName, providerCfg := range config.AuthProviders.OAuth {
-		callbackUrl, _ := url.JoinPath(config.BaseUrl, "oauth", providerName, "callback")
+		callbackURL, _ := url.JoinPath(config.BaseURL, "oauth", providerName, "callback")
 		switch providerName {
 		case "google":
-			provider := oauth.NewGoogleOAuthProvider(callbackUrl, providerCfg.ClientId, providerCfg.ClientSecret)
+			provider := oauth.NewGoogleOAuthProvider(callbackURL, providerCfg.ClientID, providerCfg.ClientSecret)
 			providers = append(providers, provider)
 		default:
 			slog.Error("Unsupported OAuth provider", "provider", providerName)

@@ -11,7 +11,7 @@ import (
 type ServiceRepository interface {
 	WithTx(tx *query.Query) ServiceRepository
 	First(ctx context.Context, conds ...gen.Condition) (*model.Service, error)
-	GetService(ctx context.Context, serviceUrl string) (*model.Service, error)
+	GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error)
 	AddService(ctx context.Context, service *model.Service) error
 }
 
@@ -27,8 +27,8 @@ func (r *serviceRepository) WithTx(tx *query.Query) ServiceRepository {
 	return NewServiceRepository(tx)
 }
 
-func (r *serviceRepository) GetService(ctx context.Context, serviceUrl string) (*model.Service, error) {
-	return r.query.Service.WithContext(ctx).Where(query.Service.ServiceUrl.Eq(serviceUrl)).First()
+func (r *serviceRepository) GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error) {
+	return r.query.Service.WithContext(ctx).Where(query.Service.CallbackURL.Eq(svcCallbackURL)).First()
 }
 
 func (r *serviceRepository) AddService(ctx context.Context, service *model.Service) error {

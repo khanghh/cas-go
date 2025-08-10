@@ -22,7 +22,7 @@ func (p *GoogleOAuthProvider) Name() string {
 	return "google"
 }
 
-func (p *GoogleOAuthProvider) GetAuthCodeUrl(state string) string {
+func (p *GoogleOAuthProvider) GetAuthCodeURL(state string) string {
 	return p.AuthCodeURL(state)
 }
 
@@ -55,11 +55,11 @@ func (p *GoogleOAuthProvider) GetUserInfo(ctx context.Context, token *oauth2.Tok
 	}, nil
 }
 
-func NewGoogleOAuthProvider(callbackURL, clientId, clientSecret string) *GoogleOAuthProvider {
+func NewGoogleOAuthProvider(callbackURL, clientID, clientSecret string) *GoogleOAuthProvider {
 	return &GoogleOAuthProvider{
 		Config: oauth2.Config{
 			RedirectURL:  callbackURL,
-			ClientID:     clientId,
+			ClientID:     clientID,
 			ClientSecret: clientSecret,
 			Scopes: []string{
 				googleOAuthScopeUserInfoEmail,

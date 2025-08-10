@@ -17,7 +17,7 @@ import (
 
 type ServiceRegistry interface {
 	RegisterService(ctx context.Context, service *model.Service) (string, error)
-	GetService(ctx context.Context, serviceUrl string) (*model.Service, error)
+	GetService(ctx context.Context, serviceURL string) (*model.Service, error)
 }
 
 type UserService interface {
@@ -27,8 +27,8 @@ type UserService interface {
 }
 
 type AuthorizeService interface {
-	GenerateServiceTicket(ctx context.Context, userId uint, serviceUrl string) (*auth.ServiceTicket, error)
-	ValidateServiceTicket(ctx context.Context, serviceUrl string, ticketId string, timestamp string, signature string) (bool, error)
+	GenerateServiceTicket(ctx context.Context, userID uint, serviceURL string) (*auth.ServiceTicket, error)
+	ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (bool, error)
 }
 
 // AuthHandler handles authentication and authorization
@@ -60,26 +60,26 @@ func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeS
 }
 
 func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
-	serviceUrl := params.GetString(ctx, "service")
+	serviceURL := params.GetString(ctx, "service")
 
 	session := sessions.Get(ctx)
 	if session.UserID != 0 {
 		user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 		if user != nil && err == nil {
-			return h.handleAuthorizeServiceAccess(ctx, user, serviceUrl)
+			return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 		}
 	}
 
 	// Render login page
 	encryptedState := h.encryptState(AuthState{
-		ServiceUrl: serviceUrl,
+		ServiceURL: serviceURL,
 		Action:     oauthActionLogin,
 	})
-	oauthLoginUrls := make(map[string]string)
+	oauthLoginURLs := make(map[string]string)
 	for providerName, provider := range h.oauthProviders {
-		oauthLoginUrls[providerName] = provider.GetAuthCodeUrl(encryptedState)
+		oauthLoginURLs[providerName] = provider.GetAuthCodeURL(encryptedState)
 	}
-	return render.RenderLoginPage(ctx, serviceUrl, oauthLoginUrls)
+	return render.RenderLoginPage(ctx, serviceURL, oauthLoginURLs)
 }
 
 func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
@@ -104,21 +104,21 @@ func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {
 	return ctx.Redirect("/")
 }
 
-func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceUrl string) error {
-	redirectUrl, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
-	rawQuery := url.Values{"service": {serviceUrl}}
-	redirectUrl.RawQuery = rawQuery.Encode()
-	return ctx.Redirect(redirectUrl.String())
+func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string) error {
+	redirectURL, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
+	rawQuery := url.Values{"service": {serviceURL}}
+	redirectURL.RawQuery = rawQuery.Encode()
+	return ctx.Redirect(redirectURL.String())
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceUrl string) error {
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceUrl)
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceURL)
 	if err != nil {
 		return err
 	}
 
-	callbackUrl := fmt.Sprintf("%s?ticket=%s", ticket.CallbackUrl, ticket.TicketId)
-	return ctx.Redirect(callbackUrl)
+	callbackURL := fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID)
+	return ctx.Redirect(callbackURL)
 }
 
 func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
@@ -135,7 +135,7 @@ func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAut
 	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
 	if err != nil {
 		// associated user with oauth profile was disabled, redirect to login
-		return h.redirectLogin(ctx, state.ServiceUrl)
+		return h.redirectLogin(ctx, state.ServiceURL)
 	}
 
 	// handle login success
@@ -147,7 +147,7 @@ func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAut
 		LoginTime: loginTime,
 	})
 
-	return h.handleAuthorizeServiceAccess(ctx, user, state.ServiceUrl)
+	return h.handleAuthorizeServiceAccess(ctx, user, state.ServiceURL)
 }
 
 func (c *AuthHandler) handleOAuthLink(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {

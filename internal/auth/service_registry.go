@@ -38,8 +38,8 @@ func (r *ServiceRegistry) RegisterService(ctx context.Context, service *model.Se
 	return privKey, nil
 }
 
-func (r *ServiceRegistry) GetService(ctx context.Context, serviceUrl string) (*model.Service, error) {
-	return r.serviceRepo.First(ctx, query.Service.ServiceUrl.Eq(serviceUrl))
+func (r *ServiceRegistry) GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error) {
+	return r.serviceRepo.First(ctx, query.Service.CallbackURL.Eq(svcCallbackURL))
 }
 
 func NewServiceRegistry(serviceRepo repository.ServiceRepository) *ServiceRegistry {
