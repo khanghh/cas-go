@@ -27,7 +27,7 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 	return html.NewFileSystem(http.FS(renderFS), ".html")
 }
 
-func RenderLoginPage(ctx *fiber.Ctx, serviceURL string, oauthLoginURLs map[string]string) error {
+func RenderLogin(ctx *fiber.Ctx, serviceURL string, oauthLoginURLs map[string]string) error {
 	return ctx.Render("login", fiber.Map{
 		"appName":               values["appName"],
 		"serviceURL":            serviceURL,
@@ -38,13 +38,13 @@ func RenderLoginPage(ctx *fiber.Ctx, serviceURL string, oauthLoginURLs map[strin
 	})
 }
 
-func RenderRegisterPage(ctx *fiber.Ctx) error {
+func RenderRegister(ctx *fiber.Ctx) error {
 	return ctx.Render("register", fiber.Map{
 		"appName": values["appName"],
 	})
 }
 
-func RenderOAuthRegisterPage(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+func RenderOAuthRegister(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
 	return ctx.Render("oauth_register", fiber.Map{
 		"appName":           values["appName"],
 		"fullName":          userOAuth.Name,
@@ -55,6 +55,8 @@ func RenderOAuthRegisterPage(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
 	})
 }
 
-func RenderUnauthorizedErrorPage(ctx *fiber.Ctx, code int) error {
-	return ctx.Render("unauthorized-service", fiber.Map{})
+func RenderUnauthorizedError(ctx *fiber.Ctx) error {
+	return ctx.Render("unauthorized", fiber.Map{
+		"appName": values["appName"],
+	})
 }

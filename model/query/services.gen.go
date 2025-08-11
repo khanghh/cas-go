@@ -30,10 +30,11 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.CreatedAt = field.NewTime(tableName, "created_at")
 	_service.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_service.DeletedAt = field.NewField(tableName, "deleted_at")
-	_service.DisplayName = field.NewString(tableName, "display_name")
+	_service.Name = field.NewString(tableName, "name")
 	_service.CallbackURL = field.NewString(tableName, "callback_url")
 	_service.AutoLogin = field.NewBool(tableName, "auto_login")
 	_service.PublicKey = field.NewString(tableName, "public_key")
+	_service.StripQuery = field.NewBool(tableName, "strip_query")
 
 	_service.fillFieldMap()
 
@@ -48,10 +49,11 @@ type service struct {
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
 	DeletedAt   field.Field
-	DisplayName field.String
+	Name        field.String
 	CallbackURL field.String
 	AutoLogin   field.Bool
 	PublicKey   field.String
+	StripQuery  field.Bool
 
 	fieldMap map[string]field.Expr
 }
@@ -72,10 +74,11 @@ func (s *service) updateTableName(table string) *service {
 	s.CreatedAt = field.NewTime(table, "created_at")
 	s.UpdatedAt = field.NewTime(table, "updated_at")
 	s.DeletedAt = field.NewField(table, "deleted_at")
-	s.DisplayName = field.NewString(table, "display_name")
+	s.Name = field.NewString(table, "name")
 	s.CallbackURL = field.NewString(table, "callback_url")
 	s.AutoLogin = field.NewBool(table, "auto_login")
 	s.PublicKey = field.NewString(table, "public_key")
+	s.StripQuery = field.NewBool(table, "strip_query")
 
 	s.fillFieldMap()
 
@@ -92,15 +95,16 @@ func (s *service) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *service) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 8)
+	s.fieldMap = make(map[string]field.Expr, 9)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt
 	s.fieldMap["deleted_at"] = s.DeletedAt
-	s.fieldMap["display_name"] = s.DisplayName
+	s.fieldMap["name"] = s.Name
 	s.fieldMap["callback_url"] = s.CallbackURL
 	s.fieldMap["auto_login"] = s.AutoLogin
 	s.fieldMap["public_key"] = s.PublicKey
+	s.fieldMap["strip_query"] = s.StripQuery
 }
 
 func (s service) clone(db *gorm.DB) service {

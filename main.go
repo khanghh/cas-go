@@ -178,7 +178,7 @@ func run(ctx *cli.Context) error {
 	)
 
 	router := fiber.New(fiber.Config{
-		Prefork:       true,
+		Prefork:       false,
 		CaseSensitive: true,
 		BodyLimit:     params.ServerBodyLimit,
 		IdleTimeout:   params.ServerIdleTimeout,

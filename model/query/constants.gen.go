@@ -34,10 +34,11 @@ const ColServiceID = "id"
 const ColServiceCreatedAt = "created_at"
 const ColServiceUpdatedAt = "updated_at"
 const ColServiceDeletedAt = "deleted_at"
-const ColServiceDisplayName = "display_name"
+const ColServiceName = "name"
 const ColServiceCallbackURL = "callback_url"
 const ColServiceAutoLogin = "auto_login"
 const ColServicePublicKey = "public_key"
+const ColServiceStripQuery = "strip_query"
 
 // Columns of Token
 const ColTokenID = "id"

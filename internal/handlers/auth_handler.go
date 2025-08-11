@@ -59,13 +59,24 @@ func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeS
 	}
 }
 
+func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string, renew bool) error {
+	if renew {
+		sessions.Destroy(ctx)
+	}
+	redirectURL, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
+	rawQuery := url.Values{"service": {serviceURL}}
+	redirectURL.RawQuery = rawQuery.Encode()
+	return ctx.Redirect(redirectURL.String())
+}
+
 func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := params.GetString(ctx, "service")
 
 	session := sessions.Get(ctx)
 	if session.UserID != 0 {
+		// TODO: handle login without provide serviceURL
 		user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
-		if user != nil && err == nil {
+		if err == nil {
 			return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 		}
 	}
@@ -79,7 +90,7 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	for providerName, provider := range h.oauthProviders {
 		oauthLoginURLs[providerName] = provider.GetAuthCodeURL(encryptedState)
 	}
-	return render.RenderLoginPage(ctx, serviceURL, oauthLoginURLs)
+	return render.RenderLogin(ctx, serviceURL, oauthLoginURLs)
 }
 
 func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
@@ -89,10 +100,10 @@ func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
 		if err != nil {
 			return err
 		}
-		return render.RenderOAuthRegisterPage(ctx, userOAuth)
+		return render.RenderOAuthRegister(ctx, userOAuth)
 
 	}
-	return render.RenderRegisterPage(ctx)
+	return render.RenderRegister(ctx)
 }
 
 func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
@@ -104,38 +115,46 @@ func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {
 	return ctx.Redirect("/")
 }
 
-func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string) error {
-	redirectURL, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
-	rawQuery := url.Values{"service": {serviceURL}}
-	redirectURL.RawQuery = rawQuery.Encode()
-	return ctx.Redirect(redirectURL.String())
+// parseServiceURL parses the service URL and returns the base URL without query
+func parseServiceURL(serviceURL string) (string, error) {
+	parsed, err := url.Parse(serviceURL)
+	if err != nil {
+		return "", err
+	}
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
+	return parsed.String(), nil
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceURL)
+	baseServiceURL, err := parseServiceURL(serviceURL)
+	if err != nil {
+		return render.RenderUnauthorizedError(ctx)
+	}
+
+	service, err := h.serviceRegistry.GetService(ctx.Context(), baseServiceURL)
+	if err != nil {
+		return render.RenderUnauthorizedError(ctx)
+	}
+
+	callbackURL := baseServiceURL
+	if service.StripQuery {
+		callbackURL = serviceURL
+	}
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, callbackURL)
 	if err != nil {
 		return err
 	}
 
-	callbackURL := fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID)
-	return ctx.Redirect(callbackURL)
+	redirectURL := fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID)
+	return ctx.Redirect(redirectURL)
 }
 
 func (h *AuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
-	sessions.Set(ctx, sessions.SessionData{
-		IP:      ctx.IP(),
-		OAuthID: userOAuth.ID,
-	})
-
-	// oauth user is not registered, redirect to register page to finished registration
-	if userOAuth.UserID == 0 {
-		return ctx.Redirect("/register")
-	}
-
+	// TODO: if user was not registered then redirect to login page with error message
 	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
 	if err != nil {
-		// associated user with oauth profile was disabled, redirect to login
-		return h.redirectLogin(ctx, state.ServiceURL)
+		return h.redirectLogin(ctx, state.ServiceURL, true)
 	}
 
 	// handle login success

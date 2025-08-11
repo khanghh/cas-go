@@ -10,4 +10,5 @@ type Service struct {
 	CallbackURL string `gorm:"size:1024;not null"`
 	AutoLogin   bool   `gorm:"not null;default:false"`
 	PublicKey   string `gorm:"size:1024;not null"`
+	StripQuery  bool   `gorm:"not null;default:false"`
 }
