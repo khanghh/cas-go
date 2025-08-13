@@ -15,3 +15,8 @@ type User struct {
 	Disabled      bool        `gorm:"default:false;not null"`
 	OAuths        []UserOAuth `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }
+
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+	u.ID = GenerateID()
+	return nil
+}
