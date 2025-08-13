@@ -64,8 +64,10 @@ func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string, renew boo
 		sessions.Destroy(ctx)
 	}
 	redirectURL, _ := url.Parse(fmt.Sprintf("%s/login", ctx.BaseURL()))
-	rawQuery := url.Values{"service": {serviceURL}}
-	redirectURL.RawQuery = rawQuery.Encode()
+	if serviceURL != "" {
+		rawQuery := url.Values{"service": {serviceURL}}
+		redirectURL.RawQuery = rawQuery.Encode()
+	}
 	return ctx.Redirect(redirectURL.String())
 }
 
@@ -101,7 +103,6 @@ func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
 			return err
 		}
 		return render.RenderOAuthRegister(ctx, userOAuth)
-
 	}
 	return render.RenderRegister(ctx)
 }
@@ -112,7 +113,7 @@ func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {
 	sessions.Destroy(ctx)
-	return ctx.Redirect("/")
+	return ctx.Redirect("/login")
 }
 
 // parseServiceURL parses the service URL and returns the base URL without query

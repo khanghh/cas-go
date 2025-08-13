@@ -8,9 +8,8 @@ import (
 )
 
 const (
-	oauthActionLogin    = "login"
-	oauthActionRegister = "register"
-	oauthActionLink     = "link"
+	oauthActionLogin = "login"
+	oauthActionLink  = "link"
 )
 
 type AuthState struct {
