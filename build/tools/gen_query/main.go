@@ -20,11 +20,16 @@ const constantTemplate = `
 package {{ .PackageName }}
 
 {{- range .Models }}
-
-// Columns of {{.ModelName}}
-{{- range .Fields }}
+// {{.ModelName}} column names
+  {{- range .Fields }}
 const Col{{.ModelName}}{{.FieldName}} = "{{.ColumnName}}"
-{{- end }}
+  {{- end }}
+// {{.ModelName}} index names
+  {{- range .Fields}}
+    {{- if .IndexName }}
+const Idx{{.ModelName}}{{.FieldName}} = "{{.IndexName}}"
+    {{- end }}
+  {{- end }}
 {{- end }}
 `
 
@@ -66,14 +71,14 @@ func genConstants(outPath string, models ...interface{}) {
 		var fields []map[string]interface{}
 		for _, field := range getFields(modelType) {
 			columnName := getColumnName(field)
+			indexName := getIndexName(modelName, field)
 
 			fieldData := map[string]interface{}{
 				"ModelName":  modelName,
 				"FieldName":  field.Name,
 				"ColumnName": columnName,
+				"IndexName":  indexName,
 			}
-			fmt.Printf("%s:%s\n", field.Name, columnName)
-
 			fields = append(fields, fieldData)
 		}
 
@@ -121,11 +126,31 @@ func getColumnName(field reflect.StructField) string {
 	if tag != "" {
 		for _, part := range strings.Split(tag, ";") {
 			if strings.HasPrefix(part, "column:") {
-				return strings.Trim(part[7:], "\"")
+				return strings.TrimPrefix(part, "column:")
 			}
 		}
 	}
 	return toSnakeCase(field.Name)
+}
+
+// GetIndexes extracts all indexes (unique, normal, fulltext, spatial)
+// from a GORM tag.
+func getIndexName(modelName string, field reflect.StructField) string {
+	gormTag := field.Tag.Get("gorm")
+	if gormTag == "" {
+		return ""
+	}
+
+	for _, part := range strings.Split(gormTag, ";") {
+		if strings.HasPrefix(part, "uniqueIndex") || strings.HasPrefix(part, "index") {
+			kv := strings.Split(part, ":")
+			if len(kv) == 2 {
+				return kv[1]
+			}
+			return fmt.Sprintf("idx_%s_%s", toSnakeCase(modelName), toSnakeCase(field.Name))
+		}
+	}
+	return ""
 }
 
 // Get all fields including those from embedded structs like gorm.Model
