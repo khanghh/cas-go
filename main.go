@@ -195,6 +195,8 @@ func run(ctx *cli.Context) error {
 	router.Get("/register", withSession(authHandler.GetRegister))
 	router.Post("/login", withSession(authHandler.PostLogin))
 	router.Post("/logout", withSession(authHandler.PostLogout))
+	router.Post("/onboarding", withSession(authHandler.PostOnboarding))
+	router.Get("/onboarding", withSession(authHandler.GetOnboarding))
 	router.Get("/oauth/:provider/callback", withSession(authHandler.GetOAuthCallback))
 
 	return router.Listen(config.ListenAddr)

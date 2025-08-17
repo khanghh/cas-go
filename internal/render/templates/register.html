@@ -26,10 +26,10 @@
         <p class="text-gray-600 mt-2">Fill out the form to create your account</p>
       </div>
 
-      <form class="space-y-6" action="/register" method="POST">
+      <form class="space-y-6" method="POST">
         <div>
           <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <input type="text" id="username" name="username" required
+          <input type="text" name="username" required
             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
             placeholder="yourusername">
         </div>
@@ -37,7 +37,7 @@
         <div>
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
           <div class="relative">
-            <input list="oauth-emails" id="email" name="email" type="email" required
+            <input list="oauth-emails" name="email" type="email" required
               class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
               placeholder="you@example.com">
           </div>
@@ -45,14 +45,14 @@
 
         <div>
           <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input type="password" id="password" name="password" required
+          <input type="password" name="password" autocomplete="new-password" required
             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
             placeholder="••••••••">
         </div>
 
         <div>
           <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-          <input type="password" id="confirm_password" name="confirm_password" required
+          <input type="password" name="confirm_password" autocomplete="new-password" required
             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
             placeholder="••••••••">
         </div>
@@ -70,6 +70,7 @@
         <a href="/login" class="text-blue-600 hover:text-blue-500 font-medium">Sign in</a>
       </p>
     </div>
+  </div>
 </body>
 
 </html>

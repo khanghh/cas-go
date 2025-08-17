@@ -2,6 +2,7 @@ package render
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"net/http"
 
@@ -45,19 +46,25 @@ func RenderRegister(ctx *fiber.Ctx) error {
 	})
 }
 
-func RenderOAuthRegister(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
-	return ctx.Render("oauth_register", fiber.Map{
+func RenderOnboarding(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+	return ctx.Render("onboarding", fiber.Map{
 		"appName":           values["appName"],
 		"fullName":          userOAuth.Name,
 		"email":             userOAuth.Email,
 		"provider":          userOAuth.Provider,
 		"picture":           userOAuth.Picture,
-		"suggestedUsername": "aaa",
+		"suggestedUsername": fmt.Sprintf("user%d", userOAuth.ID),
 	})
 }
 
 func RenderUnauthorizedError(ctx *fiber.Ctx) error {
 	return ctx.Render("unauthorized", fiber.Map{
+		"appName": values["appName"],
+	})
+}
+
+func RenderInternalError(ctx *fiber.Ctx) error {
+	return ctx.Render("internal-error", fiber.Map{
 		"appName": values["appName"],
 	})
 }

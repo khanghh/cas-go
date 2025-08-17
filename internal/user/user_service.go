@@ -17,6 +17,14 @@ func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*model.User
 	return s.userRepo.First(ctx, query.User.ID.Eq(userID))
 }
 
+func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	return s.userRepo.First(ctx, query.User.Email.Eq(email))
+}
+
+func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
+	return s.userRepo.Create(ctx, user)
+}
+
 func (s *UserService) GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error) {
 	return s.userOAuthRepo.First(ctx, query.UserOAuth.ID.Eq(userOAuthID))
 }

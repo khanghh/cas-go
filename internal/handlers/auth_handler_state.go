@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	oauthActionLogin = "login"
-	oauthActionLink  = "link"
+	actionPasswordLogin = "password_login"
+	actionOAuthLogin    = "oauth_login"
+	actionOAuthLink     = "oauth_link"
 )
 
 type AuthState struct {
@@ -35,17 +36,17 @@ func (s *AuthHandler) encryptState(state AuthState) string {
 }
 
 // decryptState decrypts the state previously encrypted passed to the oauth provider
-func (s *AuthHandler) decryptState(encryptedState string) (*AuthState, error) {
+func (s *AuthHandler) decryptState(encryptedState string) (AuthState, error) {
 	encryptedBytes, err := base64.URLEncoding.DecodeString(encryptedState)
 	if err != nil {
-		return nil, err
+		return AuthState{}, err
 	}
 	decryptedBytes := xorEncrypt(encryptedBytes, s.stateEncryptionKey)
 	reader := strings.NewReader(string(decryptedBytes))
 	var state AuthState
 	err = gob.NewDecoder(reader).Decode(&state)
 	if err != nil {
-		return nil, err
+		return AuthState{}, err
 	}
-	return &state, err
+	return state, err
 }
