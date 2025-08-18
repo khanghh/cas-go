@@ -34,7 +34,6 @@ func newUserOAuth(db *gorm.DB, opts ...gen.DOOption) userOAuth {
 	_userOAuth.Provider = field.NewString(tableName, "provider")
 	_userOAuth.ProfileID = field.NewString(tableName, "profile_id")
 	_userOAuth.Email = field.NewString(tableName, "email")
-	_userOAuth.Name = field.NewString(tableName, "name")
 	_userOAuth.DisplayName = field.NewString(tableName, "display_name")
 	_userOAuth.Picture = field.NewString(tableName, "picture")
 
@@ -55,7 +54,6 @@ type userOAuth struct {
 	Provider    field.String
 	ProfileID   field.String
 	Email       field.String
-	Name        field.String
 	DisplayName field.String
 	Picture     field.String
 
@@ -82,7 +80,6 @@ func (u *userOAuth) updateTableName(table string) *userOAuth {
 	u.Provider = field.NewString(table, "provider")
 	u.ProfileID = field.NewString(table, "profile_id")
 	u.Email = field.NewString(table, "email")
-	u.Name = field.NewString(table, "name")
 	u.DisplayName = field.NewString(table, "display_name")
 	u.Picture = field.NewString(table, "picture")
 
@@ -101,7 +98,7 @@ func (u *userOAuth) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *userOAuth) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 11)
+	u.fieldMap = make(map[string]field.Expr, 10)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -110,7 +107,6 @@ func (u *userOAuth) fillFieldMap() {
 	u.fieldMap["provider"] = u.Provider
 	u.fieldMap["profile_id"] = u.ProfileID
 	u.fieldMap["email"] = u.Email
-	u.fieldMap["name"] = u.Name
 	u.fieldMap["display_name"] = u.DisplayName
 	u.fieldMap["picture"] = u.Picture
 }

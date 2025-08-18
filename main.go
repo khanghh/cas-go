@@ -21,7 +21,7 @@ import (
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/repository"
-	"github.com/khanghh/cas-go/internal/user"
+	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
@@ -166,7 +166,7 @@ func run(ctx *cli.Context) error {
 
 	// services
 	var (
-		userService      = user.NewUserService(userRepo, userOAuthRepo)
+		userService      = users.NewUserService(userRepo, userOAuthRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo, tokenRepo)
 	)

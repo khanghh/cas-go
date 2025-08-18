@@ -30,7 +30,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewField(tableName, "deleted_at")
-	_user.Name = field.NewString(tableName, "name")
+	_user.Username = field.NewString(tableName, "username")
 	_user.DisplayName = field.NewString(tableName, "display_name")
 	_user.Email = field.NewString(tableName, "email")
 	_user.EmailVerified = field.NewBool(tableName, "email_verified")
@@ -55,7 +55,7 @@ type user struct {
 	CreatedAt     field.Time
 	UpdatedAt     field.Time
 	DeletedAt     field.Field
-	Name          field.String
+	Username      field.String
 	DisplayName   field.String
 	Email         field.String
 	EmailVerified field.Bool
@@ -82,7 +82,7 @@ func (u *user) updateTableName(table string) *user {
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
-	u.Name = field.NewString(table, "name")
+	u.Username = field.NewString(table, "username")
 	u.DisplayName = field.NewString(table, "display_name")
 	u.Email = field.NewString(table, "email")
 	u.EmailVerified = field.NewBool(table, "email_verified")
@@ -109,7 +109,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt
-	u.fieldMap["name"] = u.Name
+	u.fieldMap["username"] = u.Username
 	u.fieldMap["display_name"] = u.DisplayName
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["email_verified"] = u.EmailVerified

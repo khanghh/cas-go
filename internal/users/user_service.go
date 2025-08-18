@@ -1,8 +1,11 @@
-package user
+package users
 
 import (
 	"context"
+	"errors"
+	"strings"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
@@ -22,7 +25,17 @@ func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.
 }
 
 func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
-	return s.userRepo.Create(ctx, user)
+	err := s.userRepo.Create(ctx, user)
+	var mysqlErr *mysql.MySQLError
+	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+		switch {
+		case strings.Contains(mysqlErr.Message, query.IdxUserUsername):
+			return ErrUserNameExists
+		case strings.Contains(mysqlErr.Message, query.IdxUserEmail):
+			return ErrUserEmailExists
+		}
+	}
+	return err
 }
 
 func (s *UserService) GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error) {

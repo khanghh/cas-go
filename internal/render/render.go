@@ -2,13 +2,11 @@ package render
 
 import (
 	"embed"
-	"fmt"
 	"io/fs"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/template/html/v2"
-	"github.com/khanghh/cas-go/model"
 )
 
 //go:embed templates/*.html
@@ -46,14 +44,27 @@ func RenderRegister(ctx *fiber.Ctx) error {
 	})
 }
 
-func RenderOnboarding(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+type OnboardingForm struct {
+	Username      string `form:"username"`
+	Password      string `form:"password"`
+	Email         string `form:"email"`
+	FullName      string `form:"fullName"`
+	Picture       string `form:"picture"`
+	UsernameError string
+	PasswordError string
+	EmailError    string
+}
+
+func RenderOnboarding(ctx *fiber.Ctx, form OnboardingForm) error {
 	return ctx.Render("onboarding", fiber.Map{
-		"appName":           values["appName"],
-		"fullName":          userOAuth.Name,
-		"email":             userOAuth.Email,
-		"provider":          userOAuth.Provider,
-		"picture":           userOAuth.Picture,
-		"suggestedUsername": fmt.Sprintf("user%d", userOAuth.ID),
+		"appName":       values["appName"],
+		"username":      form.Username,
+		"fullName":      form.FullName,
+		"email":         form.Email,
+		"picture":       form.Picture,
+		"usernameError": form.UsernameError,
+		"passwordError": form.PasswordError,
+		"emailError":    form.EmailError,
 	})
 }
 

@@ -7,7 +7,7 @@ import (
 // User stores user information
 type User struct {
 	gorm.Model
-	Name          string      `gorm:"uniqueIndex;size:32;not null"`
+	Username      string      `gorm:"uniqueIndex;size:32;not null"`
 	DisplayName   string      `gorm:"size:64;not null"`
 	Email         string      `gorm:"uniqueIndex;size:256;not null"`
 	EmailVerified bool        `gorm:"default:false;not null"`

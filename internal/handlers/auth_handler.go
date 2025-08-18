@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -101,7 +104,7 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 		if user, err := h.userService.GetUserByID(ctx.Context(), session.UserID); err == nil {
 			return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 		}
-	} else if session.OAuthID != 0 {
+	} else if session.OAuthID != 0 && session.UserID == 0 {
 		return h.redirect(ctx, "/onboarding", fiber.Map{"state": encryptedState})
 	}
 
@@ -133,7 +136,12 @@ func (h *AuthHandler) GetOnboarding(ctx *fiber.Ctx) error {
 	if session.OAuthID != 0 {
 		userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 		if err == nil && userOAuth.UserID == 0 {
-			return render.RenderOnboarding(ctx, userOAuth)
+			return render.RenderOnboarding(ctx, render.OnboardingForm{
+				Username: fmt.Sprintf("user%d", userOAuth.ID),
+				Email:    userOAuth.Email,
+				FullName: userOAuth.DisplayName,
+				Picture:  userOAuth.Picture,
+			})
 		}
 	}
 
@@ -143,20 +151,27 @@ func (h *AuthHandler) GetOnboarding(ctx *fiber.Ctx) error {
 func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 	state, _ := h.decryptState(ctx.Query("state"))
 	session := sessions.Get(ctx)
-	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
-	if err != nil {
+	if session.OAuthID == 0 {
 		return h.redirectLogin(ctx, state.ServiceURL, true)
 	}
 
-	type OnboardingForm struct {
-		Username string `form:"username"`
-		Email    string `form:"email"`
-		Password string `form:"password"`
+	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
+	if err != nil || userOAuth.UserID != 0 {
+		return h.redirectLogin(ctx, state.ServiceURL, true)
 	}
 
-	var form OnboardingForm
+	var form render.OnboardingForm
 	if err := ctx.BodyParser(&form); err != nil {
 		return render.RenderInternalError(ctx)
+	}
+
+	if userOAuth.Email != "" {
+		form.Email = userOAuth.Email
+	}
+
+	if err := validateOnboardingForm(&form); err != nil {
+		form.FullName = userOAuth.DisplayName
+		return render.RenderOnboarding(ctx, form)
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(form.Password), bcrypt.DefaultCost)
@@ -165,39 +180,40 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 	}
 
 	user := &model.User{
-		Name:          form.Username,
-		DisplayName:   userOAuth.DisplayName,
+		Username:      form.Username,
+		DisplayName:   form.FullName,
 		Email:         form.Email,
-		EmailVerified: true,
+		EmailVerified: form.Email == userOAuth.Email,
 		Password:      string(passwordHash),
 		OAuths:        []model.UserOAuth{*userOAuth},
 	}
+
 	if err = h.userService.CreateUser(ctx.Context(), user); err != nil {
-		return render.RenderInternalError(ctx)
+		form.Password = ""
+		switch {
+		case errors.Is(err, users.ErrUserNameExists):
+			form.UsernameError = "Username is already taken."
+			return render.RenderOnboarding(ctx, form)
+		case errors.Is(err, users.ErrUserEmailExists):
+			form.EmailError = "Email is already registered."
+			return render.RenderOnboarding(ctx, form)
+		default:
+			slog.Error("Failed to create user", "error", err)
+			return render.RenderInternalError(ctx)
+		}
 	}
 
 	sessions.Set(ctx, sessions.SessionData{
 		IP:        ctx.IP(),
-		UserID:    session.UserID,
-		OAuthID:   session.OAuthID,
+		UserID:    user.ID,
+		OAuthID:   userOAuth.ID,
 		LoginTime: time.Now(),
 	})
 
 	return h.handleAuthorizeServiceAccess(ctx, user, params.GetString(ctx, "service"))
 }
 
-// parseServiceURL parses the service URL and returns the base URL without query
-func parseServiceURL(serviceURL string) (string, error) {
-	parsed, err := url.Parse(serviceURL)
-	if err != nil {
-		return "", err
-	}
-	parsed.RawQuery = ""
-	parsed.ForceQuery = false
-	return parsed.String(), nil
-}
-
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, u *model.User, serviceURL string) error {
 	if serviceURL == "" {
 		return ctx.Redirect("/")
 	}
@@ -215,7 +231,7 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.U
 	if service.StripQuery {
 		callbackURL = serviceURL
 	}
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, callbackURL)
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), u.ID, callbackURL)
 	if err != nil {
 		return err
 	}
@@ -272,11 +288,11 @@ func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 	}
 
 	userOAuth, err := h.userService.GetOrCreateUserOAuth(ctx.Context(), &model.UserOAuth{
-		Provider:  providerName,
-		ProfileID: oauthUserInfo.ID,
-		Email:     oauthUserInfo.Email,
-		Name:      oauthUserInfo.Name,
-		Picture:   oauthUserInfo.Picture,
+		Provider:    providerName,
+		ProfileID:   oauthUserInfo.ID,
+		Email:       oauthUserInfo.Email,
+		DisplayName: oauthUserInfo.Name,
+		Picture:     oauthUserInfo.Picture,
 	})
 	if err != nil {
 		return nil
