@@ -182,7 +182,7 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		FullName: userOAuth.DisplayName,
 		Picture:  userOAuth.Picture,
 	}
-	if errs := validateOnboardingForm(&form); len(errs) > 0 {
+	if errs := form.Validate(); len(errs) > 0 {
 		pageData.UsernameError = errs["username"]
 		pageData.PasswordError = errs["password"]
 		pageData.EmailError = errs["email"]
