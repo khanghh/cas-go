@@ -11,7 +11,6 @@ type OnboardingPageData struct {
 }
 
 type LoginPageData struct {
-	ServiceURL string
 	OAuthURLs  map[string]string
 	Identifier string
 	LoginError string

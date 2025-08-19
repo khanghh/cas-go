@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/gob"
 	"strings"
+	"time"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 type AuthState struct {
 	ServiceURL string
 	Action     string
+	CreateTime time.Time
 }
 
 func xorEncrypt(data []byte, key string) []byte {

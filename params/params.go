@@ -11,4 +11,5 @@ const (
 	SessionStorageKeyPrefix     = "s:"
 	DefaultStateEncryptionKey   = "xxxxxx"
 	SerivceTicketExpireDuration = 1 * time.Minute
+	AuthStateTimeout            = 10 * time.Minute
 )

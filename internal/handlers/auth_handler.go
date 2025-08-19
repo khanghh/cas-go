@@ -10,12 +10,12 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/auth"
-	"github.com/khanghh/cas-go/internal/handlers/params"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
+	"github.com/khanghh/cas-go/params"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -88,14 +88,22 @@ func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string, renew boo
 	return h.redirect(ctx, "/login", queries)
 }
 
+func (h *AuthHandler) getOAuthLoginURLs(serviceURL string) map[string]string {
+	state := &AuthState{
+		ServiceURL: serviceURL,
+		Action:     actionOAuthLogin,
+		CreateTime: time.Now(),
+	}
+	oauthLoginURLs := make(map[string]string)
+	for providerName, provider := range h.oauthProviders {
+		oauthLoginURLs[providerName] = provider.GetAuthCodeURL(h.encryptState(*state))
+	}
+	return oauthLoginURLs
+}
+
 func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 	renew := ctx.QueryBool("renew")
-
-	encryptedState := h.encryptState(AuthState{
-		ServiceURL: serviceURL,
-		Action:     actionOAuthLogin,
-	})
 
 	session := sessions.Get(ctx)
 	if renew {
@@ -104,22 +112,14 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 		if user, err := h.userService.GetUserByID(ctx.Context(), session.UserID); err == nil {
 			return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 		}
-	} else if session.OAuthID != 0 && session.UserID == 0 {
-		return h.redirect(ctx, "/onboarding", fiber.Map{"state": encryptedState})
 	}
 
-	oauthLoginURLs := make(map[string]string)
-	for providerName, provider := range h.oauthProviders {
-		oauthLoginURLs[providerName] = provider.GetAuthCodeURL(encryptedState)
-	}
 	return render.RenderLogin(ctx, render.LoginPageData{
-		ServiceURL: serviceURL,
-		OAuthURLs:  oauthLoginURLs,
+		OAuthURLs: h.getOAuthLoginURLs(serviceURL),
 	})
 }
 
 func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
-
 	return nil
 }
 
@@ -152,6 +152,10 @@ func (h *AuthHandler) GetOnboarding(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 	state, _ := h.decryptState(ctx.Query("state"))
+	if time.Since(state.CreateTime) > params.AuthStateTimeout {
+		return h.redirectLogin(ctx, state.ServiceURL, true)
+	}
+
 	session := sessions.Get(ctx)
 	if session.OAuthID == 0 {
 		return h.redirectLogin(ctx, state.ServiceURL, true)
@@ -221,7 +225,7 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		LoginTime: time.Now(),
 	})
 
-	return h.handleAuthorizeServiceAccess(ctx, user, params.GetString(ctx, "service"))
+	return h.handleAuthorizeServiceAccess(ctx, user, ctx.Query("service"))
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, u *model.User, serviceURL string) error {
@@ -281,7 +285,15 @@ func (c *AuthHandler) handleOAuthLink(ctx *fiber.Ctx, userOAuth *model.UserOAuth
 func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 	code := ctx.Query("code")
 	providerName := ctx.Params("provider")
-	encryptedState := ctx.Query("state")
+
+	state, err := h.decryptState(ctx.Query("state"))
+	if err != nil {
+		return err
+	}
+
+	if time.Since(state.CreateTime) > params.AuthStateTimeout {
+		return h.redirectLogin(ctx, state.ServiceURL, true)
+	}
 
 	provider, ok := h.oauthProviders[providerName]
 	if !ok {
@@ -309,10 +321,6 @@ func (h *AuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	state, err := h.decryptState(encryptedState)
-	if err != nil {
-		return err
-	}
 	switch state.Action {
 	case actionOAuthLogin:
 		return h.handleOAuthLogin(ctx, userOAuth, &state)
