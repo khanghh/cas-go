@@ -27,7 +27,7 @@ type ServiceRegistry interface {
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
 	CreateUser(ctx context.Context, user *model.User) error
-	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+	GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error)
 	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
 }
@@ -120,7 +120,32 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
-	return nil
+	serviceURL := ctx.Query("service")
+	username := ctx.FormValue("username")
+	password := ctx.FormValue("password")
+
+	pageData := render.LoginPageData{
+		Identifier: username,
+		OAuthURLs:  h.getOAuthLoginURLs(serviceURL),
+	}
+
+	user, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), username)
+	if err != nil {
+		pageData.LoginError = "Invalid username or password"
+		return render.RenderLogin(ctx, pageData)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		pageData.LoginError = "Invalid username or password"
+		return render.RenderLogin(ctx, pageData)
+	}
+
+	sessions.Set(ctx, sessions.SessionData{
+		IP:        ctx.IP(),
+		UserID:    user.ID,
+		LoginTime: time.Now(),
+	})
+	return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 }
 
 func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
@@ -224,7 +249,6 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		OAuthID:   userOAuth.ID,
 		LoginTime: time.Now(),
 	})
-
 	return h.handleAuthorizeServiceAccess(ctx, user, ctx.Query("service"))
 }
 

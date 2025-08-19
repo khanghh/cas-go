@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"errors"
+	"net/mail"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
@@ -20,8 +21,11 @@ func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*model.User
 	return s.userRepo.First(ctx, query.User.ID.Eq(userID))
 }
 
-func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	return s.userRepo.First(ctx, query.User.Email.Eq(email))
+func (s *UserService) GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error) {
+	if _, err := mail.ParseAddress(identifier); err == nil {
+		return s.userRepo.First(ctx, query.User.Email.Eq(identifier))
+	}
+	return s.userRepo.First(ctx, query.User.Username.Eq(identifier))
 }
 
 func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
