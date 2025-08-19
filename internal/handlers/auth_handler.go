@@ -80,10 +80,10 @@ func (h *AuthHandler) redirect(ctx *fiber.Ctx, location string, params fiber.Map
 	return ctx.Redirect(url.String())
 }
 
-func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string, renew bool) error {
+func (h *AuthHandler) redirectLogin(ctx *fiber.Ctx, serviceURL string, logout bool) error {
 	queries := fiber.Map{"service": serviceURL}
-	if renew {
-		queries["renew"] = true
+	if logout {
+		sessions.Destroy(ctx)
 	}
 	return h.redirect(ctx, "/login", queries)
 }
@@ -228,7 +228,7 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 	return h.handleAuthorizeServiceAccess(ctx, user, ctx.Query("service"))
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, u *model.User, serviceURL string) error {
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
 	if serviceURL == "" {
 		return ctx.Redirect("/")
 	}
@@ -246,7 +246,7 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, u *model.User
 	if service.StripQuery {
 		callbackURL = serviceURL
 	}
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), u.ID, callbackURL)
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, callbackURL)
 	if err != nil {
 		return err
 	}
