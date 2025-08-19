@@ -12,10 +12,10 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
-var values fiber.Map
+var globalVars fiber.Map
 
 func InitValues(data fiber.Map) {
-	values = data
+	globalVars = data
 }
 
 func NewHtmlEngine(templateDir string) fiber.Views {
@@ -26,56 +26,47 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 	return html.NewFileSystem(http.FS(renderFS), ".html")
 }
 
-func RenderLogin(ctx *fiber.Ctx, serviceURL string, oauthURLs map[string]string) error {
+func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
-		"appName":           values["appName"],
-		"serviceURL":        serviceURL,
-		"googleOAuthURL":    oauthURLs["google"],
-		"facebookOAuthURL":  oauthURLs["facebook"],
-		"discordOAuthURL":   oauthURLs["discord"],
-		"microsoftOAuthURL": oauthURLs["microsoft"],
-		"appleOAuthURL":     oauthURLs["apple"],
+		"appName":           globalVars["appName"],
+		"serviceURL":        data.ServiceURL,
+		"googleOAuthURL":    data.OAuthURLs["google"],
+		"facebookOAuthURL":  data.OAuthURLs["facebook"],
+		"discordOAuthURL":   data.OAuthURLs["discord"],
+		"microsoftOAuthURL": data.OAuthURLs["microsoft"],
+		"appleOAuthURL":     data.OAuthURLs["apple"],
+		"identifier":        data.Identifier,
+		"loginError":        data.LoginError,
 	})
 }
 
 func RenderRegister(ctx *fiber.Ctx) error {
 	return ctx.Render("register", fiber.Map{
-		"appName": values["appName"],
+		"appName": globalVars["appName"],
 	})
 }
 
-type OnboardingForm struct {
-	Username      string `form:"username"`
-	Password      string `form:"password"`
-	Email         string `form:"email"`
-	FullName      string `form:"fullName"`
-	Picture       string `form:"picture"`
-	UsernameError string
-	PasswordError string
-	EmailError    string
-}
-
-func RenderOnboarding(ctx *fiber.Ctx, form OnboardingForm) error {
+func RenderOnboarding(ctx *fiber.Ctx, data OnboardingPageData) error {
 	return ctx.Render("onboarding", fiber.Map{
-		"appName":       values["appName"],
-		"username":      form.Username,
-		"fullName":      form.FullName,
-		"email":         form.Email,
-		"picture":       form.Picture,
-		"usernameError": form.UsernameError,
-		"passwordError": form.PasswordError,
-		"emailError":    form.EmailError,
+		"appName":       globalVars["appName"],
+		"username":      data.Username,
+		"fullName":      data.FullName,
+		"email":         data.Email,
+		"picture":       data.Picture,
+		"usernameError": data.UsernameError,
+		"passwordError": data.PasswordError,
+		"emailError":    data.EmailError,
 	})
 }
 
 func RenderUnauthorizedError(ctx *fiber.Ctx) error {
 	return ctx.Render("unauthorized", fiber.Map{
-		"appName": values["appName"],
+		"appName": globalVars["appName"],
 	})
 }
 
 func RenderInternalError(ctx *fiber.Ctx) error {
 	return ctx.Render("internal-error", fiber.Map{
-		"appName": values["appName"],
+		"appName": globalVars["appName"],
 	})
 }

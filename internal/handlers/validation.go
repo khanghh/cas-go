@@ -5,8 +5,6 @@ import (
 	"net/mail"
 	"net/url"
 	"regexp"
-
-	"github.com/khanghh/cas-go/internal/render"
 )
 
 var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,32}$`)
@@ -41,22 +39,20 @@ func validatePassword(password string) error {
 	return nil
 }
 
-func validateOnboardingForm(form *render.OnboardingForm) error {
+func validateOnboardingForm(form *OnboardingForm) map[string]string {
+	formErrors := make(map[string]string)
 	if err := validateUsername(form.Username); err != nil {
-		form.UsernameError = err.Error()
-		return err
+		formErrors["username"] = err.Error()
 	}
 
 	if err := validatePassword(form.Password); err != nil {
-		form.PasswordError = err.Error()
-		return err
+		formErrors["password"] = err.Error()
 	}
 
 	if err := validateEmail(form.Email); err != nil {
-		form.EmailError = err.Error()
-		return err
+		formErrors["email"] = err.Error()
 	}
-	return nil
+	return formErrors
 }
 
 // parseServiceURL parses the service URL and returns the base URL without query

@@ -112,10 +112,14 @@ func (h *AuthHandler) GetLogin(ctx *fiber.Ctx) error {
 	for providerName, provider := range h.oauthProviders {
 		oauthLoginURLs[providerName] = provider.GetAuthCodeURL(encryptedState)
 	}
-	return render.RenderLogin(ctx, serviceURL, oauthLoginURLs)
+	return render.RenderLogin(ctx, render.LoginPageData{
+		ServiceURL: serviceURL,
+		OAuthURLs:  oauthLoginURLs,
+	})
 }
 
 func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
+
 	return nil
 }
 
@@ -136,15 +140,13 @@ func (h *AuthHandler) GetOnboarding(ctx *fiber.Ctx) error {
 	if session.OAuthID != 0 {
 		userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 		if err == nil && userOAuth.UserID == 0 {
-			return render.RenderOnboarding(ctx, render.OnboardingForm{
+			return render.RenderOnboarding(ctx, render.OnboardingPageData{
 				Username: fmt.Sprintf("user%d", userOAuth.ID),
-				Email:    userOAuth.Email,
 				FullName: userOAuth.DisplayName,
-				Picture:  userOAuth.Picture,
+				Email:    userOAuth.Email,
 			})
 		}
 	}
-
 	return h.redirectLogin(ctx, "", true)
 }
 
@@ -160,18 +162,27 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		return h.redirectLogin(ctx, state.ServiceURL, true)
 	}
 
-	var form render.OnboardingForm
+	var form OnboardingForm
 	if err := ctx.BodyParser(&form); err != nil {
 		return render.RenderInternalError(ctx)
 	}
 
+	// fill in missing fields
 	if userOAuth.Email != "" {
 		form.Email = userOAuth.Email
 	}
 
-	if err := validateOnboardingForm(&form); err != nil {
-		form.FullName = userOAuth.DisplayName
-		return render.RenderOnboarding(ctx, form)
+	pageData := render.OnboardingPageData{
+		Username: form.Username,
+		Email:    form.Email,
+		FullName: userOAuth.DisplayName,
+		Picture:  userOAuth.Picture,
+	}
+	if errs := validateOnboardingForm(&form); len(errs) > 0 {
+		pageData.UsernameError = errs["username"]
+		pageData.PasswordError = errs["password"]
+		pageData.EmailError = errs["email"]
+		return render.RenderOnboarding(ctx, pageData)
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(form.Password), bcrypt.DefaultCost)
@@ -192,11 +203,11 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		form.Password = ""
 		switch {
 		case errors.Is(err, users.ErrUserNameExists):
-			form.UsernameError = "Username is already taken."
-			return render.RenderOnboarding(ctx, form)
+			pageData.UsernameError = "Username is already taken."
+			return render.RenderOnboarding(ctx, pageData)
 		case errors.Is(err, users.ErrUserEmailExists):
-			form.EmailError = "Email is already registered."
-			return render.RenderOnboarding(ctx, form)
+			pageData.EmailError = "Email is already registered."
+			return render.RenderOnboarding(ctx, pageData)
 		default:
 			slog.Error("Failed to create user", "error", err)
 			return render.RenderInternalError(ctx)
