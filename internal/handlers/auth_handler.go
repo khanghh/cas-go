@@ -150,7 +150,67 @@ func (h *AuthHandler) PostLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) GetRegister(ctx *fiber.Ctx) error {
-	return render.RenderRegister(ctx)
+	session := sessions.Get(ctx)
+	if session.UserID != 0 {
+		return ctx.Redirect("/")
+	}
+	return render.RenderRegister(ctx, render.RegisterPageData{})
+}
+
+func (h *AuthHandler) PostRegister(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
+	if session.UserID != 0 {
+		return ctx.SendStatus(http.StatusBadRequest)
+	}
+
+	// parse and validate registration form
+	var form RegisterForm
+	if err := ctx.BodyParser(&form); err != nil {
+		return ctx.SendStatus(http.StatusBadRequest)
+	}
+	pageData := render.RegisterPageData{
+		Username: form.Username,
+		Email:    form.Email,
+	}
+	if formErrs := form.Validate(); len(formErrs) > 0 {
+		pageData.UsernameError = formErrs["username"]
+		pageData.EmailError = formErrs["email"]
+		pageData.PasswordError = formErrs["password"]
+		return render.RenderRegister(ctx, pageData)
+	}
+
+	// create user
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(form.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return render.RenderInternalError(ctx)
+	}
+	user := model.User{
+		Username: form.Username,
+		Password: string(passwordHash),
+		Email:    form.Email,
+	}
+	if err := h.userService.CreateUser(ctx.Context(), &user); err != nil {
+		if errors.Is(err, users.ErrUserNameExists) {
+			pageData.UsernameError = "Username is already taken"
+			return render.RenderRegister(ctx, pageData)
+		} else if errors.Is(err, users.ErrUserEmailExists) {
+			pageData.EmailError = "Email is already registered"
+			return render.RenderRegister(ctx, pageData)
+		}
+		slog.Error("Failed to create user", "error", err)
+		return render.RenderInternalError(ctx)
+	}
+
+	sessions.Set(ctx, sessions.SessionData{
+		IP:        ctx.IP(),
+		UserID:    user.ID,
+		LoginTime: time.Now(),
+	})
+	state, err := h.decryptState(ctx.Query("state"))
+	if err != nil || time.Since(state.CreateTime) > params.AuthStateTimeout {
+		return ctx.Redirect("/")
+	}
+	return h.handleAuthorizeServiceAccess(ctx, &user, state.ServiceURL)
 }
 
 func (h *AuthHandler) PostLogout(ctx *fiber.Ctx) error {

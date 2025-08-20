@@ -12,6 +12,7 @@ const ColUserDisplayName = "display_name"
 const ColUserEmail = "email"
 const ColUserEmailVerified = "email_verified"
 const ColUserPassword = "password"
+const ColUserPicture = "picture"
 const ColUserDisabled = "disabled"
 const ColUserOAuths = "oauths"
 // User index names

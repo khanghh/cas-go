@@ -194,6 +194,7 @@ func run(ctx *cli.Context) error {
 	router.Get("/login", withSession(authHandler.GetLogin))
 	router.Post("/login", withSession(authHandler.PostLogin))
 	router.Get("/register", withSession(authHandler.GetRegister))
+	router.Post("/register", withSession(authHandler.PostRegister))
 	router.Post("/logout", withSession(authHandler.PostLogout))
 	router.Post("/onboarding", withSession(authHandler.PostOnboarding))
 	router.Get("/onboarding", withSession(authHandler.GetOnboarding))

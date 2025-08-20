@@ -39,9 +39,14 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	})
 }
 
-func RenderRegister(ctx *fiber.Ctx) error {
+func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("register", fiber.Map{
-		"appName": globalVars["appName"],
+		"appName":       globalVars["appName"],
+		"username":      data.Username,
+		"email":         data.Email,
+		"usernameError": data.UsernameError,
+		"emailError":    data.EmailError,
+		"passwordError": data.PasswordError,
 	})
 }
 

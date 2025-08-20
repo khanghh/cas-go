@@ -26,35 +26,37 @@
         <p class="text-gray-600 mt-2">Fill out the form to create your account</p>
       </div>
 
-      <form class="space-y-6" method="POST">
+      <form id="registerForm" class="space-y-6" method="POST">
         <div>
           <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <input type="text" name="username" required
+          <input id="username" type="text" name="username" required
             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
-            placeholder="yourusername">
+            placeholder="yourusername" value="{{.username}}">
+          <p id="usernameError" class="mt-1 text-sm text-red-600">{{.usernameError}}</p>
         </div>
 
         <div>
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-          <div class="relative">
-            <input list="oauth-emails" name="email" type="email" required
-              class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
-              placeholder="you@example.com">
-          </div>
+          <input id="email" name="email" type="email" required
+            class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+            placeholder="you@example.com" value="{{.email}}">
+            <p id="emailError" class="mt-1 text-sm text-red-600">{{.emailError}}</p>
         </div>
 
         <div>
           <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input type="password" name="password" autocomplete="new-password" required
+          <input id="password" type="password" name="password" autocomplete="new-password" required
             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
             placeholder="••••••••">
+          <p id="passwordError" class="mt-1 text-sm text-red-600">{{.passwordError}}</p>
         </div>
 
         <div>
           <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-          <input type="password" name="confirm_password" autocomplete="new-password" required
+          <input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required
             class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
             placeholder="••••••••">
+          <p id="confirmPasswordError" class="mt-1 text-sm text-red-600 hidden"></p>
         </div>
 
         <button type="submit"
@@ -71,6 +73,42 @@
       </p>
     </div>
   </div>
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", function (e) {
+      let valid = true;
+
+      // Clear old errors
+      document.querySelectorAll("p.text-red-600").forEach(el => el.classList.add("hidden"));
+
+      // Username check
+      const username = document.getElementById("username").value;
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        usernameError.textContent = "Username can only contain letters, numbers, and underscores.";
+        usernameError.classList.remove("hidden");
+        valid = false;
+      }
+
+      // Password check
+      const password = document.getElementById("password").value;
+      if (password.length < 6) {
+        document.getElementById("passwordError").textContent = "Password must be at least 6 characters.";
+        document.getElementById("passwordError").classList.remove("hidden");
+        valid = false;
+      }
+
+      // Confirm password check
+      const confirmPassword = document.getElementById("confirm_password").value;
+      if (password !== confirmPassword) {
+        document.getElementById("confirmPasswordError").textContent = "Passwords do not match.";
+        document.getElementById("confirmPasswordError").classList.remove("hidden");
+        valid = false;
+      }
+
+      // If invalid, stop form submission
+      if (!valid) e.preventDefault();
+    });
+
+  </script>
 </body>
 
 </html>

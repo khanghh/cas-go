@@ -35,6 +35,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Email = field.NewString(tableName, "email")
 	_user.EmailVerified = field.NewBool(tableName, "email_verified")
 	_user.Password = field.NewString(tableName, "password")
+	_user.Picture = field.NewString(tableName, "picture")
 	_user.Disabled = field.NewBool(tableName, "disabled")
 	_user.OAuths = userHasManyOAuths{
 		db: db.Session(&gorm.Session{}),
@@ -60,6 +61,7 @@ type user struct {
 	Email         field.String
 	EmailVerified field.Bool
 	Password      field.String
+	Picture       field.String
 	Disabled      field.Bool
 	OAuths        userHasManyOAuths
 
@@ -87,6 +89,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Email = field.NewString(table, "email")
 	u.EmailVerified = field.NewBool(table, "email_verified")
 	u.Password = field.NewString(table, "password")
+	u.Picture = field.NewString(table, "picture")
 	u.Disabled = field.NewBool(table, "disabled")
 
 	u.fillFieldMap()
@@ -104,7 +107,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 11)
+	u.fieldMap = make(map[string]field.Expr, 12)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -114,6 +117,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["email_verified"] = u.EmailVerified
 	u.fieldMap["password"] = u.Password
+	u.fieldMap["picture"] = u.Picture
 	u.fieldMap["disabled"] = u.Disabled
 
 }
