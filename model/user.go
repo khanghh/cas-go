@@ -12,6 +12,7 @@ type User struct {
 	Email         string      `gorm:"uniqueIndex;size:256;not null"`
 	EmailVerified bool        `gorm:"default:false;not null"`
 	Password      string      `gorm:"size:64;not null"`
+	Picture       string      `gorm:"size:256;not null"`
 	Disabled      bool        `gorm:"default:false;not null"`
 	OAuths        []UserOAuth `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 }

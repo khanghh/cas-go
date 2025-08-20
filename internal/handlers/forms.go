@@ -1,14 +1,12 @@
 package handlers
 
-type OnboardingForm struct {
+type RegisterForm struct {
 	Username string `form:"username"`
 	Password string `form:"password"`
 	Email    string `form:"email"`
-	FullName string `form:"fullName"`
-	Picture  string `form:"picture"`
 }
 
-func (form *OnboardingForm) Validate() map[string]string {
+func (form *RegisterForm) Validate() map[string]string {
 	formErrors := make(map[string]string)
 	if err := validateUsername(form.Username); err != nil {
 		formErrors["username"] = err.Error()

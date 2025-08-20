@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -176,37 +177,35 @@ func (h *AuthHandler) GetOnboarding(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
-	state, _ := h.decryptState(ctx.Query("state"))
-	if time.Since(state.CreateTime) > params.AuthStateTimeout {
-		return h.redirectLogin(ctx, state.ServiceURL, true)
+	session := sessions.Get(ctx)
+	if session.UserID != 0 {
+		// TODO: render bad request error
+		return ctx.SendStatus(http.StatusBadRequest)
 	}
 
-	session := sessions.Get(ctx)
 	if session.OAuthID == 0 {
-		return h.redirectLogin(ctx, state.ServiceURL, true)
+		// TODO: render session expired error
+		return ctx.SendStatus(http.StatusUnauthorized)
 	}
 
 	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 	if err != nil || userOAuth.UserID != 0 {
-		return h.redirectLogin(ctx, state.ServiceURL, true)
+		// TODO: render bad request error
+		return ctx.SendStatus(http.StatusBadRequest)
 	}
 
-	var form OnboardingForm
+	// validate registration form
+	var form RegisterForm
 	if err := ctx.BodyParser(&form); err != nil {
 		return render.RenderInternalError(ctx)
 	}
-
-	// fill in missing fields
-	if userOAuth.Email != "" {
-		form.Email = userOAuth.Email
-	}
-
 	pageData := render.OnboardingPageData{
 		Username: form.Username,
-		Email:    form.Email,
+		Email:    userOAuth.Email,
 		FullName: userOAuth.DisplayName,
 		Picture:  userOAuth.Picture,
 	}
+	form.Email = userOAuth.Email
 	if errs := form.Validate(); len(errs) > 0 {
 		pageData.UsernameError = errs["username"]
 		pageData.PasswordError = errs["password"]
@@ -214,17 +213,18 @@ func (h *AuthHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		return render.RenderOnboarding(ctx, pageData)
 	}
 
+	// create user
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(form.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return render.RenderInternalError(ctx)
 	}
-
 	user := &model.User{
 		Username:      form.Username,
-		DisplayName:   form.FullName,
-		Email:         form.Email,
-		EmailVerified: form.Email == userOAuth.Email,
+		DisplayName:   userOAuth.DisplayName,
+		Email:         userOAuth.Email,
+		EmailVerified: true,
 		Password:      string(passwordHash),
+		Picture:       userOAuth.Picture,
 		OAuths:        []model.UserOAuth{*userOAuth},
 	}
 
