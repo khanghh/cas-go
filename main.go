@@ -155,13 +155,12 @@ func run(ctx *cli.Context) error {
 		KeyGenerator:   sessions.GenerateSessionID,
 	})
 
-	// repositories and dependencies
+	// repositories
 	var (
-		userRepo       = repository.NewUserRepository(query.Q)
-		userOAuthRepo  = repository.NewUserOAuthRepository(query.Q)
-		serviceRepo    = repository.NewServiceRepository(query.Q)
-		tokenRepo      = repository.NewTokenRepository(query.Q)
-		oauthProviders = mustInitOAuthProviders(config)
+		userRepo      = repository.NewUserRepository(query.Q)
+		userOAuthRepo = repository.NewUserOAuthRepository(query.Q)
+		serviceRepo   = repository.NewServiceRepository(query.Q)
+		tokenRepo     = repository.NewTokenRepository(query.Q)
 	)
 
 	// services
@@ -171,10 +170,18 @@ func run(ctx *cli.Context) error {
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo, tokenRepo)
 	)
 
-	// middlewares and handlers
+	// middlewares and dependencies
 	var (
-		withSession = sessions.WithSessionMiddleware(sessionStore)
-		authHandler = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, oauthProviders, config.StateEncryptionKey)
+		withSession     = sessions.WithSessionMiddleware(sessionStore)
+		oauthProviders  = mustInitOAuthProviders(config)
+		baseAuthHandler = handlers.NewBaseAuthHandler(config.StateEncryptionKey)
+	)
+
+	// handlers
+	var (
+		loginHandler    = handlers.NewLoginHandler(baseAuthHandler, serviceRegistry, authorizeService, userService)
+		registerHandler = handlers.NewRegisterHandler(baseAuthHandler, userService)
+		oauthHandler    = handlers.NewOAuthHandler(baseAuthHandler, userService, oauthProviders)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -191,14 +198,15 @@ func run(ctx *cli.Context) error {
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
 	router.Static("/static/*", config.StaticDir)
-	router.Get("/login", withSession(authHandler.GetLogin))
-	router.Post("/login", withSession(authHandler.PostLogin))
-	router.Get("/register", withSession(authHandler.GetRegister))
-	router.Post("/register", withSession(authHandler.PostRegister))
-	router.Post("/logout", withSession(authHandler.PostLogout))
-	router.Post("/onboarding", withSession(authHandler.PostOnboarding))
-	router.Get("/onboarding", withSession(authHandler.GetOnboarding))
-	router.Get("/oauth/:provider/callback", withSession(authHandler.GetOAuthCallback))
+	router.Get("/login", withSession(loginHandler.GetLogin))
+	router.Post("/login", withSession(loginHandler.PostLogin))
+	router.Post("/logout", withSession(loginHandler.PostLogout))
+	router.Get("/register", withSession(registerHandler.GetRegister))
+	router.Post("/register", withSession(registerHandler.PostRegister))
+	router.Post("/onboarding", withSession(registerHandler.PostOnboarding))
+	router.Get("/onboarding", withSession(registerHandler.GetOnboarding))
+	router.Get("/oauth/:provider/login", withSession(oauthHandler.GetOAuthLogin))
+	router.Get("/oauth/:provider/callback", withSession(oauthHandler.GetOAuthCallback))
 
 	return router.Listen(config.ListenAddr)
 }

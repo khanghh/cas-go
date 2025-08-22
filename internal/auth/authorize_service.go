@@ -89,7 +89,7 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 		CreateTime:  time.Now(),
 	}
 
-	if err := s.ticketStore.CreateTicket(st, params.SerivceTicketExpireDuration); err != nil {
+	if err := s.ticketStore.CreateTicket(st, params.ServiceTicketExpiration); err != nil {
 		return nil, err
 	}
 

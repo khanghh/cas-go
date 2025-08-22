@@ -1,7 +1,6 @@
 package render
 
 type LoginPageData struct {
-	OAuthURLs  map[string]string
 	Identifier string
 	LoginError string
 }
