@@ -172,16 +172,16 @@ func run(ctx *cli.Context) error {
 
 	// middlewares and dependencies
 	var (
-		withSession     = sessions.WithSessionMiddleware(sessionStore)
-		oauthProviders  = mustInitOAuthProviders(config)
-		baseAuthHandler = handlers.NewBaseAuthHandler(config.StateEncryptionKey)
+		withSession    = sessions.WithSessionMiddleware(sessionStore)
+		oauthProviders = mustInitOAuthProviders(config)
+		authHandler    = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, config.StateEncryptionKey)
 	)
 
 	// handlers
 	var (
-		loginHandler    = handlers.NewLoginHandler(baseAuthHandler, serviceRegistry, authorizeService, userService)
-		registerHandler = handlers.NewRegisterHandler(baseAuthHandler, userService)
-		oauthHandler    = handlers.NewOAuthHandler(baseAuthHandler, userService, oauthProviders)
+		loginHandler    = handlers.NewLoginHandler(authHandler, serviceRegistry, userService, oauthProviders)
+		registerHandler = handlers.NewRegisterHandler(authHandler, userService)
+		oauthHandler    = handlers.NewOAuthHandler(authHandler, userService, oauthProviders)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -205,7 +205,7 @@ func run(ctx *cli.Context) error {
 	router.Post("/register", withSession(registerHandler.PostRegister))
 	router.Post("/onboarding", withSession(registerHandler.PostOnboarding))
 	router.Get("/onboarding", withSession(registerHandler.GetOnboarding))
-	router.Get("/oauth/:provider/login", withSession(oauthHandler.GetOAuthLogin))
+	router.Get("/authorize", withSession(authHandler.GetAuthorize))
 	router.Get("/oauth/:provider/callback", withSession(oauthHandler.GetOAuthCallback))
 
 	return router.Listen(config.ListenAddr)

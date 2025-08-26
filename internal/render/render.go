@@ -28,9 +28,14 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 
 func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
-		"appName":    globalVars["appName"],
-		"identifier": data.Identifier,
-		"loginError": data.LoginError,
+		"appName":           globalVars["appName"],
+		"identifier":        data.Identifier,
+		"loginError":        data.LoginError,
+		"googleOAuthURL":    data.OAuthLoginURLs["google"],
+		"facebookOAuthURL":  data.OAuthLoginURLs["facebook"],
+		"discordOAuthURL":   data.OAuthLoginURLs["discord"],
+		"microsoftOAuthURL": data.OAuthLoginURLs["microsoft"],
+		"appleOAuthURL":     data.OAuthLoginURLs["apple"],
 	})
 }
 

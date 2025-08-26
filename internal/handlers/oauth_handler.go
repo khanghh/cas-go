@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,7 +11,6 @@ import (
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/model"
-	"github.com/khanghh/cas-go/params"
 )
 
 func makeOAuthProvidersMap(oauthProviders []oauth.OAuthProvider) map[string]oauth.OAuthProvider {
@@ -22,70 +22,58 @@ func makeOAuthProvidersMap(oauthProviders []oauth.OAuthProvider) map[string]oaut
 }
 
 type OAuthHandler struct {
-	*BaseAuthHandler
+	*AuthHandler
 	userService    UserService
 	oauthProviders map[string]oauth.OAuthProvider
 }
 
-func NewOAuthHandler(baseAuthHander *BaseAuthHandler, userService UserService, oauthProviders []oauth.OAuthProvider) *OAuthHandler {
+func NewOAuthHandler(authHandler *AuthHandler, userService UserService, oauthProviders []oauth.OAuthProvider) *OAuthHandler {
 	return &OAuthHandler{
-		BaseAuthHandler: baseAuthHander,
-		userService:     userService,
-		oauthProviders:  makeOAuthProvidersMap(oauthProviders),
+		AuthHandler:    authHandler,
+		userService:    userService,
+		oauthProviders: makeOAuthProvidersMap(oauthProviders),
 	}
 }
 
-func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
+func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+
+	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
+	if err != nil {
+		// TODO: render user not found or disabled error
+		return ctx.SendStatus(http.StatusForbidden)
+	}
+
+	if err := h.createLoginSession(ctx, user, nil); err != nil {
+		return render.RenderInternalError(ctx)
+	}
+
+	state := ctx.Query("state")
+	queryParams, err := url.ParseQuery(state)
+	if err != nil {
+		return ctx.SendStatus(http.StatusBadRequest)
+	}
+	return redirect(ctx, "/authorize", fiber.Map{"service": queryParams.Get("service")})
+}
+
+func (h *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userID uint, userOAuth *model.UserOAuth) error {
+	return nil
+}
+
+func (h *OAuthHandler) handleOAuthRegister(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
 	if userOAuth.UserID == 0 {
 		sessions.Set(ctx, sessions.SessionData{
 			IP:        ctx.IP(),
 			OAuthID:   userOAuth.ID,
 			LoginTime: time.Now(),
 		})
-		return h.redirect(ctx, "/register", fiber.Map{"state": ctx.Query("state")})
+		return redirect(ctx, "/register", fiber.Map{"service": ctx.Query("service")})
 	}
-
-	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
-	if err != nil {
-		return h.redirectLogin(ctx, state.ServiceURL, true)
-	}
-
-	if err := h.handleLoginSuccess(ctx, user, userOAuth); err != nil {
-		return render.RenderInternalError(ctx)
-	}
-	return h.redirectInternal(ctx, "/login")
-}
-
-func (c *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userOAuth *model.UserOAuth, state *AuthState) error {
 	return nil
-}
-
-func (h *OAuthHandler) GetOAuthLogin(ctx *fiber.Ctx) error {
-	providerName := ctx.Params("provider")
-	serviceURL := ctx.Query("service")
-	if provider, ok := h.oauthProviders[providerName]; ok {
-		encryptedState := h.encryptState(AuthState{
-			ServiceURL: serviceURL,
-			Action:     actionOAuthLogin,
-			CreateTime: time.Now(),
-		})
-		return ctx.Redirect(provider.GetAuthCodeURL(encryptedState))
-	}
-	return ctx.SendStatus(http.StatusBadRequest)
 }
 
 func (h *OAuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 	code := ctx.Query("code")
 	providerName := ctx.Params("provider")
-
-	state, err := h.decryptState(ctx.Query("state"))
-	if err != nil {
-		return err
-	}
-
-	if time.Since(state.CreateTime) > params.AuthStateTimeout {
-		return h.redirectLogin(ctx, state.ServiceURL, true)
-	}
 
 	provider, ok := h.oauthProviders[providerName]
 	if !ok {
@@ -113,12 +101,14 @@ func (h *OAuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	switch state.Action {
-	case actionOAuthLogin:
-		return h.handleOAuthLogin(ctx, userOAuth, &state)
-	case actionOAuthLink:
-		return h.handleOAuthLink(ctx, userOAuth, &state)
-	default:
-		return fmt.Errorf("unknown action: %s", state.Action)
+	session := sessions.Get(ctx)
+	if userOAuth.UserID != 0 {
+		return h.handleOAuthLogin(ctx, userOAuth)
 	}
+
+	if session.UserID != 0 {
+		return h.handleOAuthLink(ctx, session.UserID, userOAuth)
+	}
+
+	return h.handleOAuthRegister(ctx, userOAuth)
 }

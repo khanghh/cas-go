@@ -1,8 +1,9 @@
 package render
 
 type LoginPageData struct {
-	Identifier string
-	LoginError string
+	Identifier     string
+	LoginError     string
+	OAuthLoginURLs map[string]string
 }
 
 type RegisterPageData struct {

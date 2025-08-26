@@ -1,48 +1,72 @@
 package handlers
 
 import (
-	"fmt"
-	"time"
+	"net/url"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
+	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
-	"github.com/khanghh/cas-go/model"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
-	*BaseAuthHandler
-	serviceRegistry  ServiceRegistry
-	authorizeService AuthorizeService
-	userService      UserService
+	*AuthHandler
+	serviceRegistry ServiceRegistry
+	userService     UserService
+	oauthProviders  []oauth.OAuthProvider
 }
 
 // NewLoginHandler returns a new instance of AuthHandler.
-func NewLoginHandler(baseAuthHander *BaseAuthHandler, serviceRegistry ServiceRegistry, authorizeService AuthorizeService, userService UserService) *LoginHandler {
+func NewLoginHandler(authHandler *AuthHandler, serviceRegistry ServiceRegistry, userService UserService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
 	return &LoginHandler{
-		BaseAuthHandler:  baseAuthHander,
-		serviceRegistry:  serviceRegistry,
-		authorizeService: authorizeService,
-		userService:      userService,
+		AuthHandler:     authHandler,
+		serviceRegistry: serviceRegistry,
+		userService:     userService,
+		oauthProviders:  oauthProviders,
 	}
+}
+
+func (h *LoginHandler) getOAuthLoginURLs(serviceURL string) map[string]string {
+	query := url.Values{
+		"service": {serviceURL},
+	}
+	oauthLoginURLs := make(map[string]string)
+	for _, provider := range h.oauthProviders {
+		oauthLoginURLs[provider.Name()] = provider.GetAuthCodeURL(query.Encode())
+	}
+	return oauthLoginURLs
 }
 
 func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 	renew := ctx.QueryBool("renew")
 
-	session := sessions.Get(ctx)
 	if renew {
 		sessions.Destroy(ctx)
-	} else if session.UserID != 0 {
-		if user, err := h.userService.GetUserByID(ctx.Context(), session.UserID); err == nil {
-			return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
+	}
+
+	if serviceURL != "" {
+		baseServiceURL, err := parseServiceURL(serviceURL)
+		if err != nil {
+			return ctx.Redirect("/login")
+		}
+		if _, err := h.serviceRegistry.GetService(ctx.Context(), baseServiceURL); err != nil {
+			return ctx.Redirect("/login")
 		}
 	}
 
-	return render.RenderLogin(ctx, render.LoginPageData{})
+	session := sessions.Get(ctx)
+	if !renew && session.UserID != 0 {
+		if _, err := h.userService.GetUserByID(ctx.Context(), session.UserID); err == nil {
+			return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+		}
+	}
+
+	return render.RenderLogin(ctx, render.LoginPageData{
+		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
+	})
 }
 
 func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
@@ -63,42 +87,13 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		return render.RenderLogin(ctx, pageData)
 	}
 
-	sessions.Set(ctx, sessions.SessionData{
-		IP:        ctx.IP(),
-		UserID:    user.ID,
-		LoginTime: time.Now(),
-	})
-	return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
+	if err := h.createLoginSession(ctx, user, nil); err != nil {
+		return render.RenderInternalError(ctx)
+	}
+	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {
 	sessions.Destroy(ctx)
 	return ctx.Redirect("/login")
-}
-
-func (h *LoginHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
-	if serviceURL == "" {
-		return ctx.Redirect("/")
-	}
-	baseServiceURL, err := parseServiceURL(serviceURL)
-	if err != nil {
-		return render.RenderUnauthorizedError(ctx)
-	}
-
-	service, err := h.serviceRegistry.GetService(ctx.Context(), baseServiceURL)
-	if err != nil {
-		return render.RenderUnauthorizedError(ctx)
-	}
-
-	callbackURL := baseServiceURL
-	if service.StripQuery {
-		callbackURL = serviceURL
-	}
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, callbackURL)
-	if err != nil {
-		return err
-	}
-
-	redirectURL := fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID)
-	return ctx.Redirect(redirectURL)
 }

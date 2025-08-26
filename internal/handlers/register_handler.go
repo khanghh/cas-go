@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
@@ -37,14 +38,14 @@ func (form *RegisterForm) Validate() map[string]string {
 }
 
 type RegisterHandler struct {
-	*BaseAuthHandler
+	*AuthHandler
 	userService UserService
 }
 
-func NewRegisterHandler(baseAuthHander *BaseAuthHandler, userService UserService) *RegisterHandler {
+func NewRegisterHandler(authHandler *AuthHandler, userService UserService) *RegisterHandler {
 	return &RegisterHandler{
-		BaseAuthHandler: baseAuthHander,
-		userService:     userService,
+		AuthHandler: authHandler,
+		userService: userService,
 	}
 }
 
@@ -63,7 +64,7 @@ func (h *RegisterHandler) GetOnboarding(ctx *fiber.Ctx) error {
 			})
 		}
 	}
-	return h.redirectLogin(ctx, "", true)
+	return redirect(ctx, "/login", nil)
 }
 
 func (h *RegisterHandler) PostOnboarding(ctx *fiber.Ctx) error {
@@ -133,10 +134,10 @@ func (h *RegisterHandler) PostOnboarding(ctx *fiber.Ctx) error {
 		}
 	}
 
-	if err := h.handleLoginSuccess(ctx, user, userOAuth); err != nil {
+	if err := h.createLoginSession(ctx, user, nil); err != nil {
 		return render.RenderInternalError(ctx)
 	}
-	return h.redirectInternal(ctx, "/login")
+	return redirectInternal(ctx, "/login")
 }
 
 func (h *RegisterHandler) GetRegister(ctx *fiber.Ctx) error {
@@ -191,8 +192,10 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		return render.RenderInternalError(ctx)
 	}
 
-	if err := h.handleLoginSuccess(ctx, &user, nil); err != nil {
-		return render.RenderInternalError(ctx)
-	}
-	return h.redirectInternal(ctx, "/login")
+	sessions.Set(ctx, sessions.SessionData{
+		IP:        ctx.IP(),
+		UserID:    user.ID,
+		LoginTime: time.Now(),
+	})
+	return redirect(ctx, "/authorize", fiber.Map{"service": ctx.Query("service")})
 }

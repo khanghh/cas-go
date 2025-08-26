@@ -65,37 +65,47 @@
       </div>
 
       <div class="flex justify-center space-x-4">
-        <a href="/oauth/google/login"
+        {{if .googleOAuthURL}}
+        <a href="{{.googleOAuthURL}}"
           class="w-10 h-10 rounded-full bg-[#EA4335] flex items-center justify-center hover:shadow-md transition duration-200"
           title="Sign in with Google">
           <i class="fab fa-google text-white text-lg"></i>
         </a>
+        {{end}}
 
-        <a href="/oauth/facebook/login"
+        {{if .facebookOAuthURL}}
+        <a href="{{.facebookOAuthURL}}"
           class="w-10 h-10 rounded-full bg-[#1877F2] flex items-center justify-center hover:shadow-md transition duration-200"
           title="Sign in with Facebook">
           <i class="fab fa-facebook-f text-white text-lg"></i>
         </a>
+        {{end}}
 
-        <a href="/oauth/discord/login"
+        {{if .discordOAuthURL}}
+        <a href="{{.discordOAuthURL}}"
           class="w-10 h-10 rounded-full flex items-center justify-center hover:shadow-md transition duration-200"
           style="background-color: #5865F2;"
           title="Sign in with Discord">
           <i class="fab fa-discord text-white text-lg"></i>
         </a>
+        {{end}}
 
-        <a href="/oauth/microsoft/login"
+        {{if .microsoftOAuthURL}}
+        <a href="{{.microsoftOAuthURL}}"
           class="w-10 h-10 rounded-full flex items-center justify-center hover:shadow-md transition duration-200"
           style="background-color: #0078D4;"
           title="Sign in with Microsoft">
           <i class="fab fa-microsoft text-white text-lg"></i>
         </a>
+        {{end}}
 
-        <a href="/oauth/apple/login"
+        {{if .appleOAuthURL}}
+        <a href="{{.appleOAuthURL}}"
           class="w-10 h-10 rounded-full bg-black flex items-center justify-center hover:shadow-md transition duration-200"
           title="Sign in with Apple">
           <i class="fab fa-apple text-white text-lg"></i>
         </a>
+        {{end}}
       </div>
     </div>
 
