@@ -119,9 +119,10 @@ func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 	}
 
 	return render.RenderOAuthRegister(ctx, render.RegisterPageData{
-		Email:    userOAuth.Email,
-		FullName: userOAuth.DisplayName,
-		Picture:  userOAuth.Picture,
+		Email:         userOAuth.Email,
+		FullName:      userOAuth.DisplayName,
+		Picture:       userOAuth.Picture,
+		OAuthProvider: userOAuth.Provider,
 	})
 }
 

@@ -57,6 +57,7 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 		"fullName":      data.FullName,
 		"email":         data.Email,
 		"picture":       data.Picture,
+		"oauthProvider": data.OAuthProvider,
 		"usernameError": data.FormErrors["username"],
 		"passwordError": data.FormErrors["password"],
 		"emailError":    data.FormErrors["email"],

@@ -7,9 +7,10 @@ type LoginPageData struct {
 }
 
 type RegisterPageData struct {
-	Username   string
-	Email      string
-	FullName   string
-	Picture    string
-	FormErrors map[string]string
+	Username      string
+	Email         string
+	FullName      string
+	Picture       string
+	OAuthProvider string
+	FormErrors    map[string]string
 }
