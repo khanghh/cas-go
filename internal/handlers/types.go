@@ -14,7 +14,7 @@ type ServiceRegistry interface {
 
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User) error
+	CreateUser(ctx context.Context, user *model.User, rawPassword string) error
 	GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error)
 	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)

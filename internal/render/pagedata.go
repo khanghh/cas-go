@@ -7,19 +7,9 @@ type LoginPageData struct {
 }
 
 type RegisterPageData struct {
-	Username      string
-	Email         string
-	UsernameError string
-	PasswordError string
-	EmailError    string
-}
-
-type OnboardingPageData struct {
-	Username      string
-	Email         string
-	FullName      string
-	Picture       string
-	UsernameError string
-	PasswordError string
-	EmailError    string
+	Username   string
+	Email      string
+	FullName   string
+	Picture    string
+	FormErrors map[string]string
 }

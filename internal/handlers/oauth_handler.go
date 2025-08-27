@@ -36,7 +36,6 @@ func NewOAuthHandler(authHandler *AuthHandler, userService UserService, oauthPro
 }
 
 func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
-
 	user, err := h.userService.GetUserByID(ctx.Context(), userOAuth.UserID)
 	if err != nil {
 		// TODO: render user not found or disabled error
@@ -66,7 +65,7 @@ func (h *OAuthHandler) handleOAuthRegister(ctx *fiber.Ctx, userOAuth *model.User
 			OAuthID:   userOAuth.ID,
 			LoginTime: time.Now(),
 		})
-		return redirect(ctx, "/register", fiber.Map{"service": ctx.Query("service")})
+		return redirect(ctx, "/register/oauth", fiber.Map{"service": ctx.Query("service")})
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService struct {
@@ -28,10 +29,15 @@ func (s *UserService) GetUserByUsernameOrEmail(ctx context.Context, identifier s
 	return s.userRepo.First(ctx, query.User.Username.Eq(identifier))
 }
 
-func (s *UserService) CreateUser(ctx context.Context, user *model.User) error {
-	err := s.userRepo.Create(ctx, user)
+func (s *UserService) CreateUser(ctx context.Context, user *model.User, rawPassword string) error {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(rawPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	user.Password = string(passwordHash)
+
 	var mysqlErr *mysql.MySQLError
-	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
+	if err := s.userRepo.Create(ctx, user); errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
 		switch {
 		case strings.Contains(mysqlErr.Message, query.IdxUserUsername):
 			return ErrUserNameExists

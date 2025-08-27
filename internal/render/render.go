@@ -44,9 +44,9 @@ func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 		"siteName":      globalVars["siteName"],
 		"username":      data.Username,
 		"email":         data.Email,
-		"usernameError": data.UsernameError,
-		"emailError":    data.EmailError,
-		"passwordError": data.PasswordError,
+		"usernameError": data.FormErrors["username"],
+		"passwordError": data.FormErrors["password"],
+		"emailError":    data.FormErrors["email"],
 	})
 }
 
@@ -57,9 +57,9 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 		"fullName":      data.FullName,
 		"email":         data.Email,
 		"picture":       data.Picture,
-		"usernameError": data.UsernameError,
-		"passwordError": data.PasswordError,
-		"emailError":    data.EmailError,
+		"usernameError": data.FormErrors["username"],
+		"passwordError": data.FormErrors["password"],
+		"emailError":    data.FormErrors["email"],
 	})
 }
 
