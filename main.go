@@ -125,7 +125,7 @@ func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
 
 func mustInitHtmlEngine(config *config.Config) fiber.Views {
 	render.InitValues(fiber.Map{
-		"appName": config.AppName,
+		"siteName": config.SiteName,
 	})
 	return render.NewHtmlEngine(config.TemplateDir)
 }

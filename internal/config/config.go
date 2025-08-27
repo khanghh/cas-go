@@ -43,7 +43,7 @@ type OAuthProviderConfig struct {
 
 type Config struct {
 	Debug              bool          `yaml:"debug"`
-	AppName            string        `yaml:"appName"`
+	SiteName           string        `yaml:"siteName"`
 	BaseURL            string        `yaml:"baseURL"`
 	ListenAddr         string        `yaml:"listenAddr"`
 	StaticDir          string        `yaml:"staticDir"`

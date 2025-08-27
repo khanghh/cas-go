@@ -28,7 +28,7 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 
 func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
-		"appName":           globalVars["appName"],
+		"siteName":          globalVars["siteName"],
 		"identifier":        data.Identifier,
 		"loginError":        data.LoginError,
 		"googleOAuthURL":    data.OAuthLoginURLs["google"],
@@ -41,7 +41,7 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 
 func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("register", fiber.Map{
-		"appName":       globalVars["appName"],
+		"siteName":      globalVars["siteName"],
 		"username":      data.Username,
 		"email":         data.Email,
 		"usernameError": data.UsernameError,
@@ -50,9 +50,9 @@ func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	})
 }
 
-func RenderOnboarding(ctx *fiber.Ctx, data OnboardingPageData) error {
-	return ctx.Render("onboarding", fiber.Map{
-		"appName":       globalVars["appName"],
+func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
+	return ctx.Render("oauth-register", fiber.Map{
+		"siteName":      globalVars["siteName"],
 		"username":      data.Username,
 		"fullName":      data.FullName,
 		"email":         data.Email,
@@ -65,18 +65,18 @@ func RenderOnboarding(ctx *fiber.Ctx, data OnboardingPageData) error {
 
 func RenderUnauthorizedError(ctx *fiber.Ctx) error {
 	return ctx.Render("unauthorized", fiber.Map{
-		"appName": globalVars["appName"],
+		"siteName": globalVars["siteName"],
 	})
 }
 
 func RenderInternalError(ctx *fiber.Ctx) error {
 	return ctx.Render("internal-error", fiber.Map{
-		"appName": globalVars["appName"],
+		"siteName": globalVars["siteName"],
 	})
 }
 
 func RenderHomePage(ctx *fiber.Ctx) error {
 	return ctx.Render("home", fiber.Map{
-		"appName": globalVars["appName"],
+		"siteName": globalVars["siteName"],
 	})
 }
