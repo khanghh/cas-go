@@ -198,14 +198,13 @@ func run(ctx *cli.Context) error {
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
 	router.Static("/static/*", config.StaticDir)
+	router.Get("/", withSession(authHandler.GetHome))
+	router.Get("/authorize", withSession(authHandler.GetAuthorize))
 	router.Get("/login", withSession(loginHandler.GetLogin))
 	router.Post("/login", withSession(loginHandler.PostLogin))
 	router.Post("/logout", withSession(loginHandler.PostLogout))
 	router.Get("/register", withSession(registerHandler.GetRegister))
 	router.Post("/register", withSession(registerHandler.PostRegister))
-	router.Post("/onboarding", withSession(registerHandler.PostOnboarding))
-	router.Get("/onboarding", withSession(registerHandler.GetOnboarding))
-	router.Get("/authorize", withSession(authHandler.GetAuthorize))
 	router.Get("/oauth/:provider/callback", withSession(oauthHandler.GetOAuthCallback))
 
 	return router.Listen(config.ListenAddr)

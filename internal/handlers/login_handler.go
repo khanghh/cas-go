@@ -45,20 +45,8 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 
 	if renew {
 		sessions.Destroy(ctx)
-	}
-
-	if serviceURL != "" {
-		baseServiceURL, err := parseServiceURL(serviceURL)
-		if err != nil {
-			return ctx.Redirect("/login")
-		}
-		if _, err := h.serviceRegistry.GetService(ctx.Context(), baseServiceURL); err != nil {
-			return ctx.Redirect("/login")
-		}
-	}
-
-	session := sessions.Get(ctx)
-	if !renew && session.UserID != 0 {
+	} else if serviceURL != "" {
+		session := sessions.Get(ctx)
 		if _, err := h.userService.GetUserByID(ctx.Context(), session.UserID); err == nil {
 			return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 		}

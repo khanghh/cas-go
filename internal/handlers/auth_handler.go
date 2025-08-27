@@ -82,3 +82,11 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 	}
 	return h.handleAuthorizeServiceAccess(ctx, user, service)
 }
+
+func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
+	if session.UserID != 0 {
+		return render.RenderHomePage(ctx)
+	}
+	return redirect(ctx, "/login", nil)
+}

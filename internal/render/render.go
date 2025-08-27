@@ -74,3 +74,9 @@ func RenderInternalError(ctx *fiber.Ctx) error {
 		"appName": globalVars["appName"],
 	})
 }
+
+func RenderHomePage(ctx *fiber.Ctx) error {
+	return ctx.Render("home", fiber.Map{
+		"appName": globalVars["appName"],
+	})
+}
