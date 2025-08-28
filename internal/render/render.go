@@ -65,13 +65,13 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 }
 
 func RenderUnauthorizedError(ctx *fiber.Ctx) error {
-	return ctx.Render("unauthorized", fiber.Map{
+	return ctx.Render("error-unauthorized", fiber.Map{
 		"siteName": globalVars["siteName"],
 	})
 }
 
 func RenderInternalError(ctx *fiber.Ctx) error {
-	return ctx.Render("internal-error", fiber.Map{
+	return ctx.Render("error-internal", fiber.Map{
 		"siteName": globalVars["siteName"],
 	})
 }
