@@ -41,15 +41,13 @@ func (h *LoginHandler) getOAuthLoginURLs(serviceURL string) map[string]string {
 
 func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
-	renew := ctx.QueryBool("renew")
 
-	if renew {
-		sessions.Destroy(ctx)
-	} else if serviceURL != "" {
-		session := sessions.Get(ctx)
-		if _, err := h.userService.GetUserByID(ctx.Context(), session.UserID); err == nil {
-			return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+	session := sessions.Get(ctx)
+	if session.UserID != 0 {
+		if serviceURL == "" {
+			return ctx.Redirect("/")
 		}
+		return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 	}
 
 	return render.RenderLogin(ctx, render.LoginPageData{
@@ -77,6 +75,9 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 
 	if err := h.createLoginSession(ctx, user, nil); err != nil {
 		return render.RenderInternalError(ctx)
+	}
+	if serviceURL == "" {
+		return ctx.Redirect("/")
 	}
 	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
