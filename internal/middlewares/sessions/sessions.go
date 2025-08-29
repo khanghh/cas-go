@@ -62,7 +62,7 @@ func Destroy(ctx *fiber.Ctx) error {
 	return sess.Destroy()
 }
 
-func injectSession(store *session.Store, next fiber.Handler) fiber.Handler {
+func SessionMiddleware(store *session.Store) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		session, err := store.Get(ctx)
 		if err != nil {
@@ -70,7 +70,7 @@ func injectSession(store *session.Store, next fiber.Handler) fiber.Handler {
 		}
 
 		ctx.Locals(injectSessionKey, session)
-		if err := next(ctx); err != nil {
+		if err := ctx.Next(); err != nil {
 			return err
 		}
 
@@ -81,18 +81,6 @@ func injectSession(store *session.Store, next fiber.Handler) fiber.Handler {
 			return session.Save()
 		}
 
-		return nil
-	}
-}
-
-func WithSessionMiddleware(store *session.Store) Middleware {
-	return func(next fiber.Handler) fiber.Handler {
-		return injectSession(store, next)
-	}
-}
-
-func SessionMiddleware(store *session.Store) fiber.Handler {
-	return func(ctx *fiber.Ctx) error {
 		return nil
 	}
 }
