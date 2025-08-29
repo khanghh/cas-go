@@ -19,6 +19,9 @@ func validateUsername(username string) error {
 	if len(username) > 32 {
 		return errors.New("Username must be less than 32 characters.")
 	}
+	if first := username[0]; !(('A' <= first && first <= 'Z') || ('a' <= first && first <= 'z')) {
+		return errors.New("Username must start with a letter.")
+	}
 	if !usernameRegex.MatchString(username) {
 		return errors.New("Username can only contain letters, numbers, and underscores.")
 	}

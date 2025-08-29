@@ -57,7 +57,7 @@
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
   <div class="bg-white rounded-xl shadow-lg overflow-hidden w-full max-w-md">
     <div class="p-8">
-     <div class="text-center mb-8">
+      <div class="text-center mb-8">
         <h1 class="text-2xl font-bold text-gray-800">Create your account</h1>
         <p class="text-gray-600 mt-2">Fill out the form to create your account</p>
       </div>
@@ -151,7 +151,7 @@
 
       </form>
     </div>
-     <div class="bg-gray-50 px-8 py-6 text-center">
+    <div class="bg-gray-50 px-8 py-6 text-center">
       <p class="text-gray-600 text-sm">
         Already have an account?
         <a href="/login" class="text-blue-600 hover:text-blue-500 font-medium">Sign in</a>
@@ -256,6 +256,10 @@
           usernameError.textContent = 'Username is required.';
           usernameError.classList.remove('hidden');
           valid = false;
+        } else if (/^[A-Za-z]/.test(str)) {
+          usernameError.textContent = 'Username must start with a letter.';
+          usernameError.classList.remove('hidden');
+          valid = false;
         } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
           usernameError.textContent = 'Username can only contain letters, numbers, and underscores.';
           usernameError.classList.remove('hidden');
@@ -302,6 +306,7 @@
         if (!valid) e.preventDefault();
       });
     });
+
   </script>
 </body>
 
