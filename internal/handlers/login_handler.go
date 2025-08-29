@@ -60,7 +60,10 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	username := ctx.FormValue("username")
 	password := ctx.FormValue("password")
 
-	pageData := render.LoginPageData{Identifier: username}
+	pageData := render.LoginPageData{
+		Identifier:     username,
+		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
+	}
 
 	user, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), username)
 	if err != nil {
