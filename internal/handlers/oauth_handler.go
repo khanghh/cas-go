@@ -42,7 +42,7 @@ func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAu
 		return ctx.SendStatus(http.StatusForbidden)
 	}
 
-	if err := h.createLoginSession(ctx, user, nil); err != nil {
+	if err := h.createUserSession(ctx, user, nil); err != nil {
 		return render.RenderInternalError(ctx)
 	}
 

@@ -174,7 +174,7 @@ func run(ctx *cli.Context) error {
 	var (
 		withSession    = sessions.SessionMiddleware(sessionStore)
 		oauthProviders = mustInitOAuthProviders(config)
-		authHandler    = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, config.StateEncryptionKey)
+		authHandler    = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService, config.MasterKey)
 	)
 
 	// handlers

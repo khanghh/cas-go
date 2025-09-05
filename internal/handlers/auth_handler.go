@@ -26,7 +26,7 @@ func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeS
 	}
 }
 
-func (h *AuthHandler) createLoginSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) error {
+func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) error {
 	sessions.Destroy(ctx)
 	var oauthID uint
 	if userOAuth != nil {

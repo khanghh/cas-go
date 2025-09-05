@@ -76,7 +76,7 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		return render.RenderLogin(ctx, pageData)
 	}
 
-	if err := h.createLoginSession(ctx, user, nil); err != nil {
+	if err := h.createUserSession(ctx, user, nil); err != nil {
 		return render.RenderInternalError(ctx)
 	}
 	if serviceURL == "" {

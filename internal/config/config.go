@@ -3,7 +3,6 @@ package config
 import (
 	"time"
 
-	"github.com/khanghh/cas-go/params"
 	"github.com/spf13/viper"
 )
 
@@ -41,19 +40,38 @@ type OAuthProviderConfig struct {
 	Scope        []string `yaml:"scope"`
 }
 
+type SMTPConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	From     string `yaml:"from"`
+	Timeout  int    `yaml:"timeout"`
+	TLS      bool   `yaml:"tls"`
+	CertFile string `yaml:"cert_file"`
+	KeyFile  string `yaml:"key_file"`
+	CAFile   string `yaml:"ca_file"`
+}
+
+type MailConfig struct {
+	Backend    string     `yaml:"backend"`
+	SMTPConfig SMTPConfig `yaml:"smtp"`
+}
+
 type Config struct {
-	Debug              bool          `yaml:"debug"`
-	SiteName           string        `yaml:"siteName"`
-	BaseURL            string        `yaml:"baseURL"`
-	ListenAddr         string        `yaml:"listenAddr"`
-	StaticDir          string        `yaml:"staticDir"`
-	TemplateDir        string        `yaml:"templateDir"`
-	AllowOrigins       []string      `yaml:"allowOrigins"`
-	RedisURL           string        `yaml:"redisURL"`
-	Session            SessionConfig `yaml:"session"`
-	MySQL              MySQLConfig   `yaml:"mysql"`
-	StateEncryptionKey string        `yaml:"stateEncryptionKey"`
-	AuthProviders      struct {
+	Debug         bool          `yaml:"debug"`
+	SiteName      string        `yaml:"siteName"`
+	BaseURL       string        `yaml:"baseURL"`
+	MasterKey     string        `yaml:"masterKey"`
+	ListenAddr    string        `yaml:"listenAddr"`
+	StaticDir     string        `yaml:"staticDir"`
+	TemplateDir   string        `yaml:"templateDir"`
+	AllowOrigins  []string      `yaml:"allowOrigins"`
+	RedisURL      string        `yaml:"redisURL"`
+	Session       SessionConfig `yaml:"session"`
+	MySQL         MySQLConfig   `yaml:"mysql"`
+	Mail          MailConfig    `yaml:"mail"`
+	AuthProviders struct {
 		OAuth map[string]OAuthProviderConfig `yaml:"oauth"`
 		Ldap  LdapConfig                     `yaml:"ldap"`
 	} `yaml:"authProviders"`
@@ -68,10 +86,6 @@ func (c *Config) Sanitize() error {
 	}
 	if c.Session.SessionMaxAge == 0 {
 		c.Session.SessionMaxAge = DefaultCookieMaxAge
-	}
-
-	if c.StateEncryptionKey == "" {
-		c.StateEncryptionKey = params.DefaultStateEncryptionKey
 	}
 	return nil
 }
