@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Required - {{.siteName}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-lg overflow-hidden w-full max-w-md">
+    <div class="p-8">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto bg-blue-100 text-blue-600 flex items-center justify-center rounded-full mb-4">
+          <i class="fas fa-shield-alt text-2xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800">Verification Required</h1>
+        <p class="text-gray-600 mt-2">For your security, please verify your identity to continue.</p>
+      </div>
+
+      {{if .methodError}}
+      <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <i class="fas fa-exclamation-circle mr-2"></i>
+        {{.methodError}}
+      </div>
+      {{end}}
+
+      <form class="space-y-4" method="POST">
+        {{if .smsEnabled}}
+        <button type="submit" name="method" value="sms"
+          class="w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 transition group">
+          <i class="fas fa-comment-sms text-blue-600 text-xl mr-3"></i>
+          <span class="text-gray-800 font-medium flex-1 text-left">SMS OTP ({{.maskedPhone}})</span>
+          <i class="fas fa-angle-right text-gray-400 group-hover:text-gray-600"></i>
+        </button>
+        {{end}}
+
+        {{if .emailEnabled}}
+        <button type="submit" name="method" value="email"
+          class="w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 transition group">
+          <i class="fas fa-envelope text-blue-600 text-xl mr-3"></i>
+          <span class="text-gray-800 font-medium flex-1 text-left">Email OTP ({{.maskedEmail}})</span>
+          <i class="fas fa-angle-right text-gray-400 group-hover:text-gray-600"></i>
+        </button>
+        {{end}}
+
+        {{if .totpEnabled}}
+        <button type="submit" name="method" value="totp"
+          class="w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 transition group">
+          <i class="fas fa-mobile-screen text-blue-600 text-xl mr-3"></i>
+          <span class="text-gray-800 font-medium flex-1 text-left">Google Authenticator</span>
+          <i class="fas fa-angle-right text-gray-400 group-hover:text-gray-600"></i>
+        </button>
+        {{end}}
+
+      </form>
+    </div>
+
+    <div class="bg-gray-50 px-8 py-4 text-center">
+      <form action="/logout" method="POST">
+        <input type="hidden" name="_csrf" value="token">
+        <button class="text-red-600 hover:text-red-500 text-sm font-medium" type="submit">
+          Log out >>
+        </button>
+      </form>
+    </div>
+  </div>
+</body>
+
+</html>

@@ -14,3 +14,12 @@ type RegisterPageData struct {
 	OAuthProvider string
 	FormErrors    map[string]string
 }
+
+type VerificationRequiredPageData struct {
+	EmailEnabled bool
+	SMSEnableled bool
+	TOTPEnabled  bool
+	IsMasked     bool
+	Email        string
+	Phone        string
+}

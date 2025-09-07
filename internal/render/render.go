@@ -81,3 +81,20 @@ func RenderHomePage(ctx *fiber.Ctx) error {
 		"siteName": globalVars["siteName"],
 	})
 }
+
+func RenderVerificationRequired(ctx *fiber.Ctx, pageData VerificationRequiredPageData) error {
+	email := pageData.Email
+	phone := formatPhone(pageData.Phone)
+	if pageData.IsMasked {
+		email = maskEmail(email)
+		phone = maskPhone(phone)
+	}
+	return ctx.Render("verification-required", fiber.Map{
+		"siteName":     globalVars["siteName"],
+		"emailEnabled": pageData.EmailEnabled,
+		"smsEnabled":   pageData.SMSEnableled,
+		"totpEnabled":  pageData.TOTPEnabled,
+		"maskedEmail":  email,
+		"maskedPhone":  phone,
+	})
+}
