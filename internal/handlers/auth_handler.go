@@ -11,34 +11,31 @@ import (
 )
 
 type AuthHandler struct {
-	serviceRegistry    ServiceRegistry
-	authorizeService   AuthorizeService
-	userService        UserService
-	stateEncryptionKey string
+	serviceRegistry  ServiceRegistry
+	authorizeService AuthorizeService
+	userService      UserService
 }
 
-func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeService, userService UserService, stateEncryptionKey string) *AuthHandler {
+func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeService, userService UserService) *AuthHandler {
 	return &AuthHandler{
-		serviceRegistry:    serviceRegistry,
-		authorizeService:   authorizeService,
-		userService:        userService,
-		stateEncryptionKey: stateEncryptionKey,
+		serviceRegistry:  serviceRegistry,
+		authorizeService: authorizeService,
+		userService:      userService,
 	}
 }
 
-func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) error {
+func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) sessions.SessionData {
 	sessions.Destroy(ctx)
-	var oauthID uint
-	if userOAuth != nil {
-		oauthID = userOAuth.ID
-	}
-	sessions.Set(ctx, sessions.SessionData{
+	session := sessions.SessionData{
 		IP:        ctx.IP(),
 		UserID:    user.ID,
-		OAuthID:   oauthID,
 		LoginTime: time.Now(),
-	})
-	return nil
+	}
+	if userOAuth != nil {
+		session.OAuthID = userOAuth.ID
+	}
+	sessions.Set(ctx, session)
+	return session
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
@@ -85,7 +82,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if session.UserID != 0 {
+	if !session.IsAuthenticated() {
 		return render.RenderHomePage(ctx)
 	}
 	return redirect(ctx, "/login", nil)

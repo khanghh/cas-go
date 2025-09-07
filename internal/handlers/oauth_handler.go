@@ -9,7 +9,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
-	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/model"
 )
 
@@ -42,9 +41,7 @@ func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAu
 		return ctx.SendStatus(http.StatusForbidden)
 	}
 
-	if err := h.createUserSession(ctx, user, nil); err != nil {
-		return render.RenderInternalError(ctx)
-	}
+	h.createUserSession(ctx, user, userOAuth)
 
 	state := ctx.Query("state")
 	queryParams, err := url.ParseQuery(state)

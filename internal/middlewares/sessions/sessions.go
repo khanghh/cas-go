@@ -25,11 +25,16 @@ type SessionData struct {
 	OAuthID    uint      // user oauth id
 	LoginTime  time.Time // last login time
 	LastSeen   time.Time // last request time
-	ExpireTime time.Time // session expire time
+	Require2FA bool      // require 2fa
+	ExpireAt   time.Time // session expire time
 }
 
 func (s SessionData) ID() string {
 	return s.id
+}
+
+func (s *SessionData) IsAuthenticated() bool {
+	return s.UserID != 0 && !s.Require2FA
 }
 
 func init() {

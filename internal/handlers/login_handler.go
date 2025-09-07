@@ -43,7 +43,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 
 	session := sessions.Get(ctx)
-	if session.UserID != 0 {
+	if !session.IsAuthenticated() {
 		if serviceURL == "" {
 			return ctx.Redirect("/")
 		}
@@ -75,10 +75,8 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		pageData.LoginError = "Invalid username or password"
 		return render.RenderLogin(ctx, pageData)
 	}
+	h.createUserSession(ctx, user, nil)
 
-	if err := h.createUserSession(ctx, user, nil); err != nil {
-		return render.RenderInternalError(ctx)
-	}
 	if serviceURL == "" {
 		return ctx.Redirect("/")
 	}
