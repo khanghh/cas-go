@@ -27,9 +27,6 @@ func newToken(db *gorm.DB, opts ...gen.DOOption) token {
 	tableName := _token.tokenDo.TableName()
 	_token.ALL = field.NewAsterisk(tableName)
 	_token.ID = field.NewUint(tableName, "id")
-	_token.CreatedAt = field.NewTime(tableName, "created_at")
-	_token.UpdatedAt = field.NewTime(tableName, "updated_at")
-	_token.DeletedAt = field.NewField(tableName, "deleted_at")
 	_token.Code = field.NewString(tableName, "code")
 	_token.User = field.NewString(tableName, "user")
 	_token.Realm = field.NewString(tableName, "realm")
@@ -39,6 +36,9 @@ func newToken(db *gorm.DB, opts ...gen.DOOption) token {
 	_token.ExpireIn = field.NewInt64(tableName, "expire_in")
 	_token.Type = field.NewString(tableName, "type")
 	_token.Revoked = field.NewBool(tableName, "revoked")
+	_token.CreatedAt = field.NewTime(tableName, "created_at")
+	_token.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_token.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_token.fillFieldMap()
 
@@ -50,9 +50,6 @@ type token struct {
 
 	ALL          field.Asterisk
 	ID           field.Uint
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
 	Code         field.String
 	User         field.String
 	Realm        field.String
@@ -62,6 +59,9 @@ type token struct {
 	ExpireIn     field.Int64
 	Type         field.String
 	Revoked      field.Bool
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -79,9 +79,6 @@ func (t token) As(alias string) *token {
 func (t *token) updateTableName(table string) *token {
 	t.ALL = field.NewAsterisk(table)
 	t.ID = field.NewUint(table, "id")
-	t.CreatedAt = field.NewTime(table, "created_at")
-	t.UpdatedAt = field.NewTime(table, "updated_at")
-	t.DeletedAt = field.NewField(table, "deleted_at")
 	t.Code = field.NewString(table, "code")
 	t.User = field.NewString(table, "user")
 	t.Realm = field.NewString(table, "realm")
@@ -91,6 +88,9 @@ func (t *token) updateTableName(table string) *token {
 	t.ExpireIn = field.NewInt64(table, "expire_in")
 	t.Type = field.NewString(table, "type")
 	t.Revoked = field.NewBool(table, "revoked")
+	t.CreatedAt = field.NewTime(table, "created_at")
+	t.UpdatedAt = field.NewTime(table, "updated_at")
+	t.DeletedAt = field.NewField(table, "deleted_at")
 
 	t.fillFieldMap()
 
@@ -109,9 +109,6 @@ func (t *token) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 func (t *token) fillFieldMap() {
 	t.fieldMap = make(map[string]field.Expr, 13)
 	t.fieldMap["id"] = t.ID
-	t.fieldMap["created_at"] = t.CreatedAt
-	t.fieldMap["updated_at"] = t.UpdatedAt
-	t.fieldMap["deleted_at"] = t.DeletedAt
 	t.fieldMap["code"] = t.Code
 	t.fieldMap["user"] = t.User
 	t.fieldMap["realm"] = t.Realm
@@ -121,6 +118,9 @@ func (t *token) fillFieldMap() {
 	t.fieldMap["expire_in"] = t.ExpireIn
 	t.fieldMap["type"] = t.Type
 	t.fieldMap["revoked"] = t.Revoked
+	t.fieldMap["created_at"] = t.CreatedAt
+	t.fieldMap["updated_at"] = t.UpdatedAt
+	t.fieldMap["deleted_at"] = t.DeletedAt
 }
 
 func (t token) clone(db *gorm.DB) token {

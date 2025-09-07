@@ -27,15 +27,15 @@ func newUserOAuth(db *gorm.DB, opts ...gen.DOOption) userOAuth {
 	tableName := _userOAuth.userOAuthDo.TableName()
 	_userOAuth.ALL = field.NewAsterisk(tableName)
 	_userOAuth.ID = field.NewUint(tableName, "id")
-	_userOAuth.CreatedAt = field.NewTime(tableName, "created_at")
-	_userOAuth.UpdatedAt = field.NewTime(tableName, "updated_at")
-	_userOAuth.DeletedAt = field.NewField(tableName, "deleted_at")
 	_userOAuth.UserID = field.NewUint(tableName, "user_id")
 	_userOAuth.Provider = field.NewString(tableName, "provider")
 	_userOAuth.ProfileID = field.NewString(tableName, "profile_id")
 	_userOAuth.Email = field.NewString(tableName, "email")
 	_userOAuth.DisplayName = field.NewString(tableName, "display_name")
 	_userOAuth.Picture = field.NewString(tableName, "picture")
+	_userOAuth.CreatedAt = field.NewTime(tableName, "created_at")
+	_userOAuth.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_userOAuth.DeletedAt = field.NewField(tableName, "deleted_at")
 
 	_userOAuth.fillFieldMap()
 
@@ -47,15 +47,15 @@ type userOAuth struct {
 
 	ALL         field.Asterisk
 	ID          field.Uint
-	CreatedAt   field.Time
-	UpdatedAt   field.Time
-	DeletedAt   field.Field
 	UserID      field.Uint
 	Provider    field.String
 	ProfileID   field.String
 	Email       field.String
 	DisplayName field.String
 	Picture     field.String
+	CreatedAt   field.Time
+	UpdatedAt   field.Time
+	DeletedAt   field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -73,15 +73,15 @@ func (u userOAuth) As(alias string) *userOAuth {
 func (u *userOAuth) updateTableName(table string) *userOAuth {
 	u.ALL = field.NewAsterisk(table)
 	u.ID = field.NewUint(table, "id")
-	u.CreatedAt = field.NewTime(table, "created_at")
-	u.UpdatedAt = field.NewTime(table, "updated_at")
-	u.DeletedAt = field.NewField(table, "deleted_at")
 	u.UserID = field.NewUint(table, "user_id")
 	u.Provider = field.NewString(table, "provider")
 	u.ProfileID = field.NewString(table, "profile_id")
 	u.Email = field.NewString(table, "email")
 	u.DisplayName = field.NewString(table, "display_name")
 	u.Picture = field.NewString(table, "picture")
+	u.CreatedAt = field.NewTime(table, "created_at")
+	u.UpdatedAt = field.NewTime(table, "updated_at")
+	u.DeletedAt = field.NewField(table, "deleted_at")
 
 	u.fillFieldMap()
 
@@ -100,15 +100,15 @@ func (u *userOAuth) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 func (u *userOAuth) fillFieldMap() {
 	u.fieldMap = make(map[string]field.Expr, 10)
 	u.fieldMap["id"] = u.ID
-	u.fieldMap["created_at"] = u.CreatedAt
-	u.fieldMap["updated_at"] = u.UpdatedAt
-	u.fieldMap["deleted_at"] = u.DeletedAt
 	u.fieldMap["user_id"] = u.UserID
 	u.fieldMap["provider"] = u.Provider
 	u.fieldMap["profile_id"] = u.ProfileID
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["display_name"] = u.DisplayName
 	u.fieldMap["picture"] = u.Picture
+	u.fieldMap["created_at"] = u.CreatedAt
+	u.fieldMap["updated_at"] = u.UpdatedAt
+	u.fieldMap["deleted_at"] = u.DeletedAt
 }
 
 func (u userOAuth) clone(db *gorm.DB) userOAuth {

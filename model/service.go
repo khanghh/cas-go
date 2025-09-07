@@ -1,14 +1,19 @@
 package model
 
 import (
+	"time"
+
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	gorm.Model
+	ID          uint   `gorm:"primarykey"`
 	Name        string `gorm:"size:128;not null"`
 	CallbackURL string `gorm:"size:1024;not null"`
 	AutoLogin   bool   `gorm:"not null;default:false"`
 	PublicKey   string `gorm:"size:1024;not null"`
 	StripQuery  bool   `gorm:"not null;default:false"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
 }
