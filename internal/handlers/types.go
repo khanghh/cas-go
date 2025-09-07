@@ -12,15 +12,16 @@ type ServiceRegistry interface {
 	GetService(ctx context.Context, serviceURL string) (*model.Service, error)
 }
 
+type AuthorizeService interface {
+	ServiceRegistry
+	GenerateServiceTicket(ctx context.Context, userID uint, serviceURL string) (*auth.ServiceTicket, error)
+	ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (bool, error)
+}
+
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
 	CreateUser(ctx context.Context, user *model.User, rawPassword string) error
 	GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error)
 	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
-}
-
-type AuthorizeService interface {
-	GenerateServiceTicket(ctx context.Context, userID uint, serviceURL string) (*auth.ServiceTicket, error)
-	ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (bool, error)
 }

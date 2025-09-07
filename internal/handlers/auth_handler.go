@@ -11,14 +11,12 @@ import (
 )
 
 type AuthHandler struct {
-	serviceRegistry  ServiceRegistry
 	authorizeService AuthorizeService
 	userService      UserService
 }
 
-func NewAuthHandler(serviceRegistry ServiceRegistry, authorizeService AuthorizeService, userService UserService) *AuthHandler {
+func NewAuthHandler(authorizeService AuthorizeService, userService UserService) *AuthHandler {
 	return &AuthHandler{
-		serviceRegistry:  serviceRegistry,
 		authorizeService: authorizeService,
 		userService:      userService,
 	}
@@ -44,7 +42,7 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.U
 		return render.RenderUnauthorizedError(ctx)
 	}
 
-	service, err := h.serviceRegistry.GetService(ctx.Context(), baseServiceURL)
+	service, err := h.authorizeService.GetService(ctx.Context(), baseServiceURL)
 	if err != nil {
 		return render.RenderUnauthorizedError(ctx)
 	}

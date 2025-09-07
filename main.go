@@ -167,14 +167,14 @@ func run(ctx *cli.Context) error {
 	var (
 		userService      = users.NewUserService(userRepo, userOAuthRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
-		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo, tokenRepo)
+		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry, tokenRepo)
 	)
 
 	// middlewares and dependencies
 	var (
 		withSession    = sessions.SessionMiddleware(sessionStore)
 		oauthProviders = mustInitOAuthProviders(config)
-		authHandler    = handlers.NewAuthHandler(serviceRegistry, authorizeService, userService)
+		authHandler    = handlers.NewAuthHandler(authorizeService, userService)
 	)
 
 	// handlers

@@ -20,9 +20,11 @@ type ServiceTicket struct {
 	CreateTime  time.Time `json:"createTime"`
 }
 
+type registry = ServiceRegistry
+
 type AuthorizeService struct {
+	*registry
 	ticketStore *TicketStore
-	serviceRepo repository.ServiceRepository
 	tokenRepo   repository.TokenRepository
 }
 
@@ -61,7 +63,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 		return false, ErrServiceUrlMismatch
 	}
 
-	service, err := s.serviceRepo.GetService(ctx, serviceURL)
+	service, err := s.registry.GetService(ctx, serviceURL)
 	if err != nil {
 		return false, ErrServiceNotFound
 	}
@@ -77,7 +79,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 }
 
 func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, svcCallbackURL string) (*ServiceTicket, error) {
-	service, err := s.serviceRepo.GetService(ctx, svcCallbackURL)
+	service, err := s.registry.GetService(ctx, svcCallbackURL)
 	if err != nil {
 		return nil, ErrServiceNotFound
 	}
@@ -96,10 +98,10 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 	return st, nil
 }
 
-func NewAuthorizeService(ticketStore *TicketStore, serviceRepo repository.ServiceRepository, tokenRepo repository.TokenRepository) *AuthorizeService {
+func NewAuthorizeService(ticketStore *TicketStore, serviceRegistry *ServiceRegistry, tokenRepo repository.TokenRepository) *AuthorizeService {
 	return &AuthorizeService{
 		ticketStore: ticketStore,
-		serviceRepo: serviceRepo,
+		registry:    serviceRegistry,
 		tokenRepo:   tokenRepo,
 	}
 }
