@@ -13,68 +13,67 @@ const (
 )
 
 type MySQLConfig struct {
-	Dsn             string `yaml:"dsn"`
-	TablePrefix     string `yaml:"tablePrefix"`
-	MaxIdleConns    int    `yaml:"maxIdleConns"`
-	MaxOpenConns    int    `yaml:"maxOpenConns"`
-	ConnMaxIdleTime int    `yaml:"connMaxIdleTime"`
-	ConnMaxLifetime int    `yaml:"connMaxLifetime"`
+	Dsn             string `mapstructure:"dsn"`
+	TablePrefix     string `mapstructure:"tablePrefix"`
+	MaxIdleConns    int    `mapstructure:"maxIdleConns"`
+	MaxOpenConns    int    `mapstructure:"maxOpenConns"`
+	ConnMaxIdleTime int    `mapstructure:"connMaxIdleTime"`
+	ConnMaxLifetime int    `mapstructure:"connMaxLifetime"`
 }
 
 type SessionConfig struct {
-	SessionMaxAge  time.Duration `yaml:"sessionMaxAge"`
-	CookieName     string        `yaml:"cookieName"`
-	CookieHttpOnly bool          `yaml:"cookieHttpOnly"`
-	CookieSecure   bool          `yaml:"cookieSecure"`
+	SessionMaxAge  time.Duration `mapstructure:"sessionMaxAge"`
+	CookieName     string        `mapstructure:"cookieName"`
+	CookieHttpOnly bool          `mapstructure:"cookieHttpOnly"`
+	CookieSecure   bool          `mapstructure:"cookieSecure"`
 }
 
 type LdapConfig struct {
-	Address  string `yaml:"address"`
-	BaseDn   string `yaml:"baseDn"`
-	Password string `yaml:"password"`
+	Address  string `mapstructure:"address"`
+	BaseDN   string `mapstructure:"baseDN"`
+	Password string `mapstructure:"password"`
 }
 
 type OAuthProviderConfig struct {
-	ClientID     string   `yaml:"clientID"`
-	ClientSecret string   `yaml:"clientSecret"`
-	Scope        []string `yaml:"scope"`
+	ClientID     string   `mapstructure:"clientID"`
+	ClientSecret string   `mapstructure:"clientSecret"`
+	Scope        []string `mapstructure:"scope"`
 }
 
 type SMTPConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	From     string `yaml:"from"`
-	Timeout  int    `yaml:"timeout"`
-	TLS      bool   `yaml:"tls"`
-	CertFile string `yaml:"cert_file"`
-	KeyFile  string `yaml:"key_file"`
-	CAFile   string `yaml:"ca_file"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+	TLS      bool   `mapstructure:"tls"`
+	CertFile string `mapstructure:"certFile"`
+	KeyFile  string `mapstructure:"keyFile"`
+	CAFile   string `mapstructure:"caFile"`
 }
 
 type MailConfig struct {
-	Backend    string     `yaml:"backend"`
-	SMTPConfig SMTPConfig `yaml:"smtp"`
+	Backend string     `mapstructure:"backend"`
+	SMTP    SMTPConfig `mapstructure:"smtp"`
 }
 
 type Config struct {
-	Debug         bool          `yaml:"debug"`
-	SiteName      string        `yaml:"siteName"`
-	BaseURL       string        `yaml:"baseURL"`
-	MasterKey     string        `yaml:"masterKey"`
-	ListenAddr    string        `yaml:"listenAddr"`
-	StaticDir     string        `yaml:"staticDir"`
-	TemplateDir   string        `yaml:"templateDir"`
-	AllowOrigins  []string      `yaml:"allowOrigins"`
-	RedisURL      string        `yaml:"redisURL"`
-	Session       SessionConfig `yaml:"session"`
-	MySQL         MySQLConfig   `yaml:"mysql"`
-	Mail          MailConfig    `yaml:"mail"`
+	Debug         bool          `mapstructure:"debug"`
+	SiteName      string        `mapstructure:"siteName"`
+	BaseURL       string        `mapstructure:"baseURL"`
+	MasterKey     string        `mapstructure:"masterKey"`
+	ListenAddr    string        `mapstructure:"listenAddr"`
+	StaticDir     string        `mapstructure:"staticDir"`
+	TemplateDir   string        `mapstructure:"templateDir"`
+	AllowOrigins  []string      `mapstructure:"allowOrigins"`
+	RedisURL      string        `mapstructure:"redisURL"`
+	Session       SessionConfig `mapstructure:"session"`
+	Mail          MailConfig    `mapstructure:"mail"`
+	MySQL         MySQLConfig   `mapstructure:"mysql"`
 	AuthProviders struct {
-		OAuth map[string]OAuthProviderConfig `yaml:"oauth"`
-		Ldap  LdapConfig                     `yaml:"ldap"`
-	} `yaml:"authProviders"`
+		OAuth map[string]OAuthProviderConfig `mapstructure:"oauth"`
+		Ldap  LdapConfig                     `mapstructure:"ldap"`
+	} `mapstructure:"authProviders"`
 }
 
 func (c *Config) Sanitize() error {
