@@ -19,34 +19,37 @@
           <i class="fas fa-shield-alt text-2xl"></i>
         </div>
         <h1 class="text-2xl font-bold text-gray-800">Enter Verification Code</h1>
-        <p class="text-gray-600 mt-2">We sent a code to <b>{{.maskedTarget}}</b></p>
+        <p class="text-gray-600 mt-2">We sent a code to <b>{{.emailOrPhone}}</b></p>
       </div>
 
       <form method="POST" class="space-y-6" id="otpForm">
-        <!-- OTP inputs -->
+        <input type="hidden" name="cid" value="{{.cid}}">
+        <input type="hidden" name="otp" id="otpHidden">
+        <input type="hidden" name="_csrf" value="{{.csrfToken}}">
+
         <div class="flex justify-between gap-2">
-          <input type="text" maxlength="1" name="otp[]"
-            class="w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" name="otp[]"
-            class="w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" name="otp[]"
-            class="w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" name="otp[]"
-            class="w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" name="otp[]"
-            class="w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" name="otp[]"
-            class="w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
         </div>
 
-        <!-- Message + Resend with flex -->
         <div class="flex justify-between items-center text-sm">
           <span class="text-gray-600">Didn’t get the code?</span>
           <div>
-          <a href="#" id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</a>
-          <span id="countdown" class="text-gray-600"> in 60s</span>
+            <a href="#" id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</a>
+            <span id="countdown" class="text-gray-600"> in 60s</span>
           </div>
         </div>
+
+        {{if .verifyError }}
+        <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <i class="fas fa-exclamation-circle mr-2"></i>
+          {{.verifyError}}
+        </div>
+        {{end}}
 
         <button type="submit"
           class="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition">
@@ -57,8 +60,9 @@
   </div>
 
   <script>
-    // OTP auto focus movement
-    const inputs = document.querySelectorAll('input[name="otp[]"]');
+    const form = document.getElementById('otpForm');
+    const otpHidden = document.getElementById('otpHidden');
+    const inputs = document.querySelectorAll('.otp-box');
     inputs.forEach((input, idx) => {
       input.addEventListener("input", () => {
         if (input.value.length === 1 && idx < inputs.length - 1) {
@@ -68,6 +72,24 @@
       input.addEventListener("keydown", (e) => {
         if (e.key === "Backspace" && !input.value && idx > 0) {
           inputs[idx - 1].focus();
+        }
+      });
+
+      // Paste handler
+      input.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData("text");
+        if (!pasteData) return;
+
+        const chars = pasteData.replace(/\D/g, "").split(""); // only digits
+        inputs.forEach((box, i) => {
+          box.value = chars[i] || "";
+        });
+
+        // focus the last filled input
+        const last = Math.min(chars.length, inputs.length) - 1;
+        if (last >= 0) {
+          inputs[last].focus();
         }
       });
     });
@@ -99,32 +121,16 @@
     startTimer();
 
     resendLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      if (resendLink.classList.contains("pointer-events-none")) return;
+      alert("not implemented yet");
+    });
 
-      try {
-        const res = await fetch("/resend", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": "{{.csrfToken}}"
-          },
-          body: JSON.stringify({
-            method: "{{.method}}"
-          })
-        });
-        if (res.ok) {
-          alert("OTP resent successfully!");
-          startTimer();
-        } else {
-          alert("Failed to resend OTP");
-        }
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
+    form.addEventListener("submit", (e) => {
+      const otp = Array.from(inputs).map(i => i.value).join("");
+      otpHidden.value = otp;
     });
 
   </script>
+
 </body>
 
 </html>

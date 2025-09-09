@@ -33,24 +33,24 @@ func (s *twoFactorStore) DeleteChallenge(cid string) error {
 	return s.storage.Delete(cid)
 }
 
-func (s *twoFactorStore) GetUserState(uid uint) (*User2FAState, error) {
+func (s *twoFactorStore) GetUserState(uid uint) (*user2FAState, error) {
 	key := fmt.Sprintf("state:user:%d", uid)
 	blob, err := s.storage.Get(key)
 	if err != nil {
 		return nil, err
 	}
 	if len(blob) == 0 {
-		return &User2FAState{}, nil
+		return &user2FAState{UserID: uid}, nil
 	}
 
-	var state User2FAState
+	var state user2FAState
 	if err := json.Unmarshal(blob, &state); err != nil {
 		return nil, err
 	}
 	return &state, nil
 }
 
-func (s *twoFactorStore) SaveUserState(state *User2FAState) error {
+func (s *twoFactorStore) SaveUserState(state *user2FAState) error {
 	blob, _ := json.Marshal(state)
 	key := fmt.Sprintf("state:user:%d", state.UserID)
 	return s.storage.Set(key, blob, 24*time.Hour)

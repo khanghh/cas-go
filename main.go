@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/url"
 	"os"
@@ -17,15 +20,18 @@ import (
 	"github.com/khanghh/cas-go/internal/common"
 	"github.com/khanghh/cas-go/internal/config"
 	"github.com/khanghh/cas-go/internal/handlers"
+	"github.com/khanghh/cas-go/internal/mail"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/repository"
+	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/gomail.v2"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -130,6 +136,47 @@ func mustInitHtmlEngine(config *config.Config) fiber.Views {
 	return render.NewHtmlEngine(config.TemplateDir)
 }
 
+func mustInitSMTPMailSender(config config.SMTPConfig) mail.MailSender {
+	dialer := gomail.NewDialer(config.Host, config.Port, config.Username, config.Password)
+	dialer.TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+	if config.TLS {
+		cert, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
+		if err != nil {
+			panic(err)
+		}
+
+		caPool := x509.NewCertPool()
+		if config.CAFile != "" {
+			caCert, err := os.ReadFile(config.CAFile)
+			if err != nil {
+				panic(err)
+			}
+			caPool.AppendCertsFromPEM(caCert)
+		}
+
+		dialer.TLSConfig = &tls.Config{
+			ServerName:         config.Host,
+			InsecureSkipVerify: true,
+			Certificates:       []tls.Certificate{cert},
+			RootCAs:            caPool,
+		}
+	}
+	return mail.NewSMTPMailSender(dialer, config.From)
+}
+
+func mustInitMailSender(config config.MailConfig) mail.MailSender {
+	if config.Backend == "" {
+		log.Fatal("Missing mail sender backend")
+	}
+	if config.Backend == "smtp" {
+		return mustInitSMTPMailSender(config.SMTP)
+	}
+	log.Fatalf("Unsupported mail sender backend %s", config.Backend)
+	return nil
+}
+
 func run(ctx *cli.Context) error {
 	config, err := config.LoadConfig(ctx.String(configFileFlag.Name))
 	if err != nil {
@@ -139,11 +186,13 @@ func run(ctx *cli.Context) error {
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
+	mailSender := mustInitMailSender(config.Mail)
 	query.SetDefault(mustInitDatabase(config.MySQL))
 
 	cacheStorage := mustInitCacheStorage(config)
 	ticketStorage := common.NewKVStorage(cacheStorage, params.TicketStorageKeyPrefix)
 	sessionStorage := common.NewKVStorage(cacheStorage, params.SessionStorageKeyPrefix)
+	challengeStorage := common.NewKVStorage(cacheStorage, params.ChallengeStorageKeyPrefix)
 
 	ticketStore := auth.NewTicketStore(ticketStorage)
 	sessionStore := session.New(session.Config{
@@ -168,20 +217,22 @@ func run(ctx *cli.Context) error {
 		userService      = users.NewUserService(userRepo, userOAuthRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry, tokenRepo)
+		twofactorService = twofactor.NewTwoFactorService(challengeStorage, config.MasterKey)
 	)
 
 	// middlewares and dependencies
 	var (
 		withSession    = sessions.SessionMiddleware(sessionStore)
 		oauthProviders = mustInitOAuthProviders(config)
-		authHandler    = handlers.NewAuthHandler(authorizeService, userService)
+		authHandler    = handlers.NewAuthHandler(authorizeService, userService, twofactorService)
 	)
 
 	// handlers
 	var (
-		loginHandler    = handlers.NewLoginHandler(authHandler, serviceRegistry, userService, oauthProviders)
-		registerHandler = handlers.NewRegisterHandler(authHandler, userService)
-		oauthHandler    = handlers.NewOAuthHandler(authHandler, userService, oauthProviders)
+		loginHandler     = handlers.NewLoginHandler(authHandler, serviceRegistry, userService, oauthProviders)
+		registerHandler  = handlers.NewRegisterHandler(authHandler, userService)
+		oauthHandler     = handlers.NewOAuthHandler(authHandler, userService, oauthProviders)
+		twofactorHandler = handlers.NewTwoFactorHandler(authHandler, twofactorService, mailSender)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -194,20 +245,34 @@ func run(ctx *cli.Context) error {
 		Views:         mustInitHtmlEngine(config),
 	})
 
+	router.Use(withSession)
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
 	router.Static("/static/*", config.StaticDir)
-	router.Get("/", withSession, authHandler.GetHome)
-	router.Get("/authorize", withSession, authHandler.GetAuthorize)
-	router.Get("/login", withSession, loginHandler.GetLogin)
-	router.Post("/login", withSession, loginHandler.PostLogin)
-	router.Post("/logout", withSession, loginHandler.PostLogout)
-	router.Get("/register", withSession, registerHandler.GetRegister)
-	router.Post("/register", withSession, registerHandler.PostRegister)
-	router.Get("/register/oauth", withSession, registerHandler.GetRegisterWithOAuth)
-	router.Post("/register/oauth", withSession, registerHandler.PostRegisterWithOAuth)
-	router.Get("/oauth/:provider/callback", withSession, oauthHandler.GetOAuthCallback)
+	router.Get("/", authHandler.GetHome)
+	router.Get("/authorize", authHandler.GetAuthorize)
+	router.Get("/login", loginHandler.GetLogin)
+	router.Post("/login", loginHandler.PostLogin)
+	router.Post("/logout", loginHandler.PostLogout)
+	router.Get("/register", registerHandler.GetRegister)
+	router.Post("/register", registerHandler.PostRegister)
+	router.Get("/register/oauth", registerHandler.GetRegisterWithOAuth)
+	router.Post("/register/oauth", registerHandler.PostRegisterWithOAuth)
+	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
+	router.Get("/2fa/challenge", twofactorHandler.GetChallenge)
+	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)
+	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
+	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
+	router.Post("/2fa/otp/resend", twofactorHandler.PostVerifyOTP)
+
+	router.Get("/test", func(ctx *fiber.Ctx) error {
+
+		return ctx.Render("test", fiber.Map{
+			"siteName":     "aaa",
+			"maskedTarget": "bbbbb",
+		})
+	})
 
 	return router.Listen(config.ListenAddr)
 }

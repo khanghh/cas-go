@@ -54,7 +54,7 @@ func validateRegisterForm(username string, password string, email string) map[st
 
 func (h *RegisterHandler) GetRegister(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if !session.IsAuthenticated() {
+	if session.IsLoggedIn() {
 		return ctx.Redirect("/")
 	}
 	return render.RenderRegister(ctx, render.RegisterPageData{})
@@ -62,7 +62,7 @@ func (h *RegisterHandler) GetRegister(ctx *fiber.Ctx) error {
 
 func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if !session.IsAuthenticated() {
+	if session.IsLoggedIn() {
 		return ctx.SendStatus(http.StatusBadRequest)
 	}
 
@@ -109,7 +109,7 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 
 func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if !session.IsAuthenticated() {
+	if session.IsLoggedIn() {
 		return ctx.Redirect("/")
 	}
 
@@ -128,7 +128,7 @@ func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 
 func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if !session.IsAuthenticated() {
+	if session.IsLoggedIn() {
 		return ctx.Redirect("/")
 	}
 

@@ -26,6 +26,24 @@ func NewHtmlEngine(templateDir string) fiber.Views {
 	return html.NewFileSystem(http.FS(renderFS), ".html")
 }
 
+func RenderInternalError(ctx *fiber.Ctx) error {
+	return ctx.Render("error-internal", fiber.Map{
+		"siteName": globalVars["siteName"],
+	})
+}
+
+func RenderNotFoundError(ctx *fiber.Ctx) error {
+	return ctx.Render("error-not-found", fiber.Map{
+		"siteName": globalVars["siteName"],
+	})
+}
+
+func RenderForbiddenError(ctx *fiber.Ctx) error {
+	return ctx.Render("error-forbidden", fiber.Map{
+		"siteName": globalVars["siteName"],
+	})
+}
+
 func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
 		"siteName":          globalVars["siteName"],
@@ -70,12 +88,6 @@ func RenderUnauthorizedError(ctx *fiber.Ctx) error {
 	})
 }
 
-func RenderInternalError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-internal", fiber.Map{
-		"siteName": globalVars["siteName"],
-	})
-}
-
 func RenderHomePage(ctx *fiber.Ctx) error {
 	return ctx.Render("home", fiber.Map{
 		"siteName": globalVars["siteName"],
@@ -91,10 +103,31 @@ func RenderVerificationRequired(ctx *fiber.Ctx, pageData VerificationRequiredPag
 	}
 	return ctx.Render("verification-required", fiber.Map{
 		"siteName":     globalVars["siteName"],
+		"challengeID":  pageData.ChallengeID,
 		"emailEnabled": pageData.EmailEnabled,
 		"smsEnabled":   pageData.SMSEnableled,
 		"totpEnabled":  pageData.TOTPEnabled,
-		"maskedEmail":  email,
-		"maskedPhone":  phone,
+		"email":        email,
+		"phone":        phone,
+	})
+}
+
+func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
+	email := pageData.Email
+	phone := formatPhone(pageData.Phone)
+	if pageData.IsMasked {
+		email = maskEmail(email)
+		phone = maskPhone(phone)
+	}
+
+	emailOrPhone := email
+	if email == "" {
+		emailOrPhone = phone
+	}
+	return ctx.Render("verify-otp", fiber.Map{
+		"siteName":     globalVars["siteName"],
+		"emailOrPhone": emailOrPhone,
+		"verifyError":  pageData.VerifyError,
+		"csrfToken":    pageData.CSRFToken,
 	})
 }

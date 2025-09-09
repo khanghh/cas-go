@@ -7,23 +7,25 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/model"
 )
 
 type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
+	twoFactorService TwoFactorService
 }
 
-func NewAuthHandler(authorizeService AuthorizeService, userService UserService) *AuthHandler {
+func NewAuthHandler(authorizeService AuthorizeService, userService UserService, twofactorService TwoFactorService) *AuthHandler {
 	return &AuthHandler{
 		authorizeService: authorizeService,
 		userService:      userService,
+		twoFactorService: twofactorService,
 	}
 }
 
 func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) sessions.SessionData {
-	sessions.Destroy(ctx)
 	session := sessions.SessionData{
 		IP:        ctx.IP(),
 		UserID:    user.ID,
@@ -31,9 +33,27 @@ func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOA
 	}
 	if userOAuth != nil {
 		session.OAuthID = userOAuth.ID
+		session.Last2FATime = time.Now()
 	}
-	sessions.Set(ctx, session)
+	sessions.Reset(ctx, &session)
 	return session
+}
+
+func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.SessionData, redirectURL string) error {
+	if redirectURL == "" {
+		redirectURL = string(ctx.Context().URI().RequestURI())
+	}
+	opts := twofactor.ChallengeOptions{
+		UserID:      session.UserID,
+		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
+		RedirectURL: redirectURL,
+		ExpiresIn:   5 * time.Minute,
+	}
+	ch, err := h.twoFactorService.CreateChallenge(opts)
+	if err != nil {
+		return err
+	}
+	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
@@ -61,26 +81,30 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.U
 }
 
 func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
-	service := ctx.Query("service")
-	if service == "" {
-		return ctx.Redirect("/")
+	serviceURL := ctx.Query("service")
+	if serviceURL == "" {
+		return render.RenderNotFoundError(ctx)
 	}
 
 	session := sessions.Get(ctx)
-	if session.UserID == 0 {
-		return redirect(ctx, "/login", fiber.Map{"service": service})
+	if !session.IsLoggedIn() {
+		return redirect(ctx, "/login", fiber.Map{"service": serviceURL})
+	}
+
+	if session.IsRequire2FA() {
+		return h.start2FAChallenge(ctx, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
 		return render.RenderUnauthorizedError(ctx)
 	}
-	return h.handleAuthorizeServiceAccess(ctx, user, service)
+	return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 }
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if !session.IsAuthenticated() {
+	if session.IsLoggedIn() {
 		return render.RenderHomePage(ctx)
 	}
 	return redirect(ctx, "/login", nil)

@@ -12,7 +12,8 @@ const (
 	ChallengeStorageKeyPrefix     = "c:"
 	ServiceTicketExpiration       = 1 * time.Minute
 	AuthStateTimeout              = 10 * time.Minute
-	TwoFactorChallengeMaxAttempts = 5 // maximum number of attempts for a challenge
-
-	TwoFactorUserMaxFailChallenges = 5 // maximum number of failed challenges
+	TwoFactorChallengeMaxAttempts = 5                // maximum number of attempts for a challenge
+	TwoFactorUserMaxFailAttempts  = 20               // maximum number of total failed attempts
+	TwoFactorUserMaxOTPRequests   = 20               // maximum number of OTP requests allowed per user
+	TwoFactorValidityDuration     = 15 * time.Minute // validity duration for a 2FA login
 )

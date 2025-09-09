@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/url"
 
 	"github.com/gofiber/fiber/v2"
@@ -43,16 +44,16 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 
 	session := sessions.Get(ctx)
-	if !session.IsAuthenticated() {
-		if serviceURL == "" {
-			return ctx.Redirect("/")
-		}
-		return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+	if !session.IsLoggedIn() {
+		return render.RenderLogin(ctx, render.LoginPageData{
+			OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
+		})
 	}
 
-	return render.RenderLogin(ctx, render.LoginPageData{
-		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
-	})
+	if serviceURL == "" {
+		return ctx.Redirect("/")
+	}
+	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
 
 func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
@@ -75,12 +76,13 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		pageData.LoginError = "Invalid username or password"
 		return render.RenderLogin(ctx, pageData)
 	}
-	h.createUserSession(ctx, user, nil)
+	session := h.createUserSession(ctx, user, nil)
 
-	if serviceURL == "" {
-		return ctx.Redirect("/")
+	redirectURL := "/"
+	if serviceURL != "" {
+		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+	return h.start2FAChallenge(ctx, &session, redirectURL)
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {

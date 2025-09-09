@@ -16,10 +16,20 @@ type RegisterPageData struct {
 }
 
 type VerificationRequiredPageData struct {
+	ChallengeID  string
 	EmailEnabled bool
 	SMSEnableled bool
 	TOTPEnabled  bool
 	IsMasked     bool
 	Email        string
 	Phone        string
+}
+
+type VerifyOTPPageData struct {
+	ChallengeID string
+	IsMasked    bool
+	Email       string
+	Phone       string
+	CSRFToken   string
+	VerifyError string
 }

@@ -28,11 +28,12 @@
       {{end}}
 
       <form class="space-y-4" method="POST">
+        <input type="hidden" name="cid" value="{{.challengeID}}">
         {{if .smsEnabled}}
         <button type="submit" name="method" value="sms"
           class="w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 transition group">
           <i class="fas fa-comment-sms text-blue-600 text-xl mr-3"></i>
-          <span class="text-gray-800 font-medium flex-1 text-left">SMS OTP ({{.maskedPhone}})</span>
+          <span class="text-gray-800 font-medium flex-1 text-left">SMS OTP ({{.phone}})</span>
           <i class="fas fa-angle-right text-gray-400 group-hover:text-gray-600"></i>
         </button>
         {{end}}
@@ -41,7 +42,7 @@
         <button type="submit" name="method" value="email"
           class="w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 transition group">
           <i class="fas fa-envelope text-blue-600 text-xl mr-3"></i>
-          <span class="text-gray-800 font-medium flex-1 text-left">Email OTP ({{.maskedEmail}})</span>
+          <span class="text-gray-800 font-medium flex-1 text-left">Email OTP ({{.email}})</span>
           <i class="fas fa-angle-right text-gray-400 group-hover:text-gray-600"></i>
         </button>
         {{end}}
@@ -54,7 +55,6 @@
           <i class="fas fa-angle-right text-gray-400 group-hover:text-gray-600"></i>
         </button>
         {{end}}
-
       </form>
     </div>
 

@@ -29,3 +29,16 @@ authProviders:
     discord:
       clientId: xxxxxxx
       clientSecret: xxxxxx
+
+mail:
+  backend: smtp
+  smtp:
+    host: smtp.example.com
+    port: 587
+    username: admin@example.com
+    password: password
+    from: noreply@example.com
+    tls: true
+    certFile: "./cert.pem"
+    keyFile: "./keypem"
+    caFile: "./ca.pem"
