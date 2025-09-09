@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/khanghh/cas-go/params"
 )
 
 const (
@@ -19,22 +20,27 @@ const (
 type Middleware func(next fiber.Handler) fiber.Handler
 
 type SessionData struct {
-	id         string    // session id
-	IP         string    // client ip address
-	UserID     uint      // user id
-	OAuthID    uint      // user oauth id
-	LoginTime  time.Time // last login time
-	LastSeen   time.Time // last request time
-	Require2FA bool      // require 2fa
-	ExpireAt   time.Time // session expire time
+	id          string    // session id
+	IP          string    // client ip address
+	UserID      uint      // user id
+	OAuthID     uint      // user oauth id
+	CSRFToken   string    // csrf token
+	LastSeen    time.Time // last request time
+	LoginTime   time.Time // last login time
+	Last2FATime time.Time // last 2fa success time
+	ExpireTime  time.Time // session expire time
 }
 
 func (s SessionData) ID() string {
 	return s.id
 }
 
-func (s *SessionData) IsAuthenticated() bool {
-	return s.UserID != 0 && !s.Require2FA
+func (s *SessionData) IsLoggedIn() bool {
+	return s.UserID != 0 && s.LoginTime.Unix() > 0
+}
+
+func (s *SessionData) IsRequire2FA() bool {
+	return time.Since(s.Last2FATime) > params.TwoFactorValidityDuration
 }
 
 func init() {
@@ -67,23 +73,34 @@ func Destroy(ctx *fiber.Ctx) error {
 	return sess.Destroy()
 }
 
+func Reset(ctx *fiber.Ctx, data *SessionData) error {
+	sess := ctx.Locals(injectSessionKey).(*session.Session)
+	err := sess.Reset()
+	if err != nil {
+		return err
+	}
+	data.id = sess.ID()
+	sess.Set(sessionDataKey, *data)
+	return nil
+}
+
 func SessionMiddleware(store *session.Store) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		session, err := store.Get(ctx)
+		sess, err := store.Get(ctx)
 		if err != nil {
 			return err
 		}
 
-		ctx.Locals(injectSessionKey, session)
+		ctx.Locals(injectSessionKey, sess)
 		if err := ctx.Next(); err != nil {
 			return err
 		}
 
-		data, ok := session.Get(sessionDataKey).(SessionData)
+		data, ok := sess.Get(sessionDataKey).(SessionData)
 		if ok {
 			data.LastSeen = time.Now()
-			session.Set(sessionDataKey, data)
-			return session.Save()
+			sess.Set(sessionDataKey, data)
+			return sess.Save()
 		}
 
 		return nil
