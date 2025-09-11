@@ -86,6 +86,5 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {
-	sessions.Destroy(ctx)
-	return ctx.Redirect("/login")
+	return performLogout(ctx)
 }

@@ -174,6 +174,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	if ret.Success {
 		session.Last2FATime = time.Now()
+		session.ChallengeID = ""
 		sessions.Set(ctx, session)
 		return redirect(ctx, ch.RedirectURL, nil)
 	}

@@ -88,9 +88,15 @@ func RenderUnauthorizedError(ctx *fiber.Ctx) error {
 	})
 }
 
-func RenderHomePage(ctx *fiber.Ctx) error {
+func RenderHomePage(ctx *fiber.Ctx, pageData HomePageData) error {
+	displayName := pageData.FullName
+	if displayName == "" {
+		displayName = pageData.Username
+	}
 	return ctx.Render("home", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName":    globalVars["siteName"],
+		"displayName": displayName,
+		"email":       pageData.Email,
 	})
 }
 

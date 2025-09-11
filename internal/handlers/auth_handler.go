@@ -43,6 +43,14 @@ func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.Sessio
 	if redirectURL == "" {
 		redirectURL = string(ctx.Context().URI().RequestURI())
 	}
+
+	if session.ChallengeID != "" {
+		ch, err := h.twoFactorService.GetChallenge(session.ChallengeID)
+		if err == nil && ch.Status() == twofactor.ChallengeStatusPending {
+			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.ChallengeID})
+		}
+	}
+
 	opts := twofactor.ChallengeOptions{
 		UserID:      session.UserID,
 		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
@@ -53,6 +61,8 @@ func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.Sessio
 	if err != nil {
 		return err
 	}
+	session.ChallengeID = ch.ID
+	sessions.Set(ctx, *session)
 	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
 }
 
@@ -104,8 +114,21 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if session.IsLoggedIn() {
-		return render.RenderHomePage(ctx)
+	if !session.IsLoggedIn() {
+		return performLogout(ctx)
 	}
-	return redirect(ctx, "/login", nil)
+	if session.IsRequire2FA() {
+		return h.start2FAChallenge(ctx, &session, "")
+	}
+
+	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return performLogout(ctx)
+	}
+
+	return render.RenderHomePage(ctx, render.HomePageData{
+		Username: user.Username,
+		FullName: user.DisplayName,
+		Email:    user.Email,
+	})
 }

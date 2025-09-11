@@ -33,3 +33,9 @@ type VerifyOTPPageData struct {
 	CSRFToken   string
 	VerifyError string
 }
+
+type HomePageData struct {
+	Username string
+	FullName string
+	Email    string
+}

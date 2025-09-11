@@ -27,9 +27,9 @@ var (
 type ChallengeStatus string
 
 const (
-	ChallengePending ChallengeStatus = "pending"
-	ChallengeSuccess ChallengeStatus = "success"
-	ChallengeFailed  ChallengeStatus = "failed"
+	ChallengeStatusPending ChallengeStatus = "pending"
+	ChallengeStatusSuccess ChallengeStatus = "success"
+	ChallengeStatusFailed  ChallengeStatus = "failed"
 )
 
 type user2FAState struct {
@@ -71,15 +71,15 @@ func (c *Challenge) IsExpired() bool {
 }
 
 func (c *Challenge) CanVerify() bool {
-	return !c.IsExpired() && c.Status() == ChallengePending
+	return !c.IsExpired() && c.Status() == ChallengeStatusPending
 }
 
 func (c *Challenge) Status() ChallengeStatus {
 	if c.Success {
-		return ChallengeSuccess
+		return ChallengeStatusSuccess
 	}
 	if c.Attempts < params.TwoFactorChallengeMaxAttempts {
-		return ChallengePending
+		return ChallengeStatusPending
 	}
-	return ChallengeFailed
+	return ChallengeStatusFailed
 }

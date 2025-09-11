@@ -28,6 +28,7 @@ type SessionData struct {
 	LastSeen    time.Time // last request time
 	LoginTime   time.Time // last login time
 	Last2FATime time.Time // last 2fa success time
+	ChallengeID string    // current challenge id
 	ExpireTime  time.Time // session expire time
 }
 

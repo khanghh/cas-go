@@ -90,7 +90,7 @@ func (s *TwoFactorService) ValidateChallenge(ch *Challenge, binding BindingValue
 	if ch.IsExpired() {
 		return ErrChallengeExpired
 	}
-	if ch.Status() != ChallengePending {
+	if ch.Status() != ChallengeStatusPending {
 		return ErrChallengeInvalid
 	}
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
@@ -127,7 +127,7 @@ func (s *TwoFactorService) VerifyChallenge(uid uint, ch *Challenge, binding Bind
 	ch.Attempts++
 	if ch.Success {
 		userState.FailCount = 0
-	} else if ch.Status() == ChallengeFailed {
+	} else if ch.Status() == ChallengeStatusFailed {
 		userState.IncreaseFailCount()
 	}
 
