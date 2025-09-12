@@ -2,10 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
-	"io"
 
 	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/model"
@@ -16,26 +14,27 @@ type ServiceRegistry struct {
 	serviceRepo repository.ServiceRepository
 }
 
-func generateEd25519KeyPair(rand io.Reader) (string, string, error) {
-	pubKey, privKey, err := ed25519.GenerateKey(rand)
+func generateHMACKey(size int) (string, error) {
+	key := make([]byte, size)
+	_, err := rand.Read(key)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(privKey), base64.StdEncoding.EncodeToString(pubKey), nil
+	return base64.StdEncoding.EncodeToString(key), nil
 }
 
 func (r *ServiceRegistry) RegisterService(ctx context.Context, service *model.Service) (string, error) {
-	privKey, pubKey, err := generateEd25519KeyPair(rand.Reader)
+	signingKey, err := generateHMACKey(32)
 	if err != nil {
 		return "", err
 	}
 
-	service.PublicKey = pubKey
+	service.SigningKey = signingKey
 	if err := r.serviceRepo.AddService(ctx, service); err != nil {
 		return "", err
 	}
 
-	return privKey, nil
+	return signingKey, nil
 }
 
 func (r *ServiceRegistry) GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error) {

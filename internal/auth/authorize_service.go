@@ -2,10 +2,9 @@ package auth
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,6 +15,7 @@ import (
 type ServiceTicket struct {
 	TicketID    string    `json:"ticketID"`
 	UserID      uint      `json:"userID"`
+	ServiceName string    `json:"serviceName"`
 	CallbackURL string    `json:"callbackURL"`
 	CreateTime  time.Time `json:"createTime"`
 }
@@ -28,54 +28,44 @@ type AuthorizeService struct {
 	tokenRepo   repository.TokenRepository
 }
 
-func mustDecodeBase64(s string) []byte {
-	b, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		return []byte{}
-	}
-	return b
+func signHMAC(secret, message string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(message))
+	signature := mac.Sum(nil)
+	return base64.StdEncoding.EncodeToString(signature)
 }
 
-func (s *AuthorizeService) validateTicketSignature(publicKey, signature, serviceURL, ticketID, timestamp string) bool {
-	sig := mustDecodeBase64(signature)
-	if len(sig) != ed25519.SignatureSize {
-		return false
-	}
-
-	pubKey := mustDecodeBase64(publicKey)
-	if len(pubKey) != ed25519.PublicKeySize {
-		return false
-	}
-
-	data := serviceURL + ticketID + timestamp
-	hash := sha256.Sum256([]byte(data))
-	message := hex.EncodeToString(hash[:])
-	return ed25519.Verify(pubKey, []byte(message), sig)
+func verifyHMAC(secret, message, signatureB64 string) bool {
+	expected := signHMAC(secret, message)
+	return hmac.Equal([]byte(expected), []byte(signatureB64))
 }
 
-func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL string, ticketId string, timestamp string, signature string) (bool, error) {
-	ticket, err := s.ticketStore.GetTicket(ticketId)
+func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (*ServiceTicket, error) {
+	ticket, err := s.ticketStore.GetTicket(ticketID)
 	if err != nil {
-		return false, ErrTicketNotFound
+		return nil, ErrTicketNotFound
 	}
 
 	if ticket.CallbackURL != serviceURL {
-		return false, ErrServiceUrlMismatch
+		return ticket, ErrServiceUrlMismatch
 	}
 
 	service, err := s.registry.GetService(ctx, serviceURL)
 	if err != nil {
-		return false, ErrServiceNotFound
+		return ticket, ErrServiceNotFound
 	}
 
-	if s.validateTicketSignature(service.PublicKey, signature, serviceURL, ticketId, timestamp) {
-		if err := s.ticketStore.RemoveTicket(ticketId); err != nil {
-			return false, ErrTicketExpired
-		}
-		return true, nil
+	message := serviceURL + ticketID + timestamp
+	if !verifyHMAC(service.SigningKey, message, signature) {
+		return ticket, ErrInvalidSignature
 	}
 
-	return false, nil
+	// Attempt to remove the ticket. If it doesn't exist, it has either expired or been used.
+	if err := s.ticketStore.RemoveTicket(ticketID); err != nil {
+		return ticket, ErrTicketExpired
+	}
+
+	return ticket, nil
 }
 
 func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, svcCallbackURL string) (*ServiceTicket, error) {

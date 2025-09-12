@@ -252,6 +252,8 @@ func run(ctx *cli.Context) error {
 	router.Static("/static/*", config.StaticDir)
 	router.Get("/", authHandler.GetHome)
 	router.Get("/authorize", authHandler.GetAuthorize)
+	router.Get("/serviceValidate", authHandler.GetServiceValidate)
+	router.Get("/p3/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/login", loginHandler.GetLogin)
 	router.Post("/login", loginHandler.PostLogin)
 	router.Post("/logout", loginHandler.PostLogout)

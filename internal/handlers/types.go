@@ -21,7 +21,7 @@ type ServiceRegistry interface {
 type AuthorizeService interface {
 	ServiceRegistry
 	GenerateServiceTicket(ctx context.Context, userID uint, serviceURL string) (*auth.ServiceTicket, error)
-	ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (bool, error)
+	ValidateServiceTicket(ctx context.Context, serviceURL string, ticketId string, timestamp string, signature string) (*auth.ServiceTicket, error)
 }
 
 type UserService interface {

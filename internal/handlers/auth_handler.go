@@ -66,20 +66,19 @@ func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.Sessio
 	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
-	baseServiceURL, err := parseServiceURL(serviceURL)
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, callbackURL string) error {
+	noQueryCallbackURL, err := removeQueryFromURL(callbackURL)
 	if err != nil {
 		return render.RenderDeniedError(ctx)
 	}
 
-	service, err := h.authorizeService.GetService(ctx.Context(), baseServiceURL)
+	service, err := h.authorizeService.GetService(ctx.Context(), noQueryCallbackURL)
 	if err != nil {
 		return render.RenderDeniedError(ctx)
 	}
 
-	callbackURL := baseServiceURL
 	if service.StripQuery {
-		callbackURL = serviceURL
+		callbackURL = noQueryCallbackURL
 	}
 	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, callbackURL)
 	if err != nil {
@@ -130,5 +129,59 @@ func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 		Username: user.Username,
 		FullName: user.DisplayName,
 		Email:    user.Email,
+	})
+}
+
+type UserInfoResponse struct {
+	UserID   uint   `json:"userId"`
+	Username string `json:"username"`
+	FullName string `json:"fullName"`
+	Email    string `json:"email"`
+	Picture  string `json:"picture,omitempty"`
+}
+
+func (h *AuthHandler) GetServiceValidate(ctx *fiber.Ctx) error {
+	ticketID := ctx.Query("ticket")
+	serviceURL := ctx.Query("service")
+	signature := string(ctx.Request().Header.Peek("X-Signature"))
+	timestamp := string(ctx.Request().Header.Peek("X-Timestamp"))
+
+	if ticketID == "" || serviceURL == "" || signature == "" || timestamp == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(APIResponse{
+			Error: &ErrorResponse{
+				Code:    fiber.StatusBadRequest,
+				Message: "missing required parameter",
+			},
+		})
+	}
+
+	ticket, err := h.authorizeService.ValidateServiceTicket(ctx.Context(), serviceURL, ticketID, timestamp, signature)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(APIResponse{
+			Error: &ErrorResponse{
+				Code:    fiber.StatusUnauthorized,
+				Message: err.Error(),
+			},
+		})
+	}
+
+	user, err := h.userService.GetUserByID(ctx.Context(), ticket.UserID)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(APIResponse{
+			Error: &ErrorResponse{
+				Code:    fiber.StatusUnauthorized,
+				Message: err.Error(),
+			},
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(APIResponse{
+		Data: UserInfoResponse{
+			UserID:   user.ID,
+			Username: user.Username,
+			FullName: user.DisplayName,
+			Email:    user.Email,
+			Picture:  user.Picture,
+		},
 	})
 }

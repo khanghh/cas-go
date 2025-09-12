@@ -11,7 +11,7 @@ type Service struct {
 	Name        string `gorm:"size:128;not null"`
 	CallbackURL string `gorm:"size:1024;not null"`
 	AutoLogin   bool   `gorm:"not null;default:false"`
-	PublicKey   string `gorm:"size:1024;not null"`
+	SigningKey  string `gorm:"size:1024;not null"`
 	StripQuery  bool   `gorm:"not null;default:false"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

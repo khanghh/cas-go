@@ -30,7 +30,7 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.Name = field.NewString(tableName, "name")
 	_service.CallbackURL = field.NewString(tableName, "callback_url")
 	_service.AutoLogin = field.NewBool(tableName, "auto_login")
-	_service.PublicKey = field.NewString(tableName, "public_key")
+	_service.SigningKey = field.NewString(tableName, "signing_key")
 	_service.StripQuery = field.NewBool(tableName, "strip_query")
 	_service.CreatedAt = field.NewTime(tableName, "created_at")
 	_service.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -49,7 +49,7 @@ type service struct {
 	Name        field.String
 	CallbackURL field.String
 	AutoLogin   field.Bool
-	PublicKey   field.String
+	SigningKey  field.String
 	StripQuery  field.Bool
 	CreatedAt   field.Time
 	UpdatedAt   field.Time
@@ -74,7 +74,7 @@ func (s *service) updateTableName(table string) *service {
 	s.Name = field.NewString(table, "name")
 	s.CallbackURL = field.NewString(table, "callback_url")
 	s.AutoLogin = field.NewBool(table, "auto_login")
-	s.PublicKey = field.NewString(table, "public_key")
+	s.SigningKey = field.NewString(table, "signing_key")
 	s.StripQuery = field.NewBool(table, "strip_query")
 	s.CreatedAt = field.NewTime(table, "created_at")
 	s.UpdatedAt = field.NewTime(table, "updated_at")
@@ -100,7 +100,7 @@ func (s *service) fillFieldMap() {
 	s.fieldMap["name"] = s.Name
 	s.fieldMap["callback_url"] = s.CallbackURL
 	s.fieldMap["auto_login"] = s.AutoLogin
-	s.fieldMap["public_key"] = s.PublicKey
+	s.fieldMap["signing_key"] = s.SigningKey
 	s.fieldMap["strip_query"] = s.StripQuery
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt

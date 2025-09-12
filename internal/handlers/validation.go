@@ -42,9 +42,9 @@ func validatePassword(password string) error {
 	return nil
 }
 
-// parseServiceURL parses the service URL and returns the base URL without query
-func parseServiceURL(serviceURL string) (string, error) {
-	parsed, err := url.Parse(serviceURL)
+// removeQueryFromURL parses the service URL and returns the base URL without query
+func removeQueryFromURL(urlWithQuery string) (string, error) {
+	parsed, err := url.Parse(urlWithQuery)
 	if err != nil {
 		return "", err
 	}

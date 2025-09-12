@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,6 +17,7 @@ func (s *TicketStore) GetTicket(ticketID string) (*ServiceTicket, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("blob: %s", blob)
 	var ticket ServiceTicket
 	if err := json.Unmarshal(blob, &ticket); err != nil {
 		return nil, err
