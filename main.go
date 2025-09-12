@@ -268,14 +268,6 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
 	router.Post("/2fa/otp/resend", twofactorHandler.PostVerifyOTP)
 
-	router.Get("/test", func(ctx *fiber.Ctx) error {
-
-		return ctx.Render("test", fiber.Map{
-			"siteName":     "aaa",
-			"maskedTarget": "bbbbb",
-		})
-	})
-
 	return router.Listen(config.ListenAddr)
 }
 
