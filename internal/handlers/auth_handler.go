@@ -69,12 +69,12 @@ func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.Sessio
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, serviceURL string) error {
 	baseServiceURL, err := parseServiceURL(serviceURL)
 	if err != nil {
-		return render.RenderUnauthorizedError(ctx)
+		return render.RenderDeniedError(ctx)
 	}
 
 	service, err := h.authorizeService.GetService(ctx.Context(), baseServiceURL)
 	if err != nil {
-		return render.RenderUnauthorizedError(ctx)
+		return render.RenderDeniedError(ctx)
 	}
 
 	callbackURL := baseServiceURL
@@ -107,7 +107,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderUnauthorizedError(ctx)
+		return render.RenderDeniedError(ctx)
 	}
 	return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
 }

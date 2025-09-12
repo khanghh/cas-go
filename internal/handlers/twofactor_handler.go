@@ -3,7 +3,7 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -42,14 +42,10 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
 }
 
-func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, user *model.User, cid string, verifyErr error) error {
+func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, user *model.User, cid string, errorMsg string) error {
 	session := sessions.Get(ctx)
 	session.CSRFToken = generateCSRFToken()
 	sessions.Set(ctx, session)
-	errorMsg := ""
-	if verifyErr != nil {
-		errorMsg = verifyErr.Error()
-	}
 	pageData := render.VerifyOTPPageData{
 		ChallengeID: cid,
 		Email:       user.Email,
@@ -141,7 +137,7 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	return h.renderVerifyOTP(ctx, user, cid, nil)
+	return h.renderVerifyOTP(ctx, user, cid, "")
 }
 
 func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
@@ -159,7 +155,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	if csrf != session.CSRFToken {
-		return h.renderVerifyOTP(ctx, user, cid, errors.New("Invalid request. Please try again."))
+		return h.renderVerifyOTP(ctx, user, cid, MsgInvalidRequest)
 	}
 
 	ch, err := h.twoFactorService.GetChallenge(cid)
@@ -169,7 +165,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	binding := twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()}
 	ret, err := h.twoFactorService.VerifyChallenge(session.UserID, ch, binding, otp)
 	if err != nil {
-		return h.renderVerifyOTP(ctx, user, cid, err)
+		return render.RenderDeniedError(ctx)
 	}
 
 	if ret.Success {
@@ -178,7 +174,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		sessions.Set(ctx, session)
 		return redirect(ctx, ch.RedirectURL, nil)
 	}
-	return h.renderVerifyOTP(ctx, user, cid, errors.New("Invalid OTP. Please try again."))
+	return h.renderVerifyOTP(ctx, user, cid, fmt.Sprintf(MsgInvalidOTP, ret.AttemptsLeft))
 }
 
 func NewTwoFactorHandler(authHander *AuthHandler, twofactorService TwoFactorService, mailSender mail.MailSender) *TwoFactorHandler {

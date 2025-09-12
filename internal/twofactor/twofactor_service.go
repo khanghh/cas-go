@@ -90,11 +90,11 @@ func (s *TwoFactorService) ValidateChallenge(ch *Challenge, binding BindingValue
 	if ch.IsExpired() {
 		return ErrChallengeExpired
 	}
-	if ch.Status() != ChallengeStatusPending {
-		return ErrChallengeInvalid
-	}
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 		return ErrChallengeTooManyAttempts
+	}
+	if ch.Status() != ChallengeStatusPending {
+		return ErrChallengeInvalid
 	}
 	if ch.Hash != s.calculateHash(binding...) {
 		return ErrContextMismatch
@@ -135,9 +135,14 @@ func (s *TwoFactorService) VerifyChallenge(uid uint, ch *Challenge, binding Bind
 		return VerifyResult{}, err
 	}
 
+	attemptsLeft := min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorUserMaxFailAttempts-userState.FailCount)
+	if attemptsLeft == 0 {
+		return VerifyResult{}, ErrChallengeTooManyAttempts
+	}
+
 	return VerifyResult{
 		Success:      ch.Success,
-		AttemptsLeft: min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorUserMaxFailAttempts-userState.FailCount),
+		AttemptsLeft: attemptsLeft,
 		LockedUntil:  userState.LockedUntil,
 		LockReason:   userState.LockReason,
 	}, nil

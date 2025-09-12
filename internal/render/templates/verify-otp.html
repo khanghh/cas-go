@@ -28,12 +28,18 @@
         <input type="hidden" name="_csrf" value="{{.csrfToken}}">
 
         <div class="flex justify-between gap-2">
-          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          <input type="text" maxlength="1" class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1"
+            class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1"
+            class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1"
+            class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1"
+            class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1"
+            class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+          <input type="text" maxlength="1"
+            class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
         </div>
 
         <div class="flex justify-between items-center text-sm">
@@ -64,6 +70,11 @@
     const otpHidden = document.getElementById('otpHidden');
     const inputs = document.querySelectorAll('.otp-box');
     inputs.forEach((input, idx) => {
+      input.addEventListener("keypress", (e) => {
+        if (!/[0-9]/.test(e.key)) {
+          e.preventDefault();
+        }
+      });
       input.addEventListener("input", () => {
         if (input.value.length === 1 && idx < inputs.length - 1) {
           inputs[idx + 1].focus();

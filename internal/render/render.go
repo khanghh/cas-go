@@ -82,8 +82,8 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	})
 }
 
-func RenderUnauthorizedError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-unauthorized", fiber.Map{
+func RenderDeniedError(ctx *fiber.Ctx) error {
+	return ctx.Render("error-denied", fiber.Map{
 		"siteName": globalVars["siteName"],
 	})
 }
