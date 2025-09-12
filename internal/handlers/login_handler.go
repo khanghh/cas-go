@@ -11,6 +11,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+	MsgLoginSessionExpired   = "Session expired. Please log in again."
+	MsgLoginWrongCredentials = "Invalid username or password."
+	MsgLoginEmailConflict    = "Email already linked to another account."
+	MsgLoginUnsupportedOAuth = "This OAuth provider is not supported."
+)
+
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
 	*AuthHandler
@@ -40,13 +47,28 @@ func (h *LoginHandler) getOAuthLoginURLs(serviceURL string) map[string]string {
 	return oauthLoginURLs
 }
 
+func mapLoginError(errorCode string) string {
+	switch errorCode {
+	case "email_conflict":
+		return MsgLoginEmailConflict
+	case "session_expired":
+		return MsgLoginSessionExpired
+	case "unsupported_provider":
+		return MsgLoginUnsupportedOAuth
+	default:
+		return ""
+	}
+}
+
 func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
+	errorCode := ctx.Query("error")
 
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
 		return render.RenderLogin(ctx, render.LoginPageData{
 			OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
+			LoginError:     mapLoginError(errorCode),
 		})
 	}
 
@@ -68,12 +90,12 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), username)
 	if err != nil {
-		pageData.LoginError = "Invalid username or password"
+		pageData.LoginError = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		pageData.LoginError = "Invalid username or password"
+		pageData.LoginError = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
 	}
 	session := h.createUserSession(ctx, user, nil)

@@ -8,11 +8,6 @@ import (
 	"github.com/khanghh/cas-go/model"
 )
 
-const (
-	MsgInvalidRequest = "Invalid request. Please try again."
-	MsgInvalidOTP     = "Incorrect OTP. You have %d attempts left."
-)
-
 type ServiceRegistry interface {
 	RegisterService(ctx context.Context, service *model.Service) (string, error)
 	GetService(ctx context.Context, serviceURL string) (*model.Service, error)

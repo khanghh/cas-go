@@ -104,6 +104,11 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		UserID:    user.ID,
 		LoginTime: time.Now(),
 	})
+
+	serviceURL := ctx.Query("service")
+	if serviceURL == "" {
+		return ctx.Redirect("/")
+	}
 	return redirect(ctx, "/authorize", fiber.Map{"service": ctx.Query("service")})
 }
 

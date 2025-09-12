@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
+	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/model"
 )
 
@@ -48,7 +48,11 @@ func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAu
 	if err != nil {
 		return ctx.SendStatus(http.StatusBadRequest)
 	}
-	return redirect(ctx, "/authorize", fiber.Map{"service": queryParams.Get("service")})
+	serviceURL := queryParams.Get("service")
+	if serviceURL == "" {
+		return ctx.Redirect("/")
+	}
+	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
 
 func (h *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userID uint, userOAuth *model.UserOAuth) error {
@@ -56,6 +60,14 @@ func (h *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userID uint, userOAuth *m
 }
 
 func (h *OAuthHandler) handleOAuthRegister(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+	_, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), userOAuth.Email)
+	if err == nil {
+		return redirect(ctx, "/login", fiber.Map{
+			"service": ctx.Query("service"),
+			"error":   "email_conflict",
+		})
+	}
+
 	if userOAuth.UserID == 0 {
 		sessions.Set(ctx, sessions.SessionData{
 			IP:        ctx.IP(),
@@ -73,7 +85,7 @@ func (h *OAuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 
 	provider, ok := h.oauthProviders[providerName]
 	if !ok {
-		return fmt.Errorf("Unsupported OAuth provider: %s", providerName)
+		return render.RenderNotFoundError(ctx)
 	}
 
 	oauthToken, err := provider.ExchangeToken(ctx.Context(), code)

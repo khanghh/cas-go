@@ -14,6 +14,11 @@ import (
 	"github.com/khanghh/cas-go/model"
 )
 
+const (
+	MsgInvalidRequest = "Invalid request. Please try again."
+	MsgInvalidOTP     = "Incorrect OTP. You have %d attempt(s) left."
+)
+
 type TwoFactorHandler struct {
 	*AuthHandler
 	twofactorService TwoFactorService
