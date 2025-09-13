@@ -175,9 +175,15 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	}
 
 	sessions.Set(ctx, sessions.SessionData{
-		IP:        ctx.IP(),
-		UserID:    user.ID,
-		LoginTime: time.Now(),
+		IP:          ctx.IP(),
+		UserID:      user.ID,
+		LoginTime:   time.Now(),
+		Last2FATime: time.Now(),
 	})
-	return redirect(ctx, "/authorize", fiber.Map{"service": ctx.Query("service")})
+
+	serviceURL := ctx.Query("service")
+	if serviceURL == "" {
+		return ctx.Redirect("/")
+	}
+	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }

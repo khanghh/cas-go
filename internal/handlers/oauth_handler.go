@@ -59,7 +59,7 @@ func (h *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userID uint, userOAuth *m
 	return nil
 }
 
-func (h *OAuthHandler) handleOAuthRegister(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
+func (h *OAuthHandler) redirectRegisterOAuth(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
 	_, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), userOAuth.Email)
 	if err == nil {
 		return redirect(ctx, "/login", fiber.Map{
@@ -118,5 +118,5 @@ func (h *OAuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 		return h.handleOAuthLink(ctx, session.UserID, userOAuth)
 	}
 
-	return h.handleOAuthRegister(ctx, userOAuth)
+	return h.redirectRegisterOAuth(ctx, userOAuth)
 }
