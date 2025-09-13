@@ -1,29 +1,13 @@
 package render
 
 import (
-	"embed"
-	"io/fs"
-	"net/http"
-
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/template/html/v2"
 )
-
-//go:embed templates/*.html
-var templateFS embed.FS
 
 var globalVars fiber.Map
 
-func InitValues(data fiber.Map) {
+func Initialize(data fiber.Map) {
 	globalVars = data
-}
-
-func NewHtmlEngine(templateDir string) fiber.Views {
-	if templateDir != "" {
-		return html.NewFileSystem(http.Dir(templateDir), ".html")
-	}
-	renderFS, _ := fs.Sub(templateFS, "templates")
-	return html.NewFileSystem(http.FS(renderFS), ".html")
 }
 
 func RenderInternalError(ctx *fiber.Ctx) error {
@@ -135,5 +119,12 @@ func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
 		"emailOrPhone": emailOrPhone,
 		"verifyError":  pageData.VerifyError,
 		"csrfToken":    pageData.CSRFToken,
+	})
+}
+
+func RenderRegisterVerifyEmail(ctx *fiber.Ctx, email string) error {
+	return ctx.Render("verify-email", fiber.Map{
+		"siteName": globalVars["siteName"],
+		"email":    email,
 	})
 }

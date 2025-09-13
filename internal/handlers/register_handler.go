@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/mail"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/users"
@@ -27,6 +28,7 @@ type RegisterForm struct {
 type RegisterHandler struct {
 	*AuthHandler
 	userService UserService
+	mailSender  mail.MailSender
 }
 
 func NewRegisterHandler(authHandler *AuthHandler, userService UserService) *RegisterHandler {
@@ -99,17 +101,7 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		return render.RenderInternalError(ctx)
 	}
 
-	sessions.Set(ctx, sessions.SessionData{
-		IP:        ctx.IP(),
-		UserID:    user.ID,
-		LoginTime: time.Now(),
-	})
-
-	serviceURL := ctx.Query("service")
-	if serviceURL == "" {
-		return ctx.Redirect("/")
-	}
-	return redirect(ctx, "/authorize", fiber.Map{"service": ctx.Query("service")})
+	return render.RenderRegisterVerifyEmail(ctx, email)
 }
 
 func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {

@@ -3,9 +3,12 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -16,6 +19,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
+	"github.com/gofiber/template/html/v2"
 	"github.com/khanghh/cas-go/internal/auth"
 	"github.com/khanghh/cas-go/internal/common"
 	"github.com/khanghh/cas-go/internal/config"
@@ -36,6 +40,9 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )
+
+//go:embed templates/*.html
+var templateFS embed.FS
 
 var (
 	app       *cli.App
@@ -130,10 +137,21 @@ func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
 }
 
 func mustInitHtmlEngine(config *config.Config) fiber.Views {
-	render.InitValues(fiber.Map{
+	var htmlEngine *html.Engine
+	if config.TemplateDir != "" {
+		htmlEngine = html.NewFileSystem(http.Dir(config.TemplateDir), ".html")
+	} else {
+		renderFS, _ := fs.Sub(templateFS, "templates")
+		htmlEngine = html.NewFileSystem(http.FS(renderFS), ".html")
+	}
+
+	templateVars := fiber.Map{
 		"siteName": config.SiteName,
-	})
-	return render.NewHtmlEngine(config.TemplateDir)
+		"baseURL":  config.BaseURL,
+	}
+	render.Initialize(templateVars)
+	mail.Initialize(htmlEngine, templateVars)
+	return htmlEngine
 }
 
 func mustInitSMTPMailSender(config config.SMTPConfig) mail.MailSender {
@@ -186,6 +204,7 @@ func run(ctx *cli.Context) error {
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
+	htmlEngine := mustInitHtmlEngine(config)
 	mailSender := mustInitMailSender(config.Mail)
 	query.SetDefault(mustInitDatabase(config.MySQL))
 
@@ -242,7 +261,7 @@ func run(ctx *cli.Context) error {
 		IdleTimeout:   params.ServerIdleTimeout,
 		ReadTimeout:   params.ServerReadTimeout,
 		WriteTimeout:  params.ServerWriteTimeout,
-		Views:         mustInitHtmlEngine(config),
+		Views:         htmlEngine,
 	})
 
 	router.Use(withSession)
