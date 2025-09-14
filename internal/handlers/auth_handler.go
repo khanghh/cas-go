@@ -45,7 +45,7 @@ func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.Sessio
 	}
 
 	if session.ChallengeID != "" {
-		ch, err := h.twoFactorService.GetChallenge(session.ChallengeID)
+		ch, err := h.twoFactorService.GetChallenge(ctx.Context(), session.ChallengeID)
 		if err == nil && ch.Status() == twofactor.ChallengeStatusPending {
 			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.ChallengeID})
 		}
@@ -55,9 +55,9 @@ func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.Sessio
 		UserID:      session.UserID,
 		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
 		RedirectURL: redirectURL,
-		ExpiresIn:   5 * time.Minute,
+		ExpiresIn:   15 * time.Minute,
 	}
-	ch, err := h.twoFactorService.CreateChallenge(opts)
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
 	if err != nil {
 		return err
 	}

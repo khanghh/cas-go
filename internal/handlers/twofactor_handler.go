@@ -36,7 +36,7 @@ func generateCSRFToken() string {
 
 func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
 	session := sessions.Get(ctx)
-	otpCode, err := h.twoFactorService.PrepareOTP(session.UserID, ch)
+	otpCode, err := h.twoFactorService.PrepareOTP(ctx.Context(), session.UserID, ch)
 	if err != nil {
 		return render.RenderInternalError(ctx)
 	}
@@ -73,12 +73,12 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		return render.RenderInternalError(ctx)
 	}
 
-	ch, err := h.twofactorService.GetChallenge(cid)
+	ch, err := h.twofactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	binding := twofactor.BindingValues{user.ID, session.ID(), ctx.IP()}
-	if err := h.twoFactorService.ValidateChallenge(ch, binding); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, binding); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -105,12 +105,12 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 		return render.RenderInternalError(ctx)
 	}
 
-	ch, err := h.twofactorService.GetChallenge(cid)
+	ch, err := h.twofactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	binding := twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()}
-	if err := h.twoFactorService.ValidateChallenge(ch, binding); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, binding); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -133,12 +133,12 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderInternalError(ctx)
 	}
 
-	ch, err := h.twofactorService.GetChallenge(cid)
+	ch, err := h.twofactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	binding := twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()}
-	if err := h.twoFactorService.ValidateChallenge(ch, binding); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, binding); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -163,12 +163,12 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return h.renderVerifyOTP(ctx, user, cid, MsgInvalidRequest)
 	}
 
-	ch, err := h.twoFactorService.GetChallenge(cid)
+	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	binding := twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()}
-	ret, err := h.twoFactorService.VerifyChallenge(session.UserID, ch, binding, otp)
+	ret, err := h.twoFactorService.VerifyChallenge(ctx.Context(), session.UserID, ch, binding, otp)
 	if err != nil {
 		return render.RenderDeniedError(ctx)
 	}

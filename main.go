@@ -21,7 +21,6 @@ import (
 	"github.com/gofiber/storage/redis/v3"
 	"github.com/gofiber/template/html/v2"
 	"github.com/khanghh/cas-go/internal/auth"
-	"github.com/khanghh/cas-go/internal/common"
 	"github.com/khanghh/cas-go/internal/config"
 	"github.com/khanghh/cas-go/internal/handlers"
 	"github.com/khanghh/cas-go/internal/mail"
@@ -29,6 +28,7 @@ import (
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/repository"
+	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
@@ -38,6 +38,7 @@ import (
 	"gopkg.in/gomail.v2"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
 	"gorm.io/gorm/schema"
 )
 
@@ -110,14 +111,6 @@ func mustInitDatabase(dbConfig config.MySQLConfig) *gorm.DB {
 	}
 
 	return db
-}
-
-func mustInitCacheStorage(config *config.Config) fiber.Storage {
-	if config.RedisURL != "" {
-		return redis.New(redis.Config{URL: config.RedisURL})
-	} else {
-		return memory.New(memory.Config{GCInterval: 10 * time.Second})
-	}
 }
 
 func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
@@ -208,12 +201,27 @@ func run(ctx *cli.Context) error {
 	mailSender := mustInitMailSender(config.Mail)
 	query.SetDefault(mustInitDatabase(config.MySQL))
 
-	cacheStorage := mustInitCacheStorage(config)
-	ticketStorage := common.NewKVStorage(cacheStorage, params.TicketStorageKeyPrefix)
-	sessionStorage := common.NewKVStorage(cacheStorage, params.SessionStorageKeyPrefix)
-	challengeStorage := common.NewKVStorage(cacheStorage, params.ChallengeStorageKeyPrefix)
+	// initialize cache
+	var (
+		sessionStorage fiber.Storage
+		ticketStore    store.Store[auth.ServiceTicket]
+		challengeStore store.Store[twofactor.Challenge]
+		userStateStore store.Store[twofactor.UserState]
+	)
+	if config.RedisURL != "" {
+		redisStorage := redis.New(redis.Config{URL: config.RedisURL})
+		redisClient := redisStorage.Conn()
+		sessionStorage = store.NewKVStorage(redisStorage, params.SessionStoreKeyPrefix)
+		ticketStore = store.NewRedisStore[auth.ServiceTicket](redisClient, params.TicketStoreKeyPrefix)
+		challengeStore = store.NewRedisStore[twofactor.Challenge](redisClient, params.ChallengeStoreKeyPrefix)
+		userStateStore = store.NewRedisStore[twofactor.UserState](redisClient, params.UserStateStoreKeyPrefix)
+	} else {
+		sessionStorage = memory.New(memory.Config{GCInterval: 10 * time.Second})
+		ticketStore = store.NewMemoryStore[auth.ServiceTicket]()
+		challengeStore = store.NewMemoryStore[twofactor.Challenge]()
+		userStateStore = store.NewMemoryStore[twofactor.UserState]()
+	}
 
-	ticketStore := auth.NewTicketStore(ticketStorage)
 	sessionStore := session.New(session.Config{
 		Storage:        sessionStorage,
 		Expiration:     config.Session.SessionMaxAge,
@@ -236,7 +244,7 @@ func run(ctx *cli.Context) error {
 		userService      = users.NewUserService(userRepo, userOAuthRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry, tokenRepo)
-		twofactorService = twofactor.NewTwoFactorService(challengeStorage, config.MasterKey)
+		twofactorService = twofactor.NewTwoFactorService(challengeStore, userStateStore, config.MasterKey)
 	)
 
 	// middlewares and dependencies

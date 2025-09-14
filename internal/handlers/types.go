@@ -28,9 +28,9 @@ type UserService interface {
 }
 
 type TwoFactorService interface {
-	CreateChallenge(opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
-	GetChallenge(cid string) (*twofactor.Challenge, error)
-	ValidateChallenge(ch *twofactor.Challenge, binding twofactor.BindingValues) error
-	VerifyChallenge(uid uint, ch *twofactor.Challenge, binding twofactor.BindingValues, input string) (twofactor.VerifyResult, error)
-	PrepareOTP(uid uint, ch *twofactor.Challenge) (string, error)
+	CreateChallenge(ctx context.Context, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
+	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
+	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, binding twofactor.BindingValues) error
+	VerifyChallenge(ctx context.Context, uid uint, ch *twofactor.Challenge, binding twofactor.BindingValues, input string) (twofactor.VerifyResult, error)
+	PrepareOTP(ctx context.Context, uid uint, ch *twofactor.Challenge) (string, error)
 }

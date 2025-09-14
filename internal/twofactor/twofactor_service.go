@@ -1,6 +1,7 @@
 package twofactor
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -8,13 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/params"
 )
 
 type TwoFactorService struct {
-	store     *twoFactorStore
-	masterKey string
+	userStateStore *userStateStore
+	challengeStore *challengeStore
+	masterKey      string
 }
 
 type VerifyResult struct {
@@ -42,11 +44,12 @@ func (s *TwoFactorService) calculateHash(inputs ...interface{}) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *TwoFactorService) saveUserChallenge(userState *user2FAState, ch *Challenge) error {
-	if err := s.store.SaveChallenge(ch); err != nil {
+func (s *TwoFactorService) saveUserAndChallenge(ctx context.Context, userState *UserState, ch *Challenge) error {
+	err := s.challengeStore.Save(ctx, ch.ID, *ch)
+	if err != nil {
 		return err
 	}
-	return s.store.SaveUserState(userState)
+	return s.userStateStore.Save(ctx, userState.UserID, *userState)
 }
 
 type ChallengeOptions struct {
@@ -57,8 +60,8 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *TwoFactorService) CreateChallenge(opts ChallengeOptions) (*Challenge, error) {
-	userState, err := s.store.GetUserState(opts.UserID)
+func (s *TwoFactorService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
+	userState, err := s.userStateStore.Get(ctx, opts.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -75,18 +78,18 @@ func (s *TwoFactorService) CreateChallenge(opts ChallengeOptions) (*Challenge, e
 	}
 
 	userState.ChallengeCount++
-	if err := s.saveUserChallenge(userState, ch); err != nil {
+	if err := s.saveUserAndChallenge(ctx, userState, ch); err != nil {
 		return nil, err
 	}
 
 	return ch, nil
 }
 
-func (s *TwoFactorService) GetChallenge(cid string) (*Challenge, error) {
-	return s.store.GetChallenge(cid)
+func (s *TwoFactorService) GetChallenge(ctx context.Context, cid string) (*Challenge, error) {
+	return s.challengeStore.Get(ctx, cid)
 }
 
-func (s *TwoFactorService) ValidateChallenge(ch *Challenge, binding BindingValues) error {
+func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge, binding BindingValues) error {
 	if ch.IsExpired() {
 		return ErrChallengeExpired
 	}
@@ -102,13 +105,13 @@ func (s *TwoFactorService) ValidateChallenge(ch *Challenge, binding BindingValue
 	return nil
 }
 
-func (s *TwoFactorService) VerifyChallenge(uid uint, ch *Challenge, binding BindingValues, input string) (VerifyResult, error) {
-	if err := s.ValidateChallenge(ch, binding); err != nil {
+func (s *TwoFactorService) VerifyChallenge(ctx context.Context, uid uint, ch *Challenge, binding BindingValues, input string) (VerifyResult, error) {
+	if err := s.ValidateChallenge(ctx, ch, binding); err != nil {
 		return VerifyResult{}, err
 	}
 
 	var result VerifyResult
-	userState, err := s.store.GetUserState(uid)
+	userState, err := s.userStateStore.Get(ctx, uid)
 	if err != nil {
 		return VerifyResult{}, err
 	}
@@ -131,7 +134,7 @@ func (s *TwoFactorService) VerifyChallenge(uid uint, ch *Challenge, binding Bind
 		userState.IncreaseFailCount()
 	}
 
-	if err := s.saveUserChallenge(userState, ch); err != nil {
+	if err := s.saveUserAndChallenge(ctx, userState, ch); err != nil {
 		return VerifyResult{}, err
 	}
 
@@ -148,11 +151,12 @@ func (s *TwoFactorService) VerifyChallenge(uid uint, ch *Challenge, binding Bind
 	}, nil
 }
 
-func (s *TwoFactorService) PrepareOTP(uid uint, ch *Challenge) (string, error) {
-	userState, err := s.store.GetUserState(uid)
+func (s *TwoFactorService) PrepareOTP(ctx context.Context, uid uint, ch *Challenge) (string, error) {
+	userState, err := s.userStateStore.Get(ctx, uid)
 	if err != nil {
 		return "", err
 	}
+
 	if userState.IsLocked() {
 		return "", ErrUserLocked
 	}
@@ -162,15 +166,16 @@ func (s *TwoFactorService) PrepareOTP(uid uint, ch *Challenge) (string, error) {
 
 	userState.OTPRequestCount++
 	otpCode := newOTPHandler(s).GenerateOTP(ch, userState.OTPRequestCount)
-	if err := s.saveUserChallenge(userState, ch); err != nil {
+	if err := s.saveUserAndChallenge(ctx, userState, ch); err != nil {
 		return "", err
 	}
 	return otpCode, nil
 }
 
-func NewTwoFactorService(storage fiber.Storage, masterKey string) *TwoFactorService {
+func NewTwoFactorService(challengeStore store.Store[Challenge], userStateStore store.Store[UserState], masterKey string) *TwoFactorService {
 	return &TwoFactorService{
-		store:     newTwoFactorStore(storage),
-		masterKey: masterKey,
+		userStateStore: newUserStateStore(userStateStore),
+		challengeStore: newChallengeStore(challengeStore),
+		masterKey:      masterKey,
 	}
 }

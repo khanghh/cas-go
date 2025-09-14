@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/khanghh/cas-go/internal/repository"
+	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/params"
 )
 
@@ -24,7 +25,7 @@ type registry = ServiceRegistry
 
 type AuthorizeService struct {
 	*registry
-	ticketStore *TicketStore
+	ticketStore store.Store[ServiceTicket]
 	tokenRepo   repository.TokenRepository
 }
 
@@ -41,7 +42,7 @@ func verifyHMAC(secret, message, signatureB64 string) bool {
 }
 
 func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (*ServiceTicket, error) {
-	ticket, err := s.ticketStore.GetTicket(ticketID)
+	ticket, err := s.ticketStore.Get(ctx, ticketID)
 	if err != nil {
 		return nil, ErrTicketNotFound
 	}
@@ -61,7 +62,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 	}
 
 	// Attempt to remove the ticket. If it doesn't exist, it has either expired or been used.
-	if err := s.ticketStore.RemoveTicket(ticketID); err != nil {
+	if err := s.ticketStore.Del(ctx, ticketID); err != nil {
 		return ticket, ErrTicketExpired
 	}
 
@@ -74,21 +75,22 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 		return nil, ErrServiceNotFound
 	}
 
-	st := &ServiceTicket{
+	st := ServiceTicket{
 		TicketID:    uuid.NewString(),
 		UserID:      userId,
 		CallbackURL: service.CallbackURL,
 		CreateTime:  time.Now(),
 	}
 
-	if err := s.ticketStore.CreateTicket(st, params.ServiceTicketExpiration); err != nil {
+	err = s.ticketStore.Set(ctx, st.TicketID, st, params.ServiceTicketExpiration)
+	if err != nil {
 		return nil, err
 	}
 
-	return st, nil
+	return &st, nil
 }
 
-func NewAuthorizeService(ticketStore *TicketStore, serviceRegistry *ServiceRegistry, tokenRepo repository.TokenRepository) *AuthorizeService {
+func NewAuthorizeService(ticketStore store.Store[ServiceTicket], serviceRegistry *ServiceRegistry, tokenRepo repository.TokenRepository) *AuthorizeService {
 	return &AuthorizeService{
 		ticketStore: ticketStore,
 		registry:    serviceRegistry,
