@@ -203,10 +203,11 @@ func run(ctx *cli.Context) error {
 
 	// initialize cache
 	var (
-		sessionStorage fiber.Storage
-		ticketStore    store.Store[auth.ServiceTicket]
-		challengeStore store.Store[twofactor.Challenge]
-		userStateStore store.Store[twofactor.UserState]
+		sessionStorage   fiber.Storage
+		ticketStore      store.Store[auth.ServiceTicket]
+		challengeStore   store.Store[twofactor.Challenge]
+		userStateStore   store.Store[twofactor.UserState]
+		pendingUserStore store.Store[model.User]
 	)
 	if config.RedisURL != "" {
 		redisStorage := redis.New(redis.Config{URL: config.RedisURL})
@@ -215,11 +216,13 @@ func run(ctx *cli.Context) error {
 		ticketStore = store.NewRedisStore[auth.ServiceTicket](redisClient, params.TicketStoreKeyPrefix)
 		challengeStore = store.NewRedisStore[twofactor.Challenge](redisClient, params.ChallengeStoreKeyPrefix)
 		userStateStore = store.NewRedisStore[twofactor.UserState](redisClient, params.UserStateStoreKeyPrefix)
+		pendingUserStore = store.NewRedisStore[model.User](redisClient, params.PendingRegisterStoreKeyPrefix)
 	} else {
 		sessionStorage = memory.New(memory.Config{GCInterval: 10 * time.Second})
 		ticketStore = store.NewMemoryStore[auth.ServiceTicket]()
 		challengeStore = store.NewMemoryStore[twofactor.Challenge]()
 		userStateStore = store.NewMemoryStore[twofactor.UserState]()
+		pendingUserStore = store.NewMemoryStore[model.User]()
 	}
 
 	sessionStore := session.New(session.Config{
@@ -241,25 +244,25 @@ func run(ctx *cli.Context) error {
 
 	// services
 	var (
-		userService      = users.NewUserService(userRepo, userOAuthRepo)
+		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserStore)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry, tokenRepo)
-		twofactorService = twofactor.NewTwoFactorService(challengeStore, userStateStore, config.MasterKey)
+		challengeService = twofactor.NewTwoFactorService(challengeStore, userStateStore, config.MasterKey)
 	)
 
 	// middlewares and dependencies
 	var (
 		withSession    = sessions.SessionMiddleware(sessionStore)
 		oauthProviders = mustInitOAuthProviders(config)
-		authHandler    = handlers.NewAuthHandler(authorizeService, userService, twofactorService)
 	)
 
 	// handlers
 	var (
-		loginHandler     = handlers.NewLoginHandler(authHandler, serviceRegistry, userService, oauthProviders)
-		registerHandler  = handlers.NewRegisterHandler(authHandler, userService)
-		oauthHandler     = handlers.NewOAuthHandler(authHandler, userService, oauthProviders)
-		twofactorHandler = handlers.NewTwoFactorHandler(authHandler, twofactorService, mailSender)
+		authHandler      = handlers.NewAuthHandler(authorizeService, userService, challengeService)
+		loginHandler     = handlers.NewLoginHandler(serviceRegistry, userService, challengeService, oauthProviders)
+		registerHandler  = handlers.NewRegisterHandler(userService, challengeService, mailSender)
+		oauthHandler     = handlers.NewOAuthHandler(userService, oauthProviders)
+		twofactorHandler = handlers.NewTwoFactorHandler(challengeService, userService, mailSender)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -288,6 +291,7 @@ func run(ctx *cli.Context) error {
 	router.Post("/register", registerHandler.PostRegister)
 	router.Get("/register/oauth", registerHandler.GetRegisterWithOAuth)
 	router.Post("/register/oauth", registerHandler.PostRegisterWithOAuth)
+	router.Get("/register/confirm-email", registerHandler.GetConfirmEmail)
 	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
 	router.Get("/2fa/challenge", twofactorHandler.GetChallenge)
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)

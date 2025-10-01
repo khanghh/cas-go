@@ -26,9 +26,8 @@ type OAuthHandler struct {
 	oauthProviders map[string]oauth.OAuthProvider
 }
 
-func NewOAuthHandler(authHandler *AuthHandler, userService UserService, oauthProviders []oauth.OAuthProvider) *OAuthHandler {
+func NewOAuthHandler(userService UserService, oauthProviders []oauth.OAuthProvider) *OAuthHandler {
 	return &OAuthHandler{
-		AuthHandler:    authHandler,
 		userService:    userService,
 		oauthProviders: makeOAuthProvidersMap(oauthProviders),
 	}
@@ -41,7 +40,7 @@ func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAu
 		return ctx.SendStatus(http.StatusForbidden)
 	}
 
-	h.createUserSession(ctx, user, userOAuth)
+	createUserSession(ctx, user, userOAuth)
 
 	state := ctx.Query("state")
 	queryParams, err := url.ParseQuery(state)

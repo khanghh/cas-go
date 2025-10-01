@@ -14,10 +14,10 @@ import (
 type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
-	twoFactorService TwoFactorService
+	twoFactorService *twofactor.TwofactorService
 }
 
-func NewAuthHandler(authorizeService AuthorizeService, userService UserService, twofactorService TwoFactorService) *AuthHandler {
+func NewAuthHandler(authorizeService AuthorizeService, userService UserService, twofactorService *twofactor.TwofactorService) *AuthHandler {
 	return &AuthHandler{
 		authorizeService: authorizeService,
 		userService:      userService,
@@ -25,7 +25,7 @@ func NewAuthHandler(authorizeService AuthorizeService, userService UserService, 
 	}
 }
 
-func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) sessions.SessionData {
+func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) sessions.SessionData {
 	session := sessions.SessionData{
 		IP:        ctx.IP(),
 		UserID:    user.ID,
@@ -37,33 +37,6 @@ func (h *AuthHandler) createUserSession(ctx *fiber.Ctx, user *model.User, userOA
 	}
 	sessions.Reset(ctx, &session)
 	return session
-}
-
-func (h *AuthHandler) start2FAChallenge(ctx *fiber.Ctx, session *sessions.SessionData, redirectURL string) error {
-	if redirectURL == "" {
-		redirectURL = string(ctx.Context().URI().RequestURI())
-	}
-
-	if session.ChallengeID != "" {
-		ch, err := h.twoFactorService.GetChallenge(ctx.Context(), session.ChallengeID)
-		if err == nil && ch.Status() == twofactor.ChallengeStatusPending {
-			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.ChallengeID})
-		}
-	}
-
-	opts := twofactor.ChallengeOptions{
-		UserID:      session.UserID,
-		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
-		RedirectURL: redirectURL,
-		ExpiresIn:   15 * time.Minute,
-	}
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
-	if err != nil {
-		return err
-	}
-	session.ChallengeID = ch.ID
-	sessions.Set(ctx, *session)
-	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, callbackURL string) error {
@@ -101,7 +74,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 	}
 
 	if session.IsRequire2FA() {
-		return h.start2FAChallenge(ctx, &session, "")
+		return start2FAChallenge(ctx, h.twoFactorService, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -117,7 +90,7 @@ func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 		return performLogout(ctx)
 	}
 	if session.IsRequire2FA() {
-		return h.start2FAChallenge(ctx, &session, "")
+		return start2FAChallenge(ctx, h.twoFactorService, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -127,7 +100,7 @@ func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 
 	return render.RenderHomePage(ctx, render.HomePageData{
 		Username: user.Username,
-		FullName: user.DisplayName,
+		FullName: user.FullName,
 		Email:    user.Email,
 	})
 }
@@ -179,7 +152,7 @@ func (h *AuthHandler) GetServiceValidate(ctx *fiber.Ctx) error {
 		Data: UserInfoResponse{
 			UserID:   user.ID,
 			Username: user.Username,
-			FullName: user.DisplayName,
+			FullName: user.FullName,
 			Email:    user.Email,
 			Picture:  user.Picture,
 		},

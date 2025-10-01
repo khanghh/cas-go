@@ -8,6 +8,7 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/internal/twofactor"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,19 +21,19 @@ const (
 
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
-	*AuthHandler
-	serviceRegistry ServiceRegistry
-	userService     UserService
-	oauthProviders  []oauth.OAuthProvider
+	serviceRegistry  ServiceRegistry
+	userService      UserService
+	twoFactorService *twofactor.TwofactorService
+	oauthProviders   []oauth.OAuthProvider
 }
 
 // NewLoginHandler returns a new instance of AuthHandler.
-func NewLoginHandler(authHandler *AuthHandler, serviceRegistry ServiceRegistry, userService UserService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
+func NewLoginHandler(serviceRegistry ServiceRegistry, userService UserService, twoFactorService *twofactor.TwofactorService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
 	return &LoginHandler{
-		AuthHandler:     authHandler,
-		serviceRegistry: serviceRegistry,
-		userService:     userService,
-		oauthProviders:  oauthProviders,
+		serviceRegistry:  serviceRegistry,
+		userService:      userService,
+		twoFactorService: twoFactorService,
+		oauthProviders:   oauthProviders,
 	}
 }
 
@@ -98,13 +99,13 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		pageData.LoginError = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
 	}
-	session := h.createUserSession(ctx, user, nil)
+	session := createUserSession(ctx, user, nil)
 
 	redirectURL := "/"
 	if serviceURL != "" {
 		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-	return h.start2FAChallenge(ctx, &session, redirectURL)
+	return start2FAChallenge(ctx, h.twoFactorService, &session, redirectURL)
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {
