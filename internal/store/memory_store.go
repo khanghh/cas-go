@@ -47,9 +47,8 @@ func (s *MemoryStore[T]) Del(ctx context.Context, key string) error {
 	return s.storage.Delete(key)
 }
 
-func (s *MemoryStore[T]) SetAttr(ctx context.Context, key string, field string, val any) error {
+func (s *MemoryStore[T]) SetAttr(ctx context.Context, key string, values ...any) error {
 	panic("TODO: Implement")
-
 }
 
 func (s *MemoryStore[T]) GetAttr(ctx context.Context, key string, field string, val any) error {
@@ -57,6 +56,10 @@ func (s *MemoryStore[T]) GetAttr(ctx context.Context, key string, field string, 
 }
 
 func (s *MemoryStore[T]) IncrAttr(ctx context.Context, key string, field string, delta int64) (int64, error) {
+	panic("TODO: Implement")
+}
+
+func (s *MemoryStore[T]) AttrExpire(ctx context.Context, key string, expiresIn time.Duration, fields ...string) error {
 	panic("TODO: Implement")
 }
 
