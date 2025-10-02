@@ -291,7 +291,7 @@ func run(ctx *cli.Context) error {
 	router.Post("/register", registerHandler.PostRegister)
 	router.Get("/register/oauth", registerHandler.GetRegisterWithOAuth)
 	router.Post("/register/oauth", registerHandler.PostRegisterWithOAuth)
-	router.Get("/register/confirm-email", registerHandler.GetConfirmEmail)
+	router.Get("/register/verify-email", registerHandler.GetVerifyEmail)
 	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
 	router.Get("/2fa/challenge", twofactorHandler.GetChallenge)
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)

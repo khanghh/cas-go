@@ -5,7 +5,7 @@ package query
 // User column names
 const ColUserID = "id"
 const ColUserUsername = "username"
-const ColUserDisplayName = "display_name"
+const ColUserFullName = "full_name"
 const ColUserEmail = "email"
 const ColUserEmailVerified = "email_verified"
 const ColUserPassword = "password"

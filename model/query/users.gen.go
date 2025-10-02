@@ -28,7 +28,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.ALL = field.NewAsterisk(tableName)
 	_user.ID = field.NewUint(tableName, "id")
 	_user.Username = field.NewString(tableName, "username")
-	_user.DisplayName = field.NewString(tableName, "display_name")
+	_user.FullName = field.NewString(tableName, "full_name")
 	_user.Email = field.NewString(tableName, "email")
 	_user.EmailVerified = field.NewBool(tableName, "email_verified")
 	_user.Password = field.NewString(tableName, "password")
@@ -54,7 +54,7 @@ type user struct {
 	ALL           field.Asterisk
 	ID            field.Uint
 	Username      field.String
-	DisplayName   field.String
+	FullName      field.String
 	Email         field.String
 	EmailVerified field.Bool
 	Password      field.String
@@ -82,7 +82,7 @@ func (u *user) updateTableName(table string) *user {
 	u.ALL = field.NewAsterisk(table)
 	u.ID = field.NewUint(table, "id")
 	u.Username = field.NewString(table, "username")
-	u.DisplayName = field.NewString(table, "display_name")
+	u.FullName = field.NewString(table, "full_name")
 	u.Email = field.NewString(table, "email")
 	u.EmailVerified = field.NewBool(table, "email_verified")
 	u.Password = field.NewString(table, "password")
@@ -110,7 +110,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap = make(map[string]field.Expr, 12)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["username"] = u.Username
-	u.fieldMap["display_name"] = u.DisplayName
+	u.fieldMap["full_name"] = u.FullName
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["email_verified"] = u.EmailVerified
 	u.fieldMap["password"] = u.Password

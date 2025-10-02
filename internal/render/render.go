@@ -129,3 +129,18 @@ func RenderRegisterVerifyEmail(ctx *fiber.Ctx, email string) error {
 		"email":    email,
 	})
 }
+
+func RenderEmailVerificationSuccess(ctx *fiber.Ctx, email string) error {
+	return ctx.Render("verify-email-result", fiber.Map{
+		"siteName": globalVars["siteName"],
+		"success":  true,
+		"email":    email,
+	})
+}
+
+func RenderEmailVerificationFailure(ctx *fiber.Ctx) error {
+	return ctx.Render("verify-email-result", fiber.Map{
+		"siteName": globalVars["siteName"],
+		"success":  false,
+	})
+}

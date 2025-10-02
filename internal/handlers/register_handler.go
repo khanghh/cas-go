@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -10,8 +11,8 @@ import (
 	"github.com/khanghh/cas-go/internal/mail"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
-	"github.com/khanghh/cas-go/model"
 )
 
 var (
@@ -26,15 +27,16 @@ type RegisterForm struct {
 }
 
 type RegisterHandler struct {
-	*AuthHandler
-	userService UserService
-	mailSender  mail.MailSender
+	userService      UserService
+	twoFactorService *twofactor.TwofactorService
+	mailSender       mail.MailSender
 }
 
-func NewRegisterHandler(authHandler *AuthHandler, userService UserService) *RegisterHandler {
+func NewRegisterHandler(userService UserService, twofactorService *twofactor.TwofactorService, mailSender mail.MailSender) *RegisterHandler {
 	return &RegisterHandler{
-		AuthHandler: authHandler,
-		userService: userService,
+		userService:      userService,
+		twoFactorService: twofactorService,
+		mailSender:       mailSender,
 	}
 }
 
@@ -62,6 +64,11 @@ func (h *RegisterHandler) GetRegister(ctx *fiber.Ctx) error {
 	return render.RenderRegister(ctx, render.RegisterPageData{})
 }
 
+type RegisterClaims struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
 func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
 	if session.IsLoggedIn() {
@@ -83,13 +90,13 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		return render.RenderRegister(ctx, pageData)
 	}
 
-	user := model.User{
-		Username:      username,
-		DisplayName:   username,
-		Email:         email,
-		EmailVerified: false,
+	userOpts := users.CreateUserOptions{
+		Username: username,
+		Email:    email,
+		Password: password,
 	}
-	if err := h.userService.CreateUser(ctx.Context(), &user, password); err != nil {
+	_, err := h.userService.RegisterUser(ctx.Context(), userOpts)
+	if err != nil {
 		if errors.Is(err, users.ErrUserNameExists) {
 			pageData.FormErrors["username"] = MsgUsernameTaken
 			return render.RenderRegister(ctx, pageData)
@@ -101,6 +108,23 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		return render.RenderInternalError(ctx)
 	}
 
+	opts := twofactor.ChallengeOptions{ExpiresIn: 1 * time.Hour}
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
+	if err != nil {
+		return render.RenderInternalError(ctx)
+	}
+	registerClaims := RegisterClaims{
+		Username: username,
+		Email:    email,
+	}
+	token, err := h.twoFactorService.JWT().GenerateToken(ctx.Context(), ch, registerClaims)
+	if err != nil {
+		return render.RenderInternalError(ctx)
+	}
+	verifyURL := fmt.Sprintf("%s/register/verify-email?token=%s", ctx.BaseURL(), token)
+	if err := mail.SendRegisterVerification(h.mailSender, email, verifyURL); err != nil {
+		return render.RenderInternalError(ctx)
+	}
 	return render.RenderRegisterVerifyEmail(ctx, email)
 }
 
@@ -154,15 +178,15 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		return render.RenderOAuthRegister(ctx, pageData)
 	}
 
-	user := model.User{
-		Username:      username,
-		DisplayName:   userOAuth.DisplayName,
-		Email:         userOAuth.Email,
-		EmailVerified: true,
-		Picture:       userOAuth.Picture,
-		OAuths:        []model.UserOAuth{*userOAuth},
+	userOpts := users.CreateUserOptions{
+		Username:  username,
+		FullName:  userOAuth.DisplayName,
+		Email:     userOAuth.Email,
+		Picture:   userOAuth.Picture,
+		UserOAuth: userOAuth,
 	}
-	if err := h.userService.CreateUser(ctx.Context(), &user, password); err != nil {
+	user, err := h.userService.CreateUser(ctx.Context(), userOpts)
+	if err != nil {
 		if errors.Is(err, users.ErrUserNameExists) {
 			pageData.FormErrors["username"] = MsgUsernameTaken
 			return render.RenderOAuthRegister(ctx, pageData)
@@ -186,4 +210,27 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		return ctx.Redirect("/")
 	}
 	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+}
+
+func (h *RegisterHandler) GetVerifyEmail(ctx *fiber.Ctx) error {
+	token := ctx.Query("token")
+	jwtChallenger := h.twoFactorService.JWT()
+
+	var claims RegisterClaims
+	err := jwtChallenger.VerifyToken(ctx.Context(), token, &claims)
+	if err != nil {
+		return render.RenderEmailVerificationFailure(ctx)
+	}
+
+	pendingUser, err := h.userService.GetPendingUser(ctx.Context(), claims.Username, claims.Email)
+	if err != nil {
+		return render.RenderEmailVerificationFailure(ctx)
+	}
+
+	pendingUser.EmailVerified = true
+	if err := h.userService.AddUser(ctx.Context(), pendingUser); err != nil {
+		return render.RenderInternalError(ctx)
+	}
+
+	return render.RenderEmailVerificationSuccess(ctx, claims.Email)
 }

@@ -22,3 +22,19 @@ func SendOTP(sender MailSender, email string, otpCode string) error {
 		IsHTML:  true,
 	})
 }
+
+func SendRegisterVerification(sender MailSender, email string, verifyURL string) error {
+	params := fiber.Map{
+		"verifyURL": verifyURL,
+	}
+	body, err := renderHTML("mail/confirm-register", params)
+	if err != nil {
+		return err
+	}
+	return sender.Send(&Message{
+		To:      []string{email},
+		Subject: "Please verify your email address",
+		Body:    body,
+		IsHTML:  true,
+	})
+}

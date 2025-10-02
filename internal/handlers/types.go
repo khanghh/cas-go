@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/khanghh/cas-go/internal/auth"
-	"github.com/khanghh/cas-go/internal/twofactor"
+	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
 )
 
@@ -21,16 +21,11 @@ type AuthorizeService interface {
 
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
-	CreateUser(ctx context.Context, user *model.User, rawPassword string) error
+	AddUser(ctx context.Context, user *model.User) error
+	CreateUser(ctx context.Context, opts users.CreateUserOptions) (*model.User, error)
+	GetPendingUser(ctx context.Context, username string, email string) (*model.User, error)
+	RegisterUser(ctx context.Context, opts users.CreateUserOptions) (*model.User, error)
 	GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error)
 	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
-}
-
-type TwoFactorService interface {
-	CreateChallenge(ctx context.Context, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
-	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
-	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, binding twofactor.BindingValues) error
-	VerifyChallenge(ctx context.Context, uid uint, ch *twofactor.Challenge, binding twofactor.BindingValues, input string) (twofactor.VerifyResult, error)
-	PrepareOTP(ctx context.Context, uid uint, ch *twofactor.Challenge) (string, error)
 }

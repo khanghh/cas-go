@@ -5,12 +5,21 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/params"
+)
+
+var (
+	ErrChallengeNotFound = errors.New("challenge not found")
+	ErrChallengeInvalid  = errors.New("challenge invalid")
+	ErrChallengeExpired  = errors.New("challenge expired")
+	ErrTooManyAttemtps   = errors.New("too many attempts")
+	ErrContextMismatch   = errors.New("context mismatch")
 )
 
 type TwofactorService struct {
@@ -22,8 +31,6 @@ type TwofactorService struct {
 type VerifyResult struct {
 	Success      bool
 	AttemptsLeft int
-	LockReason   string
-	LockedUntil  time.Time
 }
 
 type BindingValues []interface{}
@@ -45,14 +52,6 @@ func (s *TwofactorService) calculateHash(inputs ...interface{}) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *TwofactorService) saveUserAndChallenge(ctx context.Context, userState *UserState, ch *Challenge) error {
-	err := s.challengeStore.Save(ctx, ch.ID, *ch)
-	if err != nil {
-		return err
-	}
-	return s.userStateStore.Save(ctx, userState.UserID, *userState)
-}
-
 type ChallengeOptions struct {
 	UserID      uint
 	Binding     BindingValues
@@ -60,14 +59,33 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *TwofactorService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
-	challengeCount, err := s.userStateStore.IncreaseChallengeCount(ctx, opts.UserID)
+func (s *TwofactorService) getUserState(ctx context.Context, userID uint) (*UserState, error) {
+	userState, err := s.userStateStore.Get(ctx, userID)
+	if errors.Is(err, store.ErrNotFound) {
+		userState = &UserState{UserID: userID}
+		err = s.userStateStore.Set(ctx, userID, *userState, params.TwoFactorUserStateMaxAge)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if challengeCount > params.TwoFactorUserMaxFailCount {
-		s.userStateStore.SetChallengeCount(ctx, opts.UserID, params.TwoFactorUserMaxFailCount)
-		return nil, ErrChallengeLimitReached
+	return userState, err
+}
+
+func (s *TwofactorService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
+	userState, err := s.getUserState(ctx, opts.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if err := userState.CheckLockStatus(); err != nil {
+		return nil, err
+	}
+
+	userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, opts.UserID)
+	if err != nil {
+		return nil, err
+	}
+	if userState.ChallengeCount > params.TwoFactorUserMaxChallenges {
+		return nil, ErrTooManyAttemtps
 	}
 
 	ch := Challenge{
@@ -76,7 +94,6 @@ func (s *TwofactorService) CreateChallenge(ctx context.Context, opts ChallengeOp
 		RedirectURL: opts.RedirectURL,
 		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
 	}
-
 	err = s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn)
 	if err != nil {
 		return nil, err
@@ -85,7 +102,11 @@ func (s *TwofactorService) CreateChallenge(ctx context.Context, opts ChallengeOp
 }
 
 func (s *TwofactorService) GetChallenge(ctx context.Context, cid string) (*Challenge, error) {
-	return s.challengeStore.Get(ctx, cid)
+	ch, err := s.challengeStore.Get(ctx, cid)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, ErrChallengeNotFound
+	}
+	return ch, err
 }
 
 func (s *TwofactorService) ValidateChallenge(ctx context.Context, ch *Challenge, binding BindingValues) error {
@@ -95,7 +116,7 @@ func (s *TwofactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 		return ErrTooManyAttemtps
 	}
-	if ch.Status() != ChallengeStatusPending {
+	if ch.CanVerify() {
 		return ErrChallengeInvalid
 	}
 	if ch.Hash != s.calculateHash(binding...) {
@@ -104,102 +125,101 @@ func (s *TwofactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	return nil
 }
 
-func (s *TwofactorService) GetUserState(ctx context.Context, uid uint) (*UserState, error) {
-	return s.userStateStore.Get(ctx, uid)
-}
-
-func (s *TwofactorService) LockUser(ctx context.Context, userID uint, reason string) (time.Duration, error) {
-	lockLevel, err := s.userStateStore.IncreaseLockLevel(ctx, userID)
+func (s *TwofactorService) LockUser(ctx context.Context, userID uint, reason string) (*UserState, error) {
+	userState, err := s.getUserState(ctx, userID)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	var lockDuration time.Duration
-	switch lockLevel {
-	case 1:
+	switch userState.LockLevel {
+	case 0:
 		lockDuration = 1 * time.Minute
-	case 2:
+	case 1:
 		lockDuration = 5 * time.Minute
-	case 3:
+	case 2:
 		lockDuration = 15 * time.Minute
-	case 4:
+	case 3:
 		lockDuration = 1 * time.Hour
-	case 5:
+	case 4:
 		lockDuration = 6 * time.Hour
 	default:
 		lockDuration = 24 * time.Hour
 	}
-	return lockDuration, s.userStateStore.LockUser(ctx, userID, reason, lockDuration)
+	userState.LockLevel, err = s.userStateStore.IncreaseLockLevel(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	userState.LockedUntil = time.Now().Add(lockDuration).UTC()
+	userState.LockReason = reason
+	err = s.userStateStore.LockUserUntil(ctx, userID, userState.LockReason, userState.LockedUntil)
+	if err != nil {
+		return nil, err
+	}
+	return userState, nil
 }
 
 type verifyFunc func(userState *UserState) (bool, error)
 
-func (s *TwofactorService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) (VerifyResult, error) {
+func (s *TwofactorService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) (bool, int, error) {
 	if err := s.ValidateChallenge(ctx, ch, binding); err != nil {
-		return VerifyResult{}, err
+		return false, 0, err
 	}
 
-	userState, err := s.userStateStore.Get(ctx, userID)
+	userState, err := s.getUserState(ctx, userID)
 	if err != nil {
-		return VerifyResult{}, err
+		return false, 0, err
 	}
-	if userState.IsLocked() {
-		return VerifyResult{
-			LockReason:  userState.LockReason,
-			LockedUntil: userState.LockedUntil,
-		}, nil
+	if err := userState.CheckLockStatus(); err != nil {
+		return false, 0, err
 	}
 
 	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, userID)
 	if err != nil {
-		return VerifyResult{}, err
+		return false, 0, err
 	}
 	if userState.FailCount > params.TwoFactorUserMaxFailCount {
-		return VerifyResult{}, ErrTooManyAttemtps
+		return false, 0, ErrTooManyAttemtps
 	}
 
 	ch.Attempts, err = s.challengeStore.IncreaseAttempts(ctx, ch.ID)
 	if err != nil {
-		return VerifyResult{}, err
+		return false, 0, err
 	}
 	if ch.Attempts > params.TwoFactorChallengeMaxAttempts {
-		return VerifyResult{}, ErrTooManyAttemtps
+		return false, 0, ErrTooManyAttemtps
 	}
 
-	ch.Success, err = doChallengerVerify(userState)
+	success, err := doChallengerVerify(userState)
 	if err != nil {
-		return VerifyResult{}, err
+		return false, 0, err
 	}
-	if ch.Success {
+	if success {
 		if err := s.challengeStore.Del(ctx, ch.ID); err != nil {
-			return VerifyResult{}, ErrChallengeExpired
+			return false, 0, ErrChallengeExpired
 		}
 		s.userStateStore.ResetFailCount(ctx, userID)
-		return VerifyResult{Success: true}, nil
+		s.userStateStore.ResetLockLevel(ctx, userID)
+		s.userStateStore.DecreaseChallengeCount(ctx, userID)
+		return true, 0, nil
 	}
 
 	if userState.FailCount == params.TwoFactorUserMaxFailCount {
-		lockDuration, err := s.LockUser(ctx, userID, ErrTooManyAttemtps.Error())
+		userState, err = s.LockUser(ctx, userID, ErrTooManyAttemtps.Error())
 		if err != nil {
-			return VerifyResult{}, err
+			return false, 0, err
 		}
-		return VerifyResult{
-			LockReason:  ErrTooManyAttemtps.Error(),
-			LockedUntil: time.Now().Add(lockDuration),
-		}, ErrTooManyAttemtps
+		return false, 0, NewUserLockedError(ErrTooManyAttemtps.Error(), userState.LockedUntil)
 	}
 
 	attemptsLeft := min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorUserMaxFailCount-userState.FailCount)
-	if attemptsLeft == 0 {
-		return VerifyResult{}, ErrTooManyAttemtps
-	}
-	return VerifyResult{AttemptsLeft: attemptsLeft}, nil
+	return false, attemptsLeft, nil
 }
 
-func (s *TwofactorService) OTPChallenger() *OTPChallenger {
+func (s *TwofactorService) OTP() *OTPChallenger {
 	return &OTPChallenger{s}
 }
 
-func (s *TwofactorService) JWTChallenger() *JWTChallenger {
+func (s *TwofactorService) JWT() *JWTChallenger {
 	return &JWTChallenger{s}
 }
 

@@ -81,7 +81,7 @@ func start2FAChallenge(ctx *fiber.Ctx, twofactorService *twofactor.TwofactorServ
 
 	if session.ChallengeID != "" {
 		ch, err := twofactorService.GetChallenge(ctx.Context(), session.ChallengeID)
-		if err == nil && ch.Status() == twofactor.ChallengeStatusPending {
+		if err == nil && ch.CanVerify() {
 			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.ChallengeID})
 		}
 	}

@@ -2,35 +2,51 @@ package twofactor
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"time"
 
 	"github.com/khanghh/cas-go/internal/store"
-	"github.com/khanghh/cas-go/params"
 )
 
 type UserState struct {
-	UserID             uint      `json:"userID"`
-	FailCount          int       `json:"failCount"             redis:"fail_count"`           // total number of failed challenges
-	LockedUntil        time.Time `json:"lockedUntil,omitempty" redis:"locked_until"`         // zero-value = not locked
-	LockReason         string    `json:"lockReason,omitempty"  redis:"lock_reason"`          // optional explanation (e.g. "too_many_attempts", "reate_limited")
-	ChallengeCount     int       `json:"challengeCount"        redis:"challenge_count"`      // total number of challenges
-	OTPRequestCount    int       `json:"otpRequestCount"       redis:"otp_request_count"`    // total OTP request count
-	TOTPVerifiedWindow int       `json:"totpVerifiedWindow"    redis:"totp_verified_window"` // total TOTP verified window
+	UserID             uint
+	FailCount          int       `redis:"fail_count"`           // total number of failed challenges
+	ChallengeCount     int       `redis:"challenge_count"`      // number of pending challenges
+	OTPRequestCount    int       `redis:"otp_request_count"`    // total OTP request count
+	TOTPVerifiedWindow int       `redis:"totp_verified_window"` // total TOTP verified window
+	LockLevel          int       `redis:"lock_level"`
+	LockReason         string    `redis:"lock_reason"`
+	LockedUntil        time.Time `redis:"locked_until"`
+}
+
+func (s *UserState) CheckLockStatus() error {
+	if s.LockedUntil.After(time.Now()) {
+		return &UserLockedError{
+			Reason: s.LockReason,
+			Until:  s.LockedUntil,
+		}
+	}
+	return nil
+}
+
+type UserLockedError struct {
+	Reason string
+	Until  time.Time
+}
+
+func (e *UserLockedError) Error() string {
+	return e.Reason
 }
 
 func (s *UserState) IsLocked() bool {
-	return s.FailCount >= 10 || !s.LockedUntil.IsZero()
+	return s.LockedUntil.After(time.Now())
 }
 
-func (s *UserState) IncreaseFailCount() error {
-	s.FailCount++
-	if s.FailCount >= params.TwoFactorUserMaxFailAttempts {
-		s.LockedUntil = time.Now().Add(24 * time.Hour)
-		s.LockReason = "too_many_fails"
+func NewUserLockedError(reason string, until time.Time) *UserLockedError {
+	return &UserLockedError{
+		Reason: reason,
+		Until:  until,
 	}
-	return nil
 }
 
 type userStateStore struct {
@@ -38,39 +54,72 @@ type userStateStore struct {
 }
 
 func (s *userStateStore) Get(ctx context.Context, uid uint) (*UserState, error) {
-	uidKey := strconv.Itoa(int(uid))
-	userState, err := s.Store.Get(ctx, uidKey)
-	if errors.Is(err, store.ErrNotFound) {
-		return &UserState{UserID: uid}, nil
-	} else if err != nil {
-		return nil, err
-	}
-	userState.UserID = uid
-	return userState, nil
+	return s.Store.Get(ctx, strconv.Itoa(int(uid)))
 }
 
 func (s *userStateStore) Set(ctx context.Context, uid uint, userState UserState, expiresIn time.Duration) error {
-	uidKey := strconv.Itoa(int(uid))
-	return s.Store.Set(ctx, uidKey, userState, expiresIn)
+	return s.Store.Set(ctx, strconv.Itoa(int(uid)), userState, expiresIn)
 }
 
 func (s *userStateStore) Save(ctx context.Context, uid uint, userState UserState) error {
-	uidKey := strconv.Itoa(int(uid))
-	return s.Store.Save(ctx, uidKey, userState)
+	return s.Store.Save(ctx, strconv.Itoa(int(uid)), userState)
 }
 
 func (s *userStateStore) Del(ctx context.Context, uid uint) error {
-	uidKey := strconv.Itoa(int(uid))
-	return s.Store.Del(ctx, uidKey)
+	return s.Store.Del(ctx, strconv.Itoa(int(uid)))
 }
 
 func (s *userStateStore) IncreaseFailCount(ctx context.Context, uid uint) (int, error) {
-	uidKey := strconv.Itoa(int(uid))
-	failCount, err := s.IncrAttr(ctx, uidKey, "fail_count", 1)
+	failCount, err := s.IncrAttr(ctx, strconv.Itoa(int(uid)), "fail_count", 1)
+	return int(failCount), err
+}
+
+func (s *userStateStore) ResetFailCount(ctx context.Context, uid uint) (int, error) {
+	return 0, s.SetAttr(ctx, strconv.Itoa(int(uid)), "fail_count", 0)
+}
+
+func (s *userStateStore) IncreaseOTPRequestCount(ctx context.Context, uid uint) (int, error) {
+	otpRequestCount, err := s.IncrAttr(ctx, strconv.Itoa(int(uid)), "otp_request_count", 1)
 	if err != nil {
 		return 0, err
 	}
-	return int(failCount), nil
+	return int(otpRequestCount), nil
+}
+
+func (s *userStateStore) ResetOTPRequestCount(ctx context.Context, uid uint) (int, error) {
+	return 0, s.SetAttr(ctx, strconv.Itoa(int(uid)), "otp_request_count", 0)
+}
+
+func (s *userStateStore) IncreaseChallengeCount(ctx context.Context, uid uint) (int, error) {
+	failCount, err := s.IncrAttr(ctx, strconv.Itoa(int(uid)), "challenge_count", 1)
+	return int(failCount), err
+}
+
+func (s *userStateStore) DecreaseChallengeCount(ctx context.Context, uid uint) (int, error) {
+	failCount, err := s.IncrAttr(ctx, strconv.Itoa(int(uid)), "challenge_count", -1)
+	return int(failCount), err
+}
+
+func (s *userStateStore) SetChallengeCount(ctx context.Context, uid uint, count int) error {
+	return s.SetAttr(ctx, strconv.Itoa(int(uid)), "challenge_count", count)
+}
+
+func (s *userStateStore) IncreaseLockLevel(ctx context.Context, uid uint) (int, error) {
+	lockLevel, err := s.IncrAttr(ctx, strconv.Itoa(int(uid)), "lock_level", 1)
+	return int(lockLevel), err
+}
+
+func (s *userStateStore) ResetLockLevel(ctx context.Context, uid uint) (int, error) {
+	return 0, s.SetAttr(ctx, strconv.Itoa(int(uid)), "fail_count", 0)
+}
+
+func (s *userStateStore) LockUserUntil(ctx context.Context, uid uint, reason string, until time.Time) error {
+	uidKey := strconv.Itoa(int(uid))
+	err := s.SetAttr(ctx, uidKey, "lock_reason", reason, "lock_until", until.UTC())
+	if err != nil {
+		return err
+	}
+	return s.AttrExpireAt(ctx, uidKey, until.UTC(), "lock_reason", "lock_until", "fail_count", "challenge_count")
 }
 
 func newUserStateStore(store store.Store[UserState]) *userStateStore {
