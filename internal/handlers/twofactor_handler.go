@@ -3,6 +3,7 @@ package handlers
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,8 +17,9 @@ import (
 )
 
 const (
-	MsgInvalidRequest = "Invalid request. Please try again."
-	MsgInvalidOTP     = "Incorrect OTP. You have %d attempt(s) left."
+	MsgInvalidRequest      = "Invalid request. Please try again."
+	MsgInvalidOTP          = "Incorrect OTP. You have %d attempt(s) left."
+	MsgTooManyOTPRequested = "You've requested too many OTPs. Please try again later."
 )
 
 type TwoFactorHandler struct {
@@ -37,7 +39,17 @@ func generateCSRFToken() string {
 
 func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
 	session := sessions.Get(ctx)
-	otpCode, err := h.twoFactorService.OTPChallenger().GenerateOTP(ctx.Context(), ch, session.UserID)
+	otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch, session.UserID)
+	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
+		return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
+			ChallengeID:  ch.ID,
+			EmailEnabled: user.EmailVerified,
+			Email:        user.Email,
+			IsMasked:     true,
+			MethodError:  MsgTooManyOTPRequested,
+		})
+	}
+
 	if err != nil {
 		return render.RenderInternalError(ctx)
 	}
@@ -197,18 +209,18 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	ret, err := h.twoFactorService.OTPChallenger().VerifyOTP(ctx.Context(), ch, session.UserID, binding, otp)
+	success, attemptsLeft, err := h.twoFactorService.OTP().Verify(ctx.Context(), ch, session.UserID, binding, otp)
 	if err != nil {
 		return render.RenderDeniedError(ctx)
 	}
 
-	if ret.Success {
+	if success {
 		session.Last2FATime = time.Now()
 		session.ChallengeID = ""
 		sessions.Set(ctx, session)
 		return redirect(ctx, ch.RedirectURL, nil)
 	}
-	return h.renderVerifyOTP(ctx, user, cid, fmt.Sprintf(MsgInvalidOTP, ret.AttemptsLeft))
+	return h.renderVerifyOTP(ctx, user, cid, fmt.Sprintf(MsgInvalidOTP, attemptsLeft))
 }
 
 func NewTwoFactorHandler(twofactorService *twofactor.TwofactorService, userService *users.UserService, mailSender mail.MailSender) *TwoFactorHandler {

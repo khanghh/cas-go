@@ -23,6 +23,7 @@ type VerificationRequiredPageData struct {
 	IsMasked     bool
 	Email        string
 	Phone        string
+	MethodError  string
 }
 
 type VerifyOTPPageData struct {

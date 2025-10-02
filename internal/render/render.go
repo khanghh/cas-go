@@ -99,6 +99,7 @@ func RenderVerificationRequired(ctx *fiber.Ctx, pageData VerificationRequiredPag
 		"totpEnabled":  pageData.TOTPEnabled,
 		"email":        email,
 		"phone":        phone,
+		"methodError":  pageData.MethodError,
 	})
 }
 
