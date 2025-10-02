@@ -10,7 +10,7 @@ func Initialize(data fiber.Map) {
 	globalVars = data
 }
 
-func RenderInternalError(ctx *fiber.Ctx) error {
+func RenderInternalServerError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-internal", fiber.Map{
 		"siteName": globalVars["siteName"],
 	})
@@ -24,6 +24,12 @@ func RenderNotFoundError(ctx *fiber.Ctx) error {
 
 func RenderForbiddenError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-forbidden", fiber.Map{
+		"siteName": globalVars["siteName"],
+	})
+}
+
+func RenderBadRequestError(ctx *fiber.Ctx) error {
+	return ctx.Render("error-bad-request", fiber.Map{
 		"siteName": globalVars["siteName"],
 	})
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/memory/v2"
 	"github.com/gofiber/storage/redis/v3"
@@ -24,6 +25,8 @@ import (
 	"github.com/khanghh/cas-go/internal/config"
 	"github.com/khanghh/cas-go/internal/handlers"
 	"github.com/khanghh/cas-go/internal/mail"
+	"github.com/khanghh/cas-go/internal/middlewares"
+
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
@@ -273,12 +276,14 @@ func run(ctx *cli.Context) error {
 		ReadTimeout:   params.ServerReadTimeout,
 		WriteTimeout:  params.ServerWriteTimeout,
 		Views:         htmlEngine,
+		ErrorHandler:  middlewares.ErrorHandler,
 	})
 
-	router.Use(withSession)
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
+	router.Use(recover.New())
+	router.Use(withSession)
 	router.Static("/static/*", config.StaticDir)
 	router.Get("/", authHandler.GetHome)
 	router.Get("/authorize", authHandler.GetAuthorize)

@@ -51,11 +51,11 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 	}
 
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
 }
@@ -110,7 +110,7 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	binding := twofactor.BindingValues{user.ID, session.ID(), ctx.IP()}
@@ -142,7 +142,7 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
@@ -170,7 +170,7 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
@@ -196,7 +196,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	if csrf != session.CSRFToken {

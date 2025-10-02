@@ -105,13 +105,13 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 			return render.RenderRegister(ctx, pageData)
 		}
 		slog.Error("Failed to create user", "error", err)
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	opts := twofactor.ChallengeOptions{ExpiresIn: 1 * time.Hour}
 	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 	registerClaims := RegisterClaims{
 		Username: username,
@@ -119,11 +119,11 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	}
 	token, err := h.twoFactorService.JWT().GenerateToken(ctx.Context(), ch, registerClaims)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 	verifyURL := fmt.Sprintf("%s/register/verify-email?token=%s", ctx.BaseURL(), token)
 	if err := mail.SendRegisterVerification(h.mailSender, email, verifyURL); err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 	return render.RenderRegisterVerifyEmail(ctx, email)
 }
@@ -136,7 +136,7 @@ func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 
 	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	return render.RenderOAuthRegister(ctx, render.RegisterPageData{
@@ -154,12 +154,12 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	}
 
 	if session.OAuthID == 0 {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 	if err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	var (
@@ -229,7 +229,7 @@ func (h *RegisterHandler) GetVerifyEmail(ctx *fiber.Ctx) error {
 
 	pendingUser.EmailVerified = true
 	if err := h.userService.AddUser(ctx.Context(), pendingUser); err != nil {
-		return render.RenderInternalError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
 	return render.RenderEmailVerificationSuccess(ctx, claims.Email)
