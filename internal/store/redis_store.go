@@ -40,7 +40,14 @@ func (s *RedisStore[T]) Save(ctx context.Context, key string, val T) error {
 }
 
 func (s *RedisStore[T]) Del(ctx context.Context, key string) error {
-	return s.rdb.Del(ctx, s.keyPrefix+key).Err()
+	deleted, err := s.rdb.Del(ctx, s.keyPrefix+key).Result()
+	if err != nil {
+		return err
+	}
+	if deleted == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (s *RedisStore[T]) Expire(ctx context.Context, key string, expiresIn time.Duration) error {
