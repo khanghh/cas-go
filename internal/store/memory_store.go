@@ -47,6 +47,10 @@ func (s *MemoryStore[T]) Del(ctx context.Context, key string) error {
 	return s.storage.Delete(key)
 }
 
+func (s *MemoryStore[T]) Expire(ctx context.Context, key string, expiresIn time.Duration) error {
+	panic("TODO: Implement")
+}
+
 func (s *MemoryStore[T]) SetAttr(ctx context.Context, key string, values ...any) error {
 	panic("TODO: Implement")
 }
@@ -60,6 +64,10 @@ func (s *MemoryStore[T]) IncrAttr(ctx context.Context, key string, field string,
 }
 
 func (s *MemoryStore[T]) AttrExpire(ctx context.Context, key string, expiresIn time.Duration, fields ...string) error {
+	panic("TODO: Implement")
+}
+
+func (s *MemoryStore[T]) AttrExpireAt(ctx context.Context, key string, expiresAt time.Time, fields ...string) error {
 	panic("TODO: Implement")
 }
 

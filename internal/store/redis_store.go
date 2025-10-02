@@ -40,8 +40,11 @@ func (s *RedisStore[T]) Save(ctx context.Context, key string, val T) error {
 }
 
 func (s *RedisStore[T]) Del(ctx context.Context, key string) error {
-	err := s.rdb.Del(ctx, s.keyPrefix+key).Err()
-	return err
+	return s.rdb.Del(ctx, s.keyPrefix+key).Err()
+}
+
+func (s *RedisStore[T]) Expire(ctx context.Context, key string, expiresIn time.Duration) error {
+	return s.rdb.Expire(ctx, s.keyPrefix+key, expiresIn).Err()
 }
 
 func (s *RedisStore[T]) SetAttr(ctx context.Context, key string, values ...any) error {
@@ -58,6 +61,10 @@ func (s *RedisStore[T]) IncrAttr(ctx context.Context, key, field string, delta i
 
 func (s *RedisStore[T]) AttrExpire(ctx context.Context, key string, expiresIn time.Duration, fields ...string) error {
 	return s.rdb.HExpire(ctx, s.keyPrefix+key, expiresIn, fields...).Err()
+}
+
+func (s *RedisStore[T]) AttrExpireAt(ctx context.Context, key string, expiresAt time.Time, fields ...string) error {
+	return s.rdb.HExpireAt(ctx, s.keyPrefix+key, expiresAt, fields...).Err()
 }
 
 func NewRedisStore[T any](db redis.UniversalClient, keyPrefix string) *RedisStore[T] {
