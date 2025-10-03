@@ -11,7 +11,7 @@ import (
 )
 
 type OTPChallenger struct {
-	svc *TwofactorService
+	svc *ChallengeService
 }
 
 func generateOTP(length int) string {

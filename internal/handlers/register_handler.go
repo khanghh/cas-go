@@ -28,14 +28,14 @@ type RegisterForm struct {
 
 type RegisterHandler struct {
 	userService      UserService
-	twoFactorService *twofactor.TwofactorService
+	challengeService *twofactor.ChallengeService
 	mailSender       mail.MailSender
 }
 
-func NewRegisterHandler(userService UserService, twofactorService *twofactor.TwofactorService, mailSender mail.MailSender) *RegisterHandler {
+func NewRegisterHandler(userService UserService, challengeService *twofactor.ChallengeService, mailSender mail.MailSender) *RegisterHandler {
 	return &RegisterHandler{
 		userService:      userService,
-		twoFactorService: twofactorService,
+		challengeService: challengeService,
 		mailSender:       mailSender,
 	}
 }
@@ -109,7 +109,7 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	}
 
 	opts := twofactor.ChallengeOptions{ExpiresIn: 1 * time.Hour}
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
+	ch, err := h.challengeService.CreateChallenge(ctx.Context(), opts)
 	if err != nil {
 		return render.RenderInternalServerError(ctx)
 	}
@@ -117,7 +117,7 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		Username: username,
 		Email:    email,
 	}
-	token, err := h.twoFactorService.JWT().GenerateToken(ctx.Context(), ch, registerClaims)
+	token, err := h.challengeService.JWT().GenerateToken(ctx.Context(), ch, registerClaims)
 	if err != nil {
 		return render.RenderInternalServerError(ctx)
 	}
@@ -199,10 +199,9 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	}
 
 	sessions.Set(ctx, sessions.SessionData{
-		IP:          ctx.IP(),
-		UserID:      user.ID,
-		LoginTime:   time.Now(),
-		Last2FATime: time.Now(),
+		IP:        ctx.IP(),
+		UserID:    user.ID,
+		LoginTime: time.Now(),
 	})
 
 	serviceURL := ctx.Query("service")
@@ -214,7 +213,7 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 
 func (h *RegisterHandler) GetVerifyEmail(ctx *fiber.Ctx) error {
 	token := ctx.Query("token")
-	jwtChallenger := h.twoFactorService.JWT()
+	jwtChallenger := h.challengeService.JWT()
 
 	var claims RegisterClaims
 	err := jwtChallenger.VerifyToken(ctx.Context(), token, &claims)

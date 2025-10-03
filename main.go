@@ -250,7 +250,7 @@ func run(ctx *cli.Context) error {
 		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserStore)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry, tokenRepo)
-		challengeService = twofactor.NewTwoFactorService(challengeStore, userStateStore, config.MasterKey)
+		challengeService = twofactor.NewChallengeService(challengeStore, userStateStore, config.MasterKey)
 	)
 
 	// middlewares and dependencies

@@ -14,7 +14,7 @@ import (
 	"github.com/khanghh/cas-go/params"
 )
 
-type TwofactorService struct {
+type ChallengeService struct {
 	userStateStore *userStateStore
 	challengeStore *challengeStore
 	masterKey      string
@@ -22,11 +22,11 @@ type TwofactorService struct {
 
 type BindingValues []interface{}
 
-func (s *TwofactorService) generateChallengeID() string {
+func (s *ChallengeService) generateChallengeID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
-func (s *TwofactorService) calculateHash(inputs ...interface{}) string {
+func (s *ChallengeService) calculateHash(inputs ...interface{}) string {
 	if len(inputs) == 0 {
 		return ""
 	}
@@ -46,7 +46,7 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *TwofactorService) getUserState(ctx context.Context, userID uint) (*UserState, error) {
+func (s *ChallengeService) getUserState(ctx context.Context, userID uint) (*UserState, error) {
 	userState, err := s.userStateStore.Get(ctx, userID)
 	if errors.Is(err, store.ErrNotFound) {
 		userState = &UserState{UserID: userID}
@@ -58,7 +58,7 @@ func (s *TwofactorService) getUserState(ctx context.Context, userID uint) (*User
 	return userState, err
 }
 
-func (s *TwofactorService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
+func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
 	userState, err := s.getUserState(ctx, opts.UserID)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (s *TwofactorService) CreateChallenge(ctx context.Context, opts ChallengeOp
 	return &ch, nil
 }
 
-func (s *TwofactorService) GetChallenge(ctx context.Context, cid string) (*Challenge, error) {
+func (s *ChallengeService) GetChallenge(ctx context.Context, cid string) (*Challenge, error) {
 	ch, err := s.challengeStore.Get(ctx, cid)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, ErrChallengeNotFound
@@ -96,7 +96,7 @@ func (s *TwofactorService) GetChallenge(ctx context.Context, cid string) (*Chall
 	return ch, err
 }
 
-func (s *TwofactorService) ValidateChallenge(ctx context.Context, ch *Challenge, binding BindingValues) error {
+func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge, binding BindingValues) error {
 	if ch.IsExpired() {
 		return ErrChallengeExpired
 	}
@@ -112,7 +112,7 @@ func (s *TwofactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	return nil
 }
 
-func (s *TwofactorService) LockUser(ctx context.Context, userID uint, reason string) (*UserState, error) {
+func (s *ChallengeService) LockUser(ctx context.Context, userID uint, reason string) (*UserState, error) {
 	userState, err := s.getUserState(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func (s *TwofactorService) LockUser(ctx context.Context, userID uint, reason str
 
 type verifyFunc func(userState *UserState) (bool, error)
 
-func (s *TwofactorService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) error {
+func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) error {
 	if err := s.ValidateChallenge(ctx, ch, binding); err != nil {
 		return err
 	}
@@ -202,16 +202,16 @@ func (s *TwofactorService) verifyChallenge(ctx context.Context, ch *Challenge, u
 	return NewVerifyFailError(attemptsLeft)
 }
 
-func (s *TwofactorService) OTP() *OTPChallenger {
+func (s *ChallengeService) OTP() *OTPChallenger {
 	return &OTPChallenger{s}
 }
 
-func (s *TwofactorService) JWT() *JWTChallenger {
+func (s *ChallengeService) JWT() *JWTChallenger {
 	return &JWTChallenger{s}
 }
 
-func NewTwoFactorService(challengeStore store.Store[Challenge], userStateStore store.Store[UserState], masterKey string) *TwofactorService {
-	return &TwofactorService{
+func NewChallengeService(challengeStore store.Store[Challenge], userStateStore store.Store[UserState], masterKey string) *ChallengeService {
+	return &ChallengeService{
 		userStateStore: newUserStateStore(userStateStore),
 		challengeStore: newChallengeStore(challengeStore),
 		masterKey:      masterKey,

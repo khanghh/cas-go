@@ -23,16 +23,16 @@ const (
 type LoginHandler struct {
 	serviceRegistry  ServiceRegistry
 	userService      UserService
-	twoFactorService *twofactor.TwofactorService
+	challengeService *twofactor.ChallengeService
 	oauthProviders   []oauth.OAuthProvider
 }
 
 // NewLoginHandler returns a new instance of AuthHandler.
-func NewLoginHandler(serviceRegistry ServiceRegistry, userService UserService, twoFactorService *twofactor.TwofactorService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
+func NewLoginHandler(serviceRegistry ServiceRegistry, userService UserService, challengeService *twofactor.ChallengeService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
 	return &LoginHandler{
 		serviceRegistry:  serviceRegistry,
 		userService:      userService,
-		twoFactorService: twoFactorService,
+		challengeService: challengeService,
 		oauthProviders:   oauthProviders,
 	}
 }
@@ -105,7 +105,7 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	if serviceURL != "" {
 		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-	return start2FAChallenge(ctx, h.twoFactorService, &session, redirectURL)
+	return start2FAChallenge(ctx, h.challengeService, &session, redirectURL)
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {

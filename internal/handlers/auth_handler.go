@@ -14,26 +14,27 @@ import (
 type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
-	twoFactorService *twofactor.TwofactorService
+	challengeService *twofactor.ChallengeService
 }
 
-func NewAuthHandler(authorizeService AuthorizeService, userService UserService, twofactorService *twofactor.TwofactorService) *AuthHandler {
+func NewAuthHandler(authorizeService AuthorizeService, userService UserService, challengeService *twofactor.ChallengeService) *AuthHandler {
 	return &AuthHandler{
 		authorizeService: authorizeService,
 		userService:      userService,
-		twoFactorService: twofactorService,
+		challengeService: challengeService,
 	}
 }
 
 func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) sessions.SessionData {
 	session := sessions.SessionData{
-		IP:        ctx.IP(),
-		UserID:    user.ID,
-		LoginTime: time.Now(),
+		IP:            ctx.IP(),
+		UserID:        user.ID,
+		LoginTime:     time.Now(),
+		TwoFARequired: true,
 	}
 	if userOAuth != nil {
 		session.OAuthID = userOAuth.ID
-		session.Last2FATime = time.Now()
+		session.TwoFARequired = false
 	}
 	sessions.Reset(ctx, &session)
 	return session
@@ -73,8 +74,8 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/login", fiber.Map{"service": serviceURL})
 	}
 
-	if session.IsRequire2FA() {
-		return start2FAChallenge(ctx, h.twoFactorService, &session, "")
+	if session.TwoFARequired {
+		return start2FAChallenge(ctx, h.challengeService, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -89,8 +90,8 @@ func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	if !session.IsLoggedIn() {
 		return performLogout(ctx)
 	}
-	if session.IsRequire2FA() {
-		return start2FAChallenge(ctx, h.twoFactorService, &session, "")
+	if session.TwoFARequired {
+		return start2FAChallenge(ctx, h.challengeService, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)

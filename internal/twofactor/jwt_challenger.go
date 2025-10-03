@@ -15,7 +15,7 @@ type TokenClaims struct {
 }
 
 type JWTChallenger struct {
-	svc *TwofactorService
+	svc *ChallengeService
 }
 
 // GenerateToken creates a JWT signed with svc.MasterKey.

@@ -9,7 +9,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	"github.com/khanghh/cas-go/params"
 )
 
 const (
@@ -20,16 +19,16 @@ const (
 type Middleware func(next fiber.Handler) fiber.Handler
 
 type SessionData struct {
-	id          string    // session id
-	IP          string    // client ip address
-	UserID      uint      // user id
-	OAuthID     uint      // user oauth id
-	CSRFToken   string    // csrf token
-	LastSeen    time.Time // last request time
-	LoginTime   time.Time // last login time
-	Last2FATime time.Time // last 2fa success time
-	ChallengeID string    // current challenge id
-	ExpireTime  time.Time // session expire time
+	id               string    // session id
+	IP               string    // client ip address
+	UserID           uint      // user id
+	OAuthID          uint      // user oauth id
+	CSRFToken        string    // csrf token
+	LastSeen         time.Time // last request time
+	LoginTime        time.Time // last login time
+	TwoFARequired    bool      // is 2fa required
+	TwoFAChallengeID string    // 2fa challenge id
+	ExpireTime       time.Time // session expire time
 }
 
 func (s SessionData) ID() string {
@@ -38,10 +37,6 @@ func (s SessionData) ID() string {
 
 func (s *SessionData) IsLoggedIn() bool {
 	return s.UserID != 0 && s.LoginTime.Unix() > 0
-}
-
-func (s *SessionData) IsRequire2FA() bool {
-	return time.Since(s.Last2FATime) > params.TwoFactorValidityDuration
 }
 
 func init() {
