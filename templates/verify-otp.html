@@ -110,7 +110,7 @@
     const resendLink = document.getElementById("resendLink");
 
     const startTimer = () => {
-      countdown = 1;
+      countdown = 60;
       resendLink.classList.add("text-gray-400", "pointer-events-none");
       resendLink.classList.remove("text-blue-600", "hover:text-blue-500");
       countdownEl.textContent = `in ${countdown}s`;

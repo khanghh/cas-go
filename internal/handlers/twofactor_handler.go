@@ -62,6 +62,7 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 	if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
 		return err
 	}
+
 	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
 }
 

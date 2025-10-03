@@ -23,6 +23,7 @@ type Challenge struct {
 	Secret      string    `json:"secret"       redis:"secret"`
 	Attempts    int       `json:"attempts"     redis:"attempts"`
 	RedirectURL string    `json:"redirectURL"  redis:"redirect_url"`
+	UpdateAt    time.Time `json:"updateAt"     redis:"update_at"`
 	ExpiresAt   time.Time `json:"expiresAt"    redis:"expires_at"`
 }
 

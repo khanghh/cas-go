@@ -20,6 +20,7 @@ const (
 	TwoFactorUserMaxOTPRequests   = 20               // maximum number of OTP requests allowed per user
 	TwoFactorUserMaxChallenges    = 20               // maximum number of challenges created per user
 	TwoFactorUserStateMaxAge      = 12 * time.Hour   // time to live for a user state
+	TwoFactorOTPExpiration        = 5 * time.Minute  // otp code expiration duration
 	TwoFactorJWTExpiration        = 1 * time.Hour    // jwt token expiration duration
 	TwoFactorValidityDuration     = 15 * time.Minute // validity duration for a 2FA login
 )

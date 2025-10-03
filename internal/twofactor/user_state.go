@@ -106,6 +106,10 @@ func (s *userStateStore) LockUserUntil(ctx context.Context, uid uint, reason str
 	return s.AttrExpireAt(ctx, uidKey, until.UTC(), "lock_reason", "lock_until", "fail_count", "challenge_count")
 }
 
+func (s *userStateStore) SetOTPSentAt(ctx context.Context, uid uint, sentAt time.Time) error {
+	return s.SetAttr(ctx, strconv.Itoa(int(uid)), "otp_sent_at", sentAt)
+}
+
 func newUserStateStore(store store.Store[UserState]) *userStateStore {
 	return &userStateStore{
 		Store: store,

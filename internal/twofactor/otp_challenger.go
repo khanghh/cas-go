@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/khanghh/cas-go/params"
 )
@@ -44,6 +45,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 	otpCode := generateOTP(6)
 	ch.Type = ChallengeTypeOTP
 	ch.Secret = s.svc.calculateHash(otpCode, userState.OTPRequestCount, s.svc.masterKey)
+	ch.UpdateAt = time.Now().UTC()
 	if err := s.svc.challengeStore.Save(ctx, ch.ID, *ch); err != nil {
 		return "", err
 	}
@@ -54,6 +56,9 @@ func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, userID uint, 
 	verifyFunc := func(userState *UserState) (bool, error) {
 		success := ch.Secret == s.svc.calculateHash(code, userState.OTPRequestCount, s.svc.masterKey)
 		if success {
+			if time.Since(ch.UpdateAt) > params.TwoFactorOTPExpiration {
+				return false, ErrOTPCodeExpired
+			}
 			s.svc.userStateStore.ResetOTPRequestCount(ctx, userID)
 		}
 		return success, nil
