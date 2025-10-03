@@ -3,6 +3,7 @@ package twofactor
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -18,7 +19,7 @@ type JWTChallenger struct {
 }
 
 // GenerateToken creates a JWT signed with svc.MasterKey.
-func (h *JWTChallenger) GenerateToken(ctx context.Context, ch *Challenge, data interface{}) (string, error) {
+func (s *JWTChallenger) GenerateToken(ctx context.Context, ch *Challenge, data interface{}) (string, error) {
 	claims := TokenClaims{
 		Data:        data,
 		ChallengeID: ch.ID,
@@ -27,22 +28,26 @@ func (h *JWTChallenger) GenerateToken(ctx context.Context, ch *Challenge, data i
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(h.svc.masterKey))
+	signedToken, err := token.SignedString([]byte(s.svc.masterKey))
 	if err != nil {
 		return "", err
 	}
 	ch.Type = ChallengeTypeToken
+	ch.UpdateAt = time.Now().UTC()
+	if err := s.svc.challengeStore.Save(ctx, ch.ID, *ch); err != nil {
+		return "", err
+	}
 	return signedToken, nil
 }
 
 // VerifyToken parses and verifies the JWT using svc.MasterKey
-func (h *JWTChallenger) VerifyToken(ctx context.Context, tokenStr string, data interface{}) error {
+func (s *JWTChallenger) VerifyToken(ctx context.Context, tokenStr string, data interface{}) error {
 	claims := TokenClaims{Data: data}
 	token, err := jwt.ParseWithClaims(tokenStr, &claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(h.svc.masterKey), nil
+		return []byte(s.svc.masterKey), nil
 	})
 	if err != nil {
 		return err
@@ -51,7 +56,7 @@ func (h *JWTChallenger) VerifyToken(ctx context.Context, tokenStr string, data i
 		return ErrTokenInvalid
 	}
 
-	if err := h.svc.challengeStore.Del(ctx, claims.ChallengeID); err != nil {
+	if err := s.svc.challengeStore.Del(ctx, claims.ChallengeID); err != nil {
 		return ErrTokenExpired
 	}
 	return nil
