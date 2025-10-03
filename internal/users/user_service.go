@@ -53,15 +53,11 @@ func (s *UserService) ApprovePendingUser(ctx context.Context, email string) (*mo
 	}
 
 	pendingUser.EmailVerified = true
-	if err := s.userRepo.Create(ctx, pendingUser); err != nil {
+	if _, err = s.createUser(ctx, pendingUser); err != nil {
 		return nil, err
 	}
 
 	return pendingUser, nil
-}
-
-func (s *UserService) AddUser(ctx context.Context, user *model.User) error {
-	return s.userRepo.Create(ctx, user)
 }
 
 func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) (*model.User, error) {
@@ -72,21 +68,15 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 	}
 	if existUser != nil {
 		if existUser.Username == opts.Username {
-			return nil, ErrUserNameExists
+			return nil, ErrUsernameTaken
 		}
-		return nil, ErrUserEmailExists
+		return nil, ErrEmailRegisterd
 	}
 
 	if _, err = s.pendingStore.Get(ctx, opts.Email); err == nil {
-		return nil, ErrUserEmailExists
+		return nil, ErrEmailRegisterd
 	}
 
-	// create user with oauth linked
-	if opts.UserOAuth != nil && opts.Email == opts.UserOAuth.Email {
-		return s.CreateUser(ctx, opts)
-	}
-
-	// create pending registration user
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(opts.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -98,6 +88,14 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 		Email:    opts.Email,
 		Picture:  opts.Picture,
 	}
+
+	// create user with oauth
+	if opts.UserOAuth != nil && opts.Email == opts.UserOAuth.Email {
+		user.OAuths = append(user.OAuths, *opts.UserOAuth)
+		return s.createUser(ctx, &user)
+	}
+
+	// create pending registration user
 	err = s.pendingStore.Set(ctx, opts.Email, user, params.PendingRegisterMaxAge)
 	if err != nil {
 		return nil, err
@@ -105,31 +103,15 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 	return &user, nil
 }
 
-func (s *UserService) CreateUser(ctx context.Context, opts CreateUserOptions) (*model.User, error) {
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(opts.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-	user := &model.User{
-		Username: opts.Username,
-		FullName: opts.FullName,
-		Password: string(passwordHash),
-		Email:    opts.Email,
-		Picture:  opts.Picture,
-	}
-	if opts.UserOAuth != nil {
-		user.OAuths = append(user.OAuths, *opts.UserOAuth)
-		user.EmailVerified = opts.UserOAuth.Email == opts.Email
-	}
-
+func (s *UserService) createUser(ctx context.Context, user *model.User) (*model.User, error) {
 	var mysqlErr *mysql.MySQLError
-	err = s.userRepo.Create(ctx, user)
+	err := s.userRepo.Create(ctx, user)
 	if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 {
 		switch {
 		case strings.Contains(mysqlErr.Message, query.IdxUserUsername):
-			return nil, ErrUserNameExists
+			return nil, ErrUsernameTaken
 		case strings.Contains(mysqlErr.Message, query.IdxUserEmail):
-			return nil, ErrUserEmailExists
+			return nil, ErrEmailRegisterd
 		}
 	}
 	return user, err

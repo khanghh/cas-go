@@ -98,10 +98,10 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	}
 	_, err := h.userService.RegisterUser(ctx.Context(), userOpts)
 	if err != nil {
-		if errors.Is(err, users.ErrUserNameExists) {
+		if errors.Is(err, users.ErrUsernameTaken) {
 			pageData.FormErrors["username"] = MsgUsernameTaken
 			return render.RenderRegister(ctx, pageData)
-		} else if errors.Is(err, users.ErrUserEmailExists) {
+		} else if errors.Is(err, users.ErrEmailRegisterd) {
 			pageData.FormErrors["email"] = MsgEmailRegistered
 			return render.RenderRegister(ctx, pageData)
 		}
@@ -185,12 +185,12 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		Picture:   userOAuth.Picture,
 		UserOAuth: userOAuth,
 	}
-	user, err := h.userService.CreateUser(ctx.Context(), userOpts)
+	user, err := h.userService.RegisterUser(ctx.Context(), userOpts)
 	if err != nil {
-		if errors.Is(err, users.ErrUserNameExists) {
+		if errors.Is(err, users.ErrUsernameTaken) {
 			pageData.FormErrors["username"] = MsgUsernameTaken
 			return render.RenderOAuthRegister(ctx, pageData)
-		} else if errors.Is(err, users.ErrUserEmailExists) {
+		} else if errors.Is(err, users.ErrEmailRegisterd) {
 			pageData.FormErrors["email"] = MsgEmailRegistered
 			return render.RenderOAuthRegister(ctx, pageData)
 		}
@@ -233,7 +233,7 @@ func (h *RegisterHandler) GetRegisterVerify(ctx *fiber.Ctx) error {
 	}
 
 	if _, err := h.userService.ApprovePendingUser(ctx.Context(), email); err != nil {
-		return err
+		return render.RenderNotFoundError(ctx)
 	}
 
 	return render.RenderEmailVerificationSuccess(ctx, claims.Email)

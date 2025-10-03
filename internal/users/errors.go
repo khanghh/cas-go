@@ -6,7 +6,7 @@ import (
 
 var (
 	ErrUserNotFound        = errors.New("user not found")
-	ErrUserNameExists      = errors.New("username already exists")
-	ErrUserEmailExists     = errors.New("email already exists")
+	ErrUsernameTaken       = errors.New("username already exists")
+	ErrEmailRegisterd      = errors.New("email already registered")
 	ErrPendingUserNotFound = errors.New("pending user not found")
 )
