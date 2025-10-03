@@ -2,8 +2,6 @@ package users
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"net/mail"
 	"strings"
@@ -44,32 +42,33 @@ type CreateUserOptions struct {
 	UserOAuth *model.UserOAuth
 }
 
-func (s *UserService) GetPendingUser(ctx context.Context, username string, email string) (*model.User, error) {
-	return s.pendingStore.Get(ctx, hashUserKey(username, email))
+func (s *UserService) GetPendingUser(ctx context.Context, email string) (*model.User, error) {
+	return s.pendingStore.Get(ctx, email)
+}
+
+func (s *UserService) ApprovePendingUser(ctx context.Context, email string) (*model.User, error) {
+	pendingUser, err := s.pendingStore.Remove(ctx, email)
+	if err != nil {
+		return nil, ErrPendingUserNotFound
+	}
+
+	pendingUser.EmailVerified = true
+	if err := s.userRepo.Create(ctx, pendingUser); err != nil {
+		return nil, err
+	}
+
+	return pendingUser, nil
 }
 
 func (s *UserService) AddUser(ctx context.Context, user *model.User) error {
 	return s.userRepo.Create(ctx, user)
 }
 
-func hashUserKey(username string, email string) string {
-	hash := sha256.New()
-	hash.Write([]byte(username))
-	hash.Write([]byte(email))
-	return hex.EncodeToString(hash.Sum(nil))
-}
-
 func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) (*model.User, error) {
-	existUser, err := s.userRepo.First(ctx, query.User.Or(query.User.Username.Eq(opts.Username), query.User.Email.Eq(opts.Email)))
+	userQuery := query.User.Where(query.User.Email.Eq(opts.Email)).Or(query.User.Username.Eq(opts.Username))
+	existUser, err := s.userRepo.First(ctx, userQuery)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
-	}
-	pendingUserHash := hashUserKey(opts.Username, opts.Email)
-	if existUser == nil {
-		existUser, err = s.pendingStore.Get(ctx, pendingUserHash)
-		if err != nil && !errors.Is(err, store.ErrNotFound) {
-			return nil, err
-		}
 	}
 	if existUser != nil {
 		if existUser.Username == opts.Username {
@@ -78,10 +77,16 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 		return nil, ErrUserEmailExists
 	}
 
+	if _, err = s.pendingStore.Get(ctx, opts.Email); err == nil {
+		return nil, ErrUserEmailExists
+	}
+
+	// create user with oauth linked
 	if opts.UserOAuth != nil && opts.Email == opts.UserOAuth.Email {
 		return s.CreateUser(ctx, opts)
 	}
 
+	// create pending registration user
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(opts.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -93,7 +98,7 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 		Email:    opts.Email,
 		Picture:  opts.Picture,
 	}
-	err = s.pendingStore.Set(ctx, pendingUserHash, user, params.PendingRegisterMaxAge)
+	err = s.pendingStore.Set(ctx, opts.Email, user, params.PendingRegisterMaxAge)
 	if err != nil {
 		return nil, err
 	}

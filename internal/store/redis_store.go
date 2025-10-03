@@ -50,6 +50,24 @@ func (s *RedisStore[T]) Del(ctx context.Context, key string) error {
 	return nil
 }
 
+func (s *RedisStore[T]) Remove(ctx context.Context, key string) (*T, error) {
+	pipe := s.rdb.TxPipeline()
+	getCmd := pipe.HGetAll(ctx, s.keyPrefix+key)
+	pipe.Del(ctx, s.keyPrefix+key)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
+	}
+
+	if len(getCmd.Val()) == 0 {
+		return nil, ErrNotFound
+	}
+	var obj T
+	if err := getCmd.Scan(&obj); err != nil {
+		return nil, err
+	}
+	return &obj, nil
+}
+
 func (s *RedisStore[T]) Expire(ctx context.Context, key string, expiresIn time.Duration) error {
 	return s.rdb.Expire(ctx, s.keyPrefix+key, expiresIn).Err()
 }

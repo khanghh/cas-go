@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"time"
+
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
@@ -72,13 +73,13 @@ type RegisterClaims struct {
 func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
 	if session.IsLoggedIn() {
-		return ctx.SendStatus(http.StatusBadRequest)
+		return ctx.Redirect("/")
 	}
 
 	var (
-		username = ctx.FormValue("username")
+		username = strings.ToLower(ctx.FormValue("username"))
+		email    = strings.ToLower(ctx.FormValue("email"))
 		password = ctx.FormValue("password")
-		email    = ctx.FormValue("email")
 	)
 
 	pageData := render.RegisterPageData{
@@ -113,19 +114,18 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 	if err != nil {
 		return render.RenderInternalServerError(ctx)
 	}
-	registerClaims := RegisterClaims{
-		Username: username,
-		Email:    email,
-	}
+
+	registerClaims := RegisterClaims{Username: username, Email: email}
 	token, err := h.challengeService.JWT().GenerateToken(ctx.Context(), ch, registerClaims)
 	if err != nil {
 		return render.RenderInternalServerError(ctx)
 	}
-	verifyURL := fmt.Sprintf("%s/register/verify-email?token=%s", ctx.BaseURL(), token)
+
+	verifyURL := fmt.Sprintf("%s/register/verify?email=%s&token=%s", ctx.BaseURL(), email, token)
 	if err := mail.SendRegisterVerification(h.mailSender, email, verifyURL); err != nil {
 		return render.RenderInternalServerError(ctx)
 	}
-	return render.RenderRegisterVerifyEmail(ctx, email)
+	return redirect(ctx, "/register/verify", fiber.Map{"email": email})
 }
 
 func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
@@ -211,24 +211,29 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
 
-func (h *RegisterHandler) GetVerifyEmail(ctx *fiber.Ctx) error {
+func (h *RegisterHandler) GetRegisterVerify(ctx *fiber.Ctx) error {
+	email := ctx.Query("email")
 	token := ctx.Query("token")
-	jwtChallenger := h.challengeService.JWT()
+
+	if _, err := h.userService.GetPendingUser(ctx.Context(), email); err != nil {
+		return render.RenderNotFoundError(ctx)
+	}
+
+	if token == "" {
+		return render.RenderRegisterVerifyEmail(ctx, email)
+	}
 
 	var claims RegisterClaims
-	err := jwtChallenger.VerifyToken(ctx.Context(), token, &claims)
-	if err != nil {
+	jwtChallenger := h.challengeService.JWT()
+	if err := jwtChallenger.VerifyToken(ctx.Context(), token, &claims); err != nil {
+		return render.RenderEmailVerificationFailure(ctx)
+	}
+	if claims.Email != email {
 		return render.RenderEmailVerificationFailure(ctx)
 	}
 
-	pendingUser, err := h.userService.GetPendingUser(ctx.Context(), claims.Username, claims.Email)
-	if err != nil {
-		return render.RenderEmailVerificationFailure(ctx)
-	}
-
-	pendingUser.EmailVerified = true
-	if err := h.userService.AddUser(ctx.Context(), pendingUser); err != nil {
-		return render.RenderInternalServerError(ctx)
+	if _, err := h.userService.ApprovePendingUser(ctx.Context(), email); err != nil {
+		return err
 	}
 
 	return render.RenderEmailVerificationSuccess(ctx, claims.Email)

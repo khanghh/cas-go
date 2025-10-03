@@ -47,6 +47,10 @@ func (s *MemoryStore[T]) Del(ctx context.Context, key string) error {
 	return s.storage.Delete(key)
 }
 
+func (s *MemoryStore[T]) Remove(ctx context.Context, key string) (*T, error) {
+	panic("TODO: Implement")
+}
+
 func (s *MemoryStore[T]) Expire(ctx context.Context, key string, expiresIn time.Duration) error {
 	panic("TODO: Implement")
 }

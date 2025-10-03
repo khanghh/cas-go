@@ -124,11 +124,14 @@ func (u *user) fillFieldMap() {
 
 func (u user) clone(db *gorm.DB) user {
 	u.userDo.ReplaceConnPool(db.Statement.ConnPool)
+	u.OAuths.db = db.Session(&gorm.Session{Initialized: true})
+	u.OAuths.db.Statement.ConnPool = db.Statement.ConnPool
 	return u
 }
 
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
+	u.OAuths.db = db.Session(&gorm.Session{})
 	return u
 }
 
@@ -163,6 +166,11 @@ func (a userHasManyOAuths) Session(session *gorm.Session) *userHasManyOAuths {
 
 func (a userHasManyOAuths) Model(m *model.User) *userHasManyOAuthsTx {
 	return &userHasManyOAuthsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a userHasManyOAuths) Unscoped() *userHasManyOAuths {
+	a.db = a.db.Unscoped()
+	return &a
 }
 
 type userHasManyOAuthsTx struct{ tx *gorm.Association }
@@ -201,6 +209,11 @@ func (a userHasManyOAuthsTx) Clear() error {
 
 func (a userHasManyOAuthsTx) Count() int64 {
 	return a.tx.Count()
+}
+
+func (a userHasManyOAuthsTx) Unscoped() *userHasManyOAuthsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
 }
 
 type userDo struct{ gen.DO }
