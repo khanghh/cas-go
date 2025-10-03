@@ -3,15 +3,10 @@ package twofactor
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"math/big"
 	"strings"
 
 	"github.com/khanghh/cas-go/params"
-)
-
-var (
-	ErrOTPRequestLimitReached = errors.New("OTP request limit reached")
 )
 
 type OTPChallenger struct {
@@ -55,7 +50,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 	return otpCode, nil
 }
 
-func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, code string) (bool, int, error) {
+func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, code string) error {
 	verifyFunc := func(userState *UserState) (bool, error) {
 		success := ch.Secret == s.svc.calculateHash(code, userState.OTPRequestCount, s.svc.masterKey)
 		if success {

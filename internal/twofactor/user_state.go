@@ -29,24 +29,8 @@ func (s *UserState) CheckLockStatus() error {
 	return nil
 }
 
-type UserLockedError struct {
-	Reason string
-	Until  time.Time
-}
-
-func (e *UserLockedError) Error() string {
-	return e.Reason
-}
-
 func (s *UserState) IsLocked() bool {
 	return s.LockedUntil.After(time.Now())
-}
-
-func NewUserLockedError(reason string, until time.Time) *UserLockedError {
-	return &UserLockedError{
-		Reason: reason,
-		Until:  until,
-	}
 }
 
 type userStateStore struct {

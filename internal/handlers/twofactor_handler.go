@@ -17,9 +17,15 @@ import (
 )
 
 const (
-	MsgInvalidRequest      = "Invalid request. Please try again."
-	MsgInvalidOTP          = "Incorrect OTP. You have %d attempt(s) left."
-	MsgTooManyOTPRequested = "You've requested too many OTPs. Please try again later."
+	MsgInvalidRequest        = "Invalid request. Please try again."
+	MsgInvalidOTP            = "Incorrect OTP. You have %d attempt(s) left."
+	MsgTooManyOTPRequested   = "You've requested too many OTPs. Please try again later."
+	MsgUserLockedReason      = "%s. Please try again after %d minutes."
+	MsgTooManyFailedAttempts = "Too many failed attempts. Please try again later."
+)
+
+var (
+	ErrInvalidCSRFToken = errors.New("invalid CSRF token")
 )
 
 type TwoFactorHandler struct {
@@ -49,24 +55,22 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 			MethodError:  MsgTooManyOTPRequested,
 		})
 	}
-
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
 }
 
-func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, user *model.User, cid string, errorMsg string) error {
+func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMsg string) error {
 	session := sessions.Get(ctx)
 	session.CSRFToken = generateCSRFToken()
 	sessions.Set(ctx, session)
 	pageData := render.VerifyOTPPageData{
-		ChallengeID: cid,
-		Email:       user.Email,
+		Email:       email,
 		IsMasked:    true,
 		CSRFToken:   session.CSRFToken,
 		VerifyError: errorMsg,
@@ -101,16 +105,34 @@ func start2FAChallenge(ctx *fiber.Ctx, twofactorService *twofactor.TwofactorServ
 	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
 }
 
+func mapTwoFactorError(err error) (string, bool) {
+	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
+		return MsgTooManyOTPRequested, true
+	}
+	if errors.Is(err, twofactor.ErrTooManyAttemtps) {
+		return MsgTooManyFailedAttempts, true
+	}
+	var verifyErr *twofactor.VerifyFailError
+	if errors.As(err, &verifyErr) {
+		return fmt.Sprintf(MsgInvalidOTP, verifyErr.AttemtpsLeft), true
+	}
+	var lockedErr *twofactor.UserLockedError
+	if errors.As(err, &lockedErr) {
+		return fmt.Sprintf(MsgUserLockedReason, lockedErr.Reason, lockedErr.Until.Minute()), true
+	}
+	return "", false
+}
+
 func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 	cid := ctx.Query("cid")
+
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
 		return redirect(ctx, "/login", nil)
 	}
-
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	binding := twofactor.BindingValues{user.ID, session.ID(), ctx.IP()}
@@ -139,10 +161,9 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 	if !session.IsLoggedIn() {
 		return redirect(ctx, "/login", nil)
 	}
-
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
@@ -164,13 +185,14 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 
 func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 	cid := ctx.Query("cid")
+
 	session := sessions.Get(ctx)
 	if session.UserID == 0 {
 		return redirect(ctx, "/login", nil)
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
@@ -182,12 +204,13 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	return h.renderVerifyOTP(ctx, user, cid, "")
+	return h.renderVerifyOTP(ctx, user.Email, "")
 }
 
 func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	cid := ctx.FormValue("cid")
 	otp := ctx.FormValue("otp")
+	resend := ctx.FormValue("resend")
 	csrf := ctx.FormValue("_csrf")
 
 	session := sessions.Get(ctx)
@@ -196,11 +219,11 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	if csrf != session.CSRFToken {
-		return h.renderVerifyOTP(ctx, user, cid, MsgInvalidRequest)
+		return h.renderVerifyOTP(ctx, user.Email, MsgInvalidRequest)
 	}
 
 	binding := twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()}
@@ -209,18 +232,31 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	success, attemptsLeft, err := h.twoFactorService.OTP().Verify(ctx.Context(), ch, session.UserID, binding, otp)
-	if err != nil {
-		return render.RenderDeniedError(ctx)
+	if resend != "" {
+		otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch, user.ID)
+		if err != nil {
+			if msg, ok := mapTwoFactorError(err); ok {
+				return h.renderVerifyOTP(ctx, user.Email, msg)
+			}
+			return err
+		}
+		if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
+			return err
+		}
+		return h.renderVerifyOTP(ctx, user.Email, "")
 	}
 
-	if success {
-		session.Last2FATime = time.Now()
-		session.ChallengeID = ""
-		sessions.Set(ctx, session)
-		return redirect(ctx, ch.RedirectURL, nil)
+	err = h.twoFactorService.OTP().Verify(ctx.Context(), ch, session.UserID, binding, otp)
+	if err != nil {
+		if msg, ok := mapTwoFactorError(err); ok {
+			return h.renderVerifyOTP(ctx, user.Email, msg)
+		}
+		return err
 	}
-	return h.renderVerifyOTP(ctx, user, cid, fmt.Sprintf(MsgInvalidOTP, attemptsLeft))
+	session.Last2FATime = time.Now()
+	session.ChallengeID = ""
+	sessions.Set(ctx, session)
+	return redirect(ctx, ch.RedirectURL, nil)
 }
 
 func NewTwoFactorHandler(twofactorService *twofactor.TwofactorService, userService *users.UserService, mailSender mail.MailSender) *TwoFactorHandler {

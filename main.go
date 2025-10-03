@@ -302,7 +302,6 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)
 	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
-	router.Post("/2fa/otp/resend", twofactorHandler.PostVerifyOTP)
 
 	return router.Listen(config.ListenAddr)
 }

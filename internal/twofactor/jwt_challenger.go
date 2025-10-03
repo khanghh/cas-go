@@ -7,11 +7,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var (
-	ErrTokenInvalid = errors.New("invalid token")
-	ErrTokenExpired = errors.New("token is expired")
-)
-
 type TokenClaims struct {
 	Data        interface{} `json:"data,omitempty"`
 	ChallengeID string      `json:"cid,omitempty"`

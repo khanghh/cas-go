@@ -14,44 +14,46 @@
     <div class="px-6 sm:px-10 py-10 text-center">
 
       {{if .success }}
-      <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-green-100 flex items-center justify-center rounded-full mb-6">
-        <i class="fas fa-check-circle text-green-600 text-5xl sm:text-6xl" aria-hidden="true"></i>
+      <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-green-100 flex items-center justify-center rounded-full mb-4">
+        <i class="fa-solid fa-circle-check text-green-500 text-5xl sm:text-6xl" aria-hidden="true"></i>
       </div>
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-3">Email Verified</h1>
-      <p class="text-gray-600 text-base leading-relaxed">
-        Your email <span class="font-semibold text-green-600">{{.email}}</span> has been successfully verified.
+      <h1 class="text-3xl font-bold text-gray-800 mb-4">Email Verified</h1>
+      <p class="text-gray-600 mt-2">
+        Your email address has been successfully verified. Your registration is now complete.
       </p>
-      <div class="mt-6">
+
+      <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
         <a href="/login"
-          role="button"
-          class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 px-6 rounded-lg shadow-sm transition duration-200"
-          aria-label="Proceed to login">
-          <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
+          class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200">
+          <i class="fas fa-sign-in-alt mr-2"></i>
           Go to Login
         </a>
       </div>
 
       {{else}}
-      <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-red-100 flex items-center justify-center rounded-full mb-6">
-        <i class="fas fa-times-circle text-red-600 text-5xl sm:text-6xl" aria-hidden="true"></i>
+        <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-red-100 flex items-center justify-center rounded-full mb-4">
+          <i class="fa-solid fa-circle-xmark text-red-500 text-5xl sm:text-6xl" aria-hidden="true"></i>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Verification Failed</h1>
+         <p class="text-gray-600 text-base leading-relaxed">
+          We couldn’t verify your email address. The link may be invalid or expired.  
+          Please request a new link or contact support if the issue continues.
+        </p>
+
+        <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="/"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200">
+            <i class="fas fa-home mr-2"></i>
+            Return to Home
+          </a>
       </div>
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-3">Verification Failed</h1>
-      <p class="text-gray-600 text-base leading-relaxed">
-        We could not verify your email address.
-        Looks like the verification link is <span class="font-semibold text-red-600">invalid or expired</span>.
-      </p>
-      <p class="mt-4 text-base text-gray-600">
-        Please try resending the verification link or contact support if you continue to have issues.
-      </p>
       {{end}}
 
     </div>
 
     <footer class="bg-gray-50 px-6 py-4 text-center border-t border-gray-100">
       <p class="text-gray-500 text-xs sm:text-sm">
-        Need help? <a href="#"
-          class="hover:underline font-medium {{if .Verified}}text-green-600{{else}}text-red-600{{end}}">Contact
-          Support</a>
+        Need help? <a href="#" class="text-blue-600 hover:underline font-medium">Contact Support</a>
       </p>
     </footer>
   </main>

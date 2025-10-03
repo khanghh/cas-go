@@ -14,23 +14,10 @@ import (
 	"github.com/khanghh/cas-go/params"
 )
 
-var (
-	ErrChallengeNotFound = errors.New("challenge not found")
-	ErrChallengeInvalid  = errors.New("challenge invalid")
-	ErrChallengeExpired  = errors.New("challenge expired")
-	ErrTooManyAttemtps   = errors.New("too many attempts")
-	ErrContextMismatch   = errors.New("context mismatch")
-)
-
 type TwofactorService struct {
 	userStateStore *userStateStore
 	challengeStore *challengeStore
 	masterKey      string
-}
-
-type VerifyResult struct {
-	Success      bool
-	AttemptsLeft int
 }
 
 type BindingValues []interface{}
@@ -116,7 +103,7 @@ func (s *TwofactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 		return ErrTooManyAttemtps
 	}
-	if ch.CanVerify() {
+	if !ch.CanVerify() {
 		return ErrChallengeInvalid
 	}
 	if ch.Hash != s.calculateHash(binding...) {
@@ -160,59 +147,59 @@ func (s *TwofactorService) LockUser(ctx context.Context, userID uint, reason str
 
 type verifyFunc func(userState *UserState) (bool, error)
 
-func (s *TwofactorService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) (bool, int, error) {
+func (s *TwofactorService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) error {
 	if err := s.ValidateChallenge(ctx, ch, binding); err != nil {
-		return false, 0, err
+		return err
 	}
 
 	userState, err := s.getUserState(ctx, userID)
 	if err != nil {
-		return false, 0, err
+		return err
 	}
 	if err := userState.CheckLockStatus(); err != nil {
-		return false, 0, err
+		return err
 	}
 
 	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, userID)
 	if err != nil {
-		return false, 0, err
+		return err
 	}
 	if userState.FailCount > params.TwoFactorUserMaxFailCount {
-		return false, 0, ErrTooManyAttemtps
+		return ErrTooManyAttemtps
 	}
 
 	ch.Attempts, err = s.challengeStore.IncreaseAttempts(ctx, ch.ID)
 	if err != nil {
-		return false, 0, err
+		return err
 	}
 	if ch.Attempts > params.TwoFactorChallengeMaxAttempts {
-		return false, 0, ErrTooManyAttemtps
+		return ErrTooManyAttemtps
 	}
 
 	success, err := doChallengerVerify(userState)
 	if err != nil {
-		return false, 0, err
+		return err
 	}
 	if success {
 		if err := s.challengeStore.Del(ctx, ch.ID); err != nil {
-			return false, 0, ErrChallengeExpired
+			return ErrChallengeExpired
 		}
 		s.userStateStore.ResetFailCount(ctx, userID)
 		s.userStateStore.ResetLockLevel(ctx, userID)
 		s.userStateStore.DecreaseChallengeCount(ctx, userID)
-		return true, 0, nil
+		return nil
 	}
 
 	if userState.FailCount == params.TwoFactorUserMaxFailCount {
 		userState, err = s.LockUser(ctx, userID, ErrTooManyAttemtps.Error())
 		if err != nil {
-			return false, 0, err
+			return err
 		}
-		return false, 0, NewUserLockedError(ErrTooManyAttemtps.Error(), userState.LockedUntil)
+		return NewUserLockedError(userState.LockReason, userState.LockedUntil)
 	}
 
 	attemptsLeft := min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorUserMaxFailCount-userState.FailCount)
-	return false, attemptsLeft, nil
+	return NewVerifyFailError(attemptsLeft)
 }
 
 func (s *TwofactorService) OTP() *OTPChallenger {

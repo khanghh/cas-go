@@ -27,7 +27,6 @@ type VerificationRequiredPageData struct {
 }
 
 type VerifyOTPPageData struct {
-	ChallengeID string
 	IsMasked    bool
 	Email       string
 	Phone       string

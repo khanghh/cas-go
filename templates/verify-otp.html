@@ -43,10 +43,10 @@
 
         <div class="flex justify-between items-center text-sm">
           <span class="text-gray-600">Didn’t get the code?</span>
-          <div>
-            <a href="#" id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</a>
+          <button type="submit" name="resend" value="true">
+            <span href="#" id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</span>
             <span id="countdown" class="text-gray-600"> in 60s</span>
-          </div>
+          </button>
         </div>
 
         {{if .verifyError }}
@@ -105,12 +105,12 @@
     });
 
     // Countdown + resend logic
-    let countdown = 60;
+    let countdown;
     const countdownEl = document.getElementById("countdown");
     const resendLink = document.getElementById("resendLink");
 
     const startTimer = () => {
-      countdown = 60;
+      countdown = 1;
       resendLink.classList.add("text-gray-400", "pointer-events-none");
       resendLink.classList.remove("text-blue-600", "hover:text-blue-500");
       countdownEl.textContent = `in ${countdown}s`;
@@ -129,10 +129,6 @@
     };
 
     startTimer();
-
-    resendLink.addEventListener("click", async (e) => {
-      alert("not implemented yet");
-    });
 
     form.addEventListener("submit", (e) => {
       const otp = Array.from(inputs).map(i => i.value).join("");
