@@ -21,6 +21,7 @@ const (
 	MsgOTPCodeEmpty          = "OTP code cannot be empty."
 	MsgInvalidOTP            = "Incorrect OTP. You have %d attempt(s) left."
 	MsgTooManyOTPRequested   = "You've requested too many OTPs. Please try again later."
+	MsgOTPRequestRateLimited = "Please wait before requesting another OTP."
 	MsgUserLockedReason      = "%s. Please try again after %d minutes."
 	MsgTooManyFailedAttempts = "Too many failed attempts. Please try again later."
 )
@@ -123,6 +124,9 @@ func mapTwoFactorError(err error) (string, bool) {
 	if errors.Is(err, twofactor.ErrTooManyAttemtps) {
 		return MsgTooManyFailedAttempts, true
 	}
+	if errors.Is(err, twofactor.ErrOTPRequestRateLimited) {
+		return MsgOTPRequestRateLimited, true
+	}
 	var verifyErr *twofactor.VerifyFailError
 	if errors.As(err, &verifyErr) {
 		return fmt.Sprintf(MsgInvalidOTP, verifyErr.AttemtpsLeft), true
@@ -156,9 +160,10 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 	}
 
 	pageData := render.VerificationRequiredPageData{
-		ChallengeID: ch.ID,
-		Email:       user.Email,
-		IsMasked:    true,
+		ChallengeID:  ch.ID,
+		EmailEnabled: true,
+		Email:        user.Email,
+		IsMasked:     true,
 	}
 	return render.RenderVerificationRequired(ctx, pageData)
 }

@@ -21,5 +21,6 @@ const (
 	TwoFactorUserMaxChallenges    = 20              // maximum number of challenges created per user
 	TwoFactorUserStateMaxAge      = 12 * time.Hour  // time to live for a user state
 	TwoFactorOTPExpiration        = 5 * time.Minute // otp code expiration duration
+	TwoFactorOTPRefreshCooldown   = 1 * time.Minute // otp code refresh cooldown
 	TwoFactorJWTExpiration        = 1 * time.Hour   // jwt token expiration duration
 )

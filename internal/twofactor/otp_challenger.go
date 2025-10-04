@@ -33,6 +33,9 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 	if err := userState.CheckLockStatus(); err != nil {
 		return "", err
 	}
+	if time.Since(ch.UpdateAt) < params.TwoFactorOTPRefreshCooldown {
+		return "", ErrOTPRequestRateLimited
+	}
 
 	userState.OTPRequestCount, err = s.svc.userStateStore.IncreaseOTPRequestCount(ctx, uid)
 	if err != nil {

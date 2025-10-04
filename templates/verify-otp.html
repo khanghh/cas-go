@@ -43,8 +43,8 @@
 
         <div class="flex justify-between items-center text-sm">
           <span class="text-gray-600">Didn’t get the code?</span>
-          <button type="submit" name="resend" value="true">
-            <span href="#" id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</span>
+          <button id="resendBtn" type="submit" name="resend" value="true" disabled>
+            <span id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</span>
             <span id="countdown" class="text-gray-600"> in 60s</span>
           </button>
         </div>
@@ -108,6 +108,7 @@
     let countdown;
     const countdownEl = document.getElementById("countdown");
     const resendLink = document.getElementById("resendLink");
+    const resendBtn = document.getElementById("resendBtn");
 
     const startTimer = () => {
       countdown = 60;
@@ -124,6 +125,7 @@
           countdownEl.textContent = "";
           resendLink.classList.remove("text-gray-400", "pointer-events-none");
           resendLink.classList.add("text-blue-600", "hover:text-blue-500");
+          resendBtn.disabled = false;
         }
       }, 1000);
     };
