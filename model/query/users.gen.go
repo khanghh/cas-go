@@ -30,7 +30,6 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Username = field.NewString(tableName, "username")
 	_user.FullName = field.NewString(tableName, "full_name")
 	_user.Email = field.NewString(tableName, "email")
-	_user.EmailVerified = field.NewBool(tableName, "email_verified")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Picture = field.NewString(tableName, "picture")
 	_user.Disabled = field.NewBool(tableName, "disabled")
@@ -51,19 +50,18 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo
 
-	ALL           field.Asterisk
-	ID            field.Uint
-	Username      field.String
-	FullName      field.String
-	Email         field.String
-	EmailVerified field.Bool
-	Password      field.String
-	Picture       field.String
-	Disabled      field.Bool
-	CreatedAt     field.Time
-	UpdatedAt     field.Time
-	DeletedAt     field.Field
-	OAuths        userHasManyOAuths
+	ALL       field.Asterisk
+	ID        field.Uint
+	Username  field.String
+	FullName  field.String
+	Email     field.String
+	Password  field.String
+	Picture   field.String
+	Disabled  field.Bool
+	CreatedAt field.Time
+	UpdatedAt field.Time
+	DeletedAt field.Field
+	OAuths    userHasManyOAuths
 
 	fieldMap map[string]field.Expr
 }
@@ -84,7 +82,6 @@ func (u *user) updateTableName(table string) *user {
 	u.Username = field.NewString(table, "username")
 	u.FullName = field.NewString(table, "full_name")
 	u.Email = field.NewString(table, "email")
-	u.EmailVerified = field.NewBool(table, "email_verified")
 	u.Password = field.NewString(table, "password")
 	u.Picture = field.NewString(table, "picture")
 	u.Disabled = field.NewBool(table, "disabled")
@@ -107,12 +104,11 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 12)
+	u.fieldMap = make(map[string]field.Expr, 11)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["username"] = u.Username
 	u.fieldMap["full_name"] = u.FullName
 	u.fieldMap["email"] = u.Email
-	u.fieldMap["email_verified"] = u.EmailVerified
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["picture"] = u.Picture
 	u.fieldMap["disabled"] = u.Disabled

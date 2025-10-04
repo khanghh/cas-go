@@ -303,6 +303,13 @@ func run(ctx *cli.Context) error {
 	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
 
+	router.Get("/test", func(ctx *fiber.Ctx) error {
+		template := ctx.Query("t")
+		return ctx.Render(template, fiber.Map{
+			"email": "aaa",
+		})
+	})
+
 	return router.Listen(config.ListenAddr)
 }
 

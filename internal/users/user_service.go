@@ -52,7 +52,6 @@ func (s *UserService) ApprovePendingUser(ctx context.Context, email string) (*mo
 		return nil, ErrPendingUserNotFound
 	}
 
-	pendingUser.EmailVerified = true
 	if _, err = s.createUser(ctx, pendingUser); err != nil {
 		return nil, err
 	}

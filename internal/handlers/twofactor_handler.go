@@ -50,7 +50,7 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
 		return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
 			ChallengeID:  ch.ID,
-			EmailEnabled: user.EmailVerified,
+			EmailEnabled: true,
 			Email:        user.Email,
 			IsMasked:     true,
 			MethodError:  MsgTooManyOTPRequested,
@@ -156,10 +156,9 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 	}
 
 	pageData := render.VerificationRequiredPageData{
-		ChallengeID:  ch.ID,
-		EmailEnabled: user.EmailVerified,
-		Email:        user.Email,
-		IsMasked:     true,
+		ChallengeID: ch.ID,
+		Email:       user.Email,
+		IsMasked:    true,
 	}
 	return render.RenderVerificationRequired(ctx, pageData)
 }
