@@ -32,8 +32,8 @@ func (s *JWTChallenger) GenerateToken(ctx context.Context, ch *Challenge, data i
 	if err != nil {
 		return "", err
 	}
-	ch.Type = ChallengeTypeToken
-	ch.UpdateAt = time.Now().UTC()
+	ch.Type = ChallengeTypeJWT
+	ch.UpdateAt = time.Now()
 	if err := s.svc.challengeStore.Save(ctx, ch.ID, *ch); err != nil {
 		return "", err
 	}

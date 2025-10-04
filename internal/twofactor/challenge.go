@@ -12,6 +12,7 @@ const (
 	ChallengeTypeOTP   = "otp"
 	ChallenegeTypeTOTP = "totp"
 	ChallengeTypeToken = "token"
+	ChallengeTypeJWT   = "jwt"
 )
 
 type ChallengeStatus string

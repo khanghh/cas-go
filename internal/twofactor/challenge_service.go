@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/khanghh/cas-go/internal/store"
@@ -30,12 +29,15 @@ func (s *ChallengeService) calculateHash(inputs ...interface{}) string {
 	if len(inputs) == 0 {
 		return ""
 	}
-	var stringBuilder strings.Builder
-	for _, val := range inputs {
-		fmt.Fprintf(&stringBuilder, "%v", val)
-	}
 	h := hmac.New(sha256.New, []byte(s.masterKey))
-	h.Write([]byte(stringBuilder.String()))
+	for _, val := range inputs {
+		switch v := val.(type) {
+		case []byte:
+			h.Write(v)
+		default:
+			h.Write([]byte(fmt.Sprintf("%v", v)))
+		}
+	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -211,6 +213,10 @@ func (s *ChallengeService) OTP() *OTPChallenger {
 
 func (s *ChallengeService) JWT() *JWTChallenger {
 	return &JWTChallenger{s}
+}
+
+func (s *ChallengeService) Token() *TokenChallenger {
+	return &TokenChallenger{s}
 }
 
 func NewChallengeService(challengeStore store.Store[Challenge], userStateStore store.Store[UserState], masterKey string) *ChallengeService {
