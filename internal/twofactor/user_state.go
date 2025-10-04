@@ -99,11 +99,11 @@ func (s *userStateStore) ResetLockLevel(ctx context.Context, uid uint) (int, err
 
 func (s *userStateStore) LockUserUntil(ctx context.Context, uid uint, reason string, until time.Time) error {
 	uidKey := strconv.Itoa(int(uid))
-	err := s.SetAttr(ctx, uidKey, "lock_reason", reason, "lock_until", until.UTC())
+	err := s.SetAttr(ctx, uidKey, "lock_reason", reason, "lock_until", until)
 	if err != nil {
 		return err
 	}
-	return s.AttrExpireAt(ctx, uidKey, until.UTC(), "lock_reason", "lock_until", "fail_count", "challenge_count")
+	return s.AttrExpireAt(ctx, uidKey, until, "lock_reason", "lock_until", "fail_count", "challenge_count")
 }
 
 func (s *userStateStore) SetOTPSentAt(ctx context.Context, uid uint, sentAt time.Time) error {

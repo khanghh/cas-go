@@ -66,7 +66,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	errorCode := ctx.Query("error")
 
 	session := sessions.Get(ctx)
-	if !session.IsLoggedIn() {
+	if !session.IsAuthenticated() {
 		return render.RenderLogin(ctx, render.LoginPageData{
 			OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
 			LoginError:     mapLoginError(errorCode),
@@ -84,6 +84,11 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	username := ctx.FormValue("username")
 	password := ctx.FormValue("password")
 
+	session := sessions.Get(ctx)
+	if session.IsLoggedIn() {
+		return render.RenderBadRequestError(ctx)
+	}
+
 	pageData := render.LoginPageData{
 		Identifier:     username,
 		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
@@ -99,13 +104,14 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		pageData.LoginError = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
 	}
-	session := createUserSession(ctx, user, nil)
+
+	session = createUserSession(ctx, user, nil)
 
 	redirectURL := "/"
 	if serviceURL != "" {
 		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-	return start2FAChallenge(ctx, h.challengeService, &session, redirectURL)
+	return handleLogin2FA(ctx, h.challengeService, &session, redirectURL)
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {

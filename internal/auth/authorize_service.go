@@ -14,11 +14,11 @@ import (
 )
 
 type ServiceTicket struct {
-	TicketID    string    `json:"ticketID"`
-	UserID      uint      `json:"userID"`
-	ServiceName string    `json:"serviceName"`
-	CallbackURL string    `json:"callbackURL"`
-	CreateTime  time.Time `json:"createTime"`
+	TicketID    string    `json:"ticketID"    redis:"ticket_id"`
+	UserID      uint      `json:"userID"      redis:"user_id"`
+	ServiceName string    `json:"serviceName" redis:"service_name"`
+	CallbackURL string    `json:"callbackURL" redis:"callback_url"`
+	CreateTime  time.Time `json:"createTime"  redis:"create_time"`
 }
 
 type registry = ServiceRegistry

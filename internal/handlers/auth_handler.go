@@ -70,12 +70,8 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 	}
 
 	session := sessions.Get(ctx)
-	if !session.IsLoggedIn() {
+	if !session.IsAuthenticated() {
 		return redirect(ctx, "/login", fiber.Map{"service": serviceURL})
-	}
-
-	if session.TwoFARequired {
-		return start2FAChallenge(ctx, h.challengeService, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -87,11 +83,8 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if !session.IsLoggedIn() {
+	if !session.IsAuthenticated() {
 		return performLogout(ctx)
-	}
-	if session.TwoFARequired {
-		return start2FAChallenge(ctx, h.challengeService, &session, "")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)

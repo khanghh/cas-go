@@ -136,7 +136,7 @@ func (s *ChallengeService) LockUser(ctx context.Context, userID uint, reason str
 	if err != nil {
 		return nil, err
 	}
-	userState.LockedUntil = time.Now().Add(lockDuration).UTC()
+	userState.LockedUntil = time.Now().Add(lockDuration)
 	userState.LockReason = reason
 	err = s.userStateStore.LockUserUntil(ctx, userID, userState.LockReason, userState.LockedUntil)
 	if err != nil {
@@ -199,6 +199,9 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, u
 	}
 
 	attemptsLeft := min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorUserMaxFailCount-userState.FailCount)
+	if attemptsLeft == 0 {
+		return ErrTooManyAttemtps
+	}
 	return NewVerifyFailError(attemptsLeft)
 }
 

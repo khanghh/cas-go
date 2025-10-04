@@ -18,6 +18,7 @@ import (
 
 const (
 	MsgInvalidRequest        = "Invalid request. Please try again."
+	MsgOTPCodeEmpty          = "OTP code cannot be empty."
 	MsgInvalidOTP            = "Incorrect OTP. You have %d attempt(s) left."
 	MsgTooManyOTPRequested   = "You've requested too many OTPs. Please try again later."
 	MsgUserLockedReason      = "%s. Please try again after %d minutes."
@@ -79,9 +80,9 @@ func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMs
 	return render.RenderVerifyOTP(ctx, pageData)
 }
 
-func start2FAChallenge(ctx *fiber.Ctx, challengeService *twofactor.ChallengeService, session *sessions.SessionData, redirectURL string) error {
-	if redirectURL == "" {
-		redirectURL = string(ctx.Context().URI().RequestURI())
+func handleLogin2FA(ctx *fiber.Ctx, challengeService *twofactor.ChallengeService, session *sessions.SessionData, redirectURL string) error {
+	if session.IsAuthenticated() {
+		return ctx.Redirect(redirectURL)
 	}
 
 	if session.TwoFAChallengeID != "" {
@@ -91,6 +92,9 @@ func start2FAChallenge(ctx *fiber.Ctx, challengeService *twofactor.ChallengeServ
 		}
 	}
 
+	if redirectURL == "" {
+		redirectURL = string(ctx.Context().URI().RequestURI())
+	}
 	opts := twofactor.ChallengeOptions{
 		UserID:      session.UserID,
 		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
@@ -101,9 +105,14 @@ func start2FAChallenge(ctx *fiber.Ctx, challengeService *twofactor.ChallengeServ
 	if err != nil {
 		return err
 	}
-	session.TwoFARequired = true
-	session.TwoFAChallengeID = ch.ID
-	sessions.Set(ctx, *session)
+
+	sessions.Set(ctx, sessions.SessionData{
+		IP:               ctx.IP(),
+		UserID:           session.UserID,
+		LoginTime:        time.Now(),
+		TwoFARequired:    true,
+		TwoFAChallengeID: ch.ID,
+	})
 	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
 }
 
@@ -120,7 +129,7 @@ func mapTwoFactorError(err error) (string, bool) {
 	}
 	var lockedErr *twofactor.UserLockedError
 	if errors.As(err, &lockedErr) {
-		return fmt.Sprintf(MsgUserLockedReason, lockedErr.Reason, lockedErr.Until.Minute()), true
+		return fmt.Sprintf(MsgUserLockedReason, lockedErr.Reason, int(time.Until(lockedErr.Until).Minutes())), true
 	}
 	return "", false
 }
@@ -189,7 +198,7 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 	cid := ctx.Query("cid")
 
 	session := sessions.Get(ctx)
-	if session.UserID == 0 {
+	if !session.IsLoggedIn() {
 		return redirect(ctx, "/login", nil)
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -212,11 +221,11 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	cid := ctx.FormValue("cid")
 	otp := ctx.FormValue("otp")
-	resend := ctx.FormValue("resend")
+	resend := ctx.FormValue("resend") != ""
 	csrf := ctx.FormValue("_csrf")
 
 	session := sessions.Get(ctx)
-	if session.UserID == 0 {
+	if !session.IsLoggedIn() {
 		return redirect(ctx, "/login", nil)
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -224,6 +233,9 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return err
 	}
 
+	if !resend && otp == "" {
+		return h.renderVerifyOTP(ctx, user.Email, MsgOTPCodeEmpty)
+	}
 	if csrf != session.CSRFToken {
 		return h.renderVerifyOTP(ctx, user.Email, MsgInvalidRequest)
 	}
@@ -233,8 +245,12 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
+	if !ch.CanVerify() {
+		sessions.Destroy(ctx)
+		return ctx.Redirect("/login")
+	}
 
-	if resend != "" {
+	if resend {
 		otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch, user.ID)
 		if err != nil {
 			if msg, ok := mapTwoFactorError(err); ok {
@@ -255,6 +271,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		}
 		return err
 	}
+
 	session.TwoFARequired = false
 	sessions.Set(ctx, session)
 	return redirect(ctx, ch.RedirectURL, nil)

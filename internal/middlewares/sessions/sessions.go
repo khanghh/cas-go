@@ -36,7 +36,15 @@ func (s SessionData) ID() string {
 }
 
 func (s *SessionData) IsLoggedIn() bool {
-	return s.UserID != 0 && s.LoginTime.Unix() > 0
+	return s.UserID != 0
+}
+
+func (s *SessionData) Is2FARequired() bool {
+	return s.UserID != 0 && s.TwoFARequired
+}
+
+func (s *SessionData) IsAuthenticated() bool {
+	return s.UserID != 0 && !s.TwoFARequired
 }
 
 func init() {
