@@ -13,15 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	MsgLoginSessionExpired      = "Session expired. Please log in again."
-	MsgLoginWrongCredentials    = "Invalid username or password."
-	MsgLoginEmailConflict       = "Email already linked to another account."
-	MsgLoginUnsupportedOAuth    = "This OAuth provider is not supported."
-	MsgTwoFactorChallengeFailed = "Two-factor authentication failed."
-	MsgTwoFactorTooManyAttempts = "Login failed: %s. Please try again after %d minutes."
-)
-
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
 	serviceRegistry  ServiceRegistry
@@ -85,7 +76,6 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.SessionData, redirectURL string) error {
-
 	if session.TwoFAChallengeID != "" {
 		ch, err := h.challengeService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
 		if err == nil && ch.CanVerify() {
@@ -143,7 +133,7 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		return err
 	}
 	if err := userState.CheckLockStatus(); err != nil {
-		pageData.LoginError = fmt.Sprintf(MsgTwoFactorTooManyAttempts, err.Reason, int(time.Until(err.Until).Minutes()))
+		pageData.LoginError = fmt.Sprintf(MsgTwoFactorUserLocked, err.Reason, formatDuration(time.Until(err.Until)))
 		return render.RenderLogin(ctx, pageData)
 	}
 
@@ -153,12 +143,10 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	}
 
 	session = createUserSession(ctx, user, nil)
-
 	redirectURL := "/"
 	if serviceURL != "" {
 		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-
 	return h.handleLogin2FA(ctx, &session, redirectURL)
 }
 

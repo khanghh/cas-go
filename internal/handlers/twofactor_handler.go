@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
@@ -15,16 +14,6 @@ import (
 	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/params"
-)
-
-const (
-	MsgInvalidRequest        = "Invalid request. Please try again."
-	MsgOTPCodeEmpty          = "OTP code cannot be empty."
-	MsgInvalidOTP            = "Incorrect OTP. You have %d attempt(s) left."
-	MsgTooManyOTPRequested   = "You've requested too many OTPs. Please try again later."
-	MsgOTPRequestRateLimited = "Please wait before requesting another OTP."
-	MsgUserLockedReason      = "%s. Please try again after %d minutes."
-	MsgTooManyFailedAttempts = "Too many failed attempts. Please try again later."
 )
 
 var (
@@ -95,10 +84,6 @@ func mapTwoFactorError(err error) (string, bool) {
 	var verifyErr *twofactor.VerifyFailError
 	if errors.As(err, &verifyErr) {
 		return fmt.Sprintf(MsgInvalidOTP, verifyErr.AttemtpsLeft), true
-	}
-	var lockedErr *twofactor.UserLockedError
-	if errors.As(err, &lockedErr) {
-		return fmt.Sprintf(MsgUserLockedReason, lockedErr.Reason, int(time.Until(lockedErr.Until).Minutes())), true
 	}
 	return "", false
 }
@@ -231,7 +216,8 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	err = h.challengeService.OTP().Verify(ctx.Context(), ch, session.UserID, binding, otp)
 	if err != nil {
-		if ch.Attempts >= params.TwoFactorChallengeMaxAttempts && session.TwoFAChallengeID == ch.ID {
+		var userLockedErr *twofactor.UserLockedError
+		if errors.As(err, &userLockedErr) || ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 			sessions.Destroy(ctx)
 			return redirect(ctx, "/login", fiber.Map{"error": "tfa_failed"})
 		}
