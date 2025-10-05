@@ -19,7 +19,7 @@ type UserState struct {
 	LockedUntil        time.Time `redis:"locked_until"`
 }
 
-func (s *UserState) CheckLockStatus() error {
+func (s *UserState) CheckLockStatus() *UserLockedError {
 	if s.LockedUntil.After(time.Now()) {
 		return &UserLockedError{
 			Reason: s.LockReason,
@@ -94,16 +94,16 @@ func (s *userStateStore) IncreaseLockLevel(ctx context.Context, uid uint) (int, 
 }
 
 func (s *userStateStore) ResetLockLevel(ctx context.Context, uid uint) (int, error) {
-	return 0, s.SetAttr(ctx, strconv.Itoa(int(uid)), "fail_count", 0)
+	return 0, s.SetAttr(ctx, strconv.Itoa(int(uid)), "lock_level", 0)
 }
 
 func (s *userStateStore) LockUserUntil(ctx context.Context, uid uint, reason string, until time.Time) error {
 	uidKey := strconv.Itoa(int(uid))
-	err := s.SetAttr(ctx, uidKey, "lock_reason", reason, "lock_until", until)
+	err := s.SetAttr(ctx, uidKey, "lock_reason", reason, "locked_until", until)
 	if err != nil {
 		return err
 	}
-	return s.AttrExpireAt(ctx, uidKey, until, "lock_reason", "lock_until", "fail_count", "challenge_count")
+	return s.AttrExpireAt(ctx, uidKey, until, "lock_reason", "locked_until", "fail_count")
 }
 
 func (s *userStateStore) SetOTPSentAt(ctx context.Context, uid uint, sentAt time.Time) error {

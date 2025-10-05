@@ -26,7 +26,7 @@ func generateOTP(length int) string {
 }
 
 func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (string, error) {
-	userState, err := s.svc.getUserState(ctx, uid)
+	userState, err := s.svc.GetUserState(ctx, uid)
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +48,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 	otpCode := generateOTP(6)
 	ch.Type = ChallengeTypeOTP
 	ch.Secret = s.svc.calculateHash(otpCode, userState.OTPRequestCount, s.svc.masterKey)
-	ch.UpdateAt = time.Now().UTC()
+	ch.UpdateAt = time.Now()
 	if err := s.svc.challengeStore.Save(ctx, ch.ID, *ch); err != nil {
 		return "", err
 	}

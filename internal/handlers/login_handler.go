@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
@@ -13,10 +14,12 @@ import (
 )
 
 const (
-	MsgLoginSessionExpired   = "Session expired. Please log in again."
-	MsgLoginWrongCredentials = "Invalid username or password."
-	MsgLoginEmailConflict    = "Email already linked to another account."
-	MsgLoginUnsupportedOAuth = "This OAuth provider is not supported."
+	MsgLoginSessionExpired      = "Session expired. Please log in again."
+	MsgLoginWrongCredentials    = "Invalid username or password."
+	MsgLoginEmailConflict       = "Email already linked to another account."
+	MsgLoginUnsupportedOAuth    = "This OAuth provider is not supported."
+	MsgTwoFactorChallengeFailed = "Two-factor authentication failed."
+	MsgTwoFactorTooManyAttempts = "Login failed: %s. Please try again after %d minutes."
 )
 
 // LoginHandler handles authentication and authorization
@@ -56,6 +59,8 @@ func mapLoginError(errorCode string) string {
 		return MsgLoginSessionExpired
 	case "unsupported_provider":
 		return MsgLoginUnsupportedOAuth
+	case "tfa_failed":
+		return MsgTwoFactorChallengeFailed
 	default:
 		return ""
 	}
@@ -79,6 +84,39 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
 
+func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.SessionData, redirectURL string) error {
+
+	if session.TwoFAChallengeID != "" {
+		ch, err := h.challengeService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
+		if err == nil && ch.CanVerify() {
+			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.TwoFAChallengeID})
+		}
+	}
+
+	if redirectURL == "" {
+		redirectURL = string(ctx.Context().URI().RequestURI())
+	}
+	opts := twofactor.ChallengeOptions{
+		UserID:      session.UserID,
+		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
+		RedirectURL: redirectURL,
+		ExpiresIn:   15 * time.Minute,
+	}
+	ch, err := h.challengeService.CreateChallenge(ctx.Context(), opts)
+	if err != nil {
+		return err
+	}
+
+	sessions.Set(ctx, sessions.SessionData{
+		IP:               ctx.IP(),
+		UserID:           session.UserID,
+		LoginTime:        time.Now(),
+		TwoFARequired:    true,
+		TwoFAChallengeID: ch.ID,
+	})
+	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
+}
+
 func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 	username := ctx.FormValue("username")
@@ -100,6 +138,15 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		return render.RenderLogin(ctx, pageData)
 	}
 
+	userState, err := h.challengeService.GetUserState(ctx.Context(), user.ID)
+	if err != nil {
+		return err
+	}
+	if err := userState.CheckLockStatus(); err != nil {
+		pageData.LoginError = fmt.Sprintf(MsgTwoFactorTooManyAttempts, err.Reason, int(time.Until(err.Until).Minutes()))
+		return render.RenderLogin(ctx, pageData)
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		pageData.LoginError = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
@@ -111,7 +158,8 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	if serviceURL != "" {
 		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-	return handleLogin2FA(ctx, h.challengeService, &session, redirectURL)
+
+	return h.handleLogin2FA(ctx, &session, redirectURL)
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {

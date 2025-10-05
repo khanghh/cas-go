@@ -48,7 +48,7 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *ChallengeService) getUserState(ctx context.Context, userID uint) (*UserState, error) {
+func (s *ChallengeService) GetUserState(ctx context.Context, userID uint) (*UserState, error) {
 	userState, err := s.userStateStore.Get(ctx, userID)
 	if errors.Is(err, store.ErrNotFound) {
 		userState = &UserState{UserID: userID}
@@ -61,7 +61,7 @@ func (s *ChallengeService) getUserState(ctx context.Context, userID uint) (*User
 }
 
 func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
-	userState, err := s.getUserState(ctx, opts.UserID)
+	userState, err := s.GetUserState(ctx, opts.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge,
 }
 
 func (s *ChallengeService) LockUser(ctx context.Context, userID uint, reason string) (*UserState, error) {
-	userState, err := s.getUserState(ctx, userID)
+	userState, err := s.GetUserState(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, u
 		return err
 	}
 
-	userState, err := s.getUserState(ctx, userID)
+	userState, err := s.GetUserState(ctx, userID)
 	if err != nil {
 		return err
 	}

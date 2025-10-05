@@ -13,8 +13,8 @@ var (
 	ErrContextMismatch        = errors.New("context mismatch")
 	ErrTokenInvalid           = errors.New("invalid token")
 	ErrTokenExpired           = errors.New("token is expired")
-	ErrOTPRequestLimitReached = errors.New("OTP request limit reached")
 	ErrOTPCodeExpired         = errors.New("OTP code is expired")
+	ErrOTPRequestLimitReached = errors.New("OTP request limit reached")
 	ErrOTPRequestRateLimited  = errors.New("otp request rate limited")
 )
 

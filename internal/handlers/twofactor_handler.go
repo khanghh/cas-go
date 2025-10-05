@@ -14,6 +14,7 @@ import (
 	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
+	"github.com/khanghh/cas-go/params"
 )
 
 const (
@@ -48,16 +49,16 @@ func generateCSRFToken() string {
 func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
 	session := sessions.Get(ctx)
 	otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch, session.UserID)
-	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
-		return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
-			ChallengeID:  ch.ID,
-			EmailEnabled: true,
-			Email:        user.Email,
-			IsMasked:     true,
-			MethodError:  MsgTooManyOTPRequested,
-		})
-	}
 	if err != nil {
+		if msg, ok := mapTwoFactorError(err); ok {
+			return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
+				ChallengeID:  ch.ID,
+				EmailEnabled: true,
+				Email:        user.Email,
+				IsMasked:     true,
+				MethodError:  msg,
+			})
+		}
 		return err
 	}
 
@@ -81,48 +82,12 @@ func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMs
 	return render.RenderVerifyOTP(ctx, pageData)
 }
 
-func handleLogin2FA(ctx *fiber.Ctx, challengeService *twofactor.ChallengeService, session *sessions.SessionData, redirectURL string) error {
-	if session.IsAuthenticated() {
-		return ctx.Redirect(redirectURL)
-	}
-
-	if session.TwoFAChallengeID != "" {
-		ch, err := challengeService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
-		if err == nil && ch.CanVerify() {
-			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.TwoFAChallengeID})
-		}
-	}
-
-	if redirectURL == "" {
-		redirectURL = string(ctx.Context().URI().RequestURI())
-	}
-	opts := twofactor.ChallengeOptions{
-		UserID:      session.UserID,
-		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
-		RedirectURL: redirectURL,
-		ExpiresIn:   15 * time.Minute,
-	}
-	ch, err := challengeService.CreateChallenge(ctx.Context(), opts)
-	if err != nil {
-		return err
-	}
-
-	sessions.Set(ctx, sessions.SessionData{
-		IP:               ctx.IP(),
-		UserID:           session.UserID,
-		LoginTime:        time.Now(),
-		TwoFARequired:    true,
-		TwoFAChallengeID: ch.ID,
-	})
-	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
-}
-
 func mapTwoFactorError(err error) (string, bool) {
-	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
-		return MsgTooManyOTPRequested, true
-	}
 	if errors.Is(err, twofactor.ErrTooManyAttemtps) {
 		return MsgTooManyFailedAttempts, true
+	}
+	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
+		return MsgTooManyOTPRequested, true
 	}
 	if errors.Is(err, twofactor.ErrOTPRequestRateLimited) {
 		return MsgOTPRequestRateLimited, true
@@ -249,10 +214,6 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
-	if !ch.CanVerify() {
-		sessions.Destroy(ctx)
-		return ctx.Redirect("/login")
-	}
 
 	if resend {
 		otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch, user.ID)
@@ -270,6 +231,10 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	err = h.challengeService.OTP().Verify(ctx.Context(), ch, session.UserID, binding, otp)
 	if err != nil {
+		if ch.Attempts >= params.TwoFactorChallengeMaxAttempts && session.TwoFAChallengeID == ch.ID {
+			sessions.Destroy(ctx)
+			return redirect(ctx, "/login", fiber.Map{"error": "tfa_failed"})
+		}
 		if msg, ok := mapTwoFactorError(err); ok {
 			return h.renderVerifyOTP(ctx, user.Email, msg)
 		}
