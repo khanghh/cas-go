@@ -72,10 +72,6 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 		return nil, ErrEmailRegisterd
 	}
 
-	if _, err = s.pendingStore.Get(ctx, opts.Email); err == nil {
-		return nil, ErrEmailRegisterd
-	}
-
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(opts.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -88,18 +84,21 @@ func (s *UserService) RegisterUser(ctx context.Context, opts CreateUserOptions) 
 		Picture:  opts.Picture,
 	}
 
-	// create user with oauth
-	if opts.UserOAuth != nil && opts.Email == opts.UserOAuth.Email {
+	if opts.UserOAuth == nil {
+		// create pending registration user
+		if _, err = s.pendingStore.Get(ctx, opts.Email); err == nil {
+			return nil, ErrEmailRegisterd
+		}
+		err = s.pendingStore.Set(ctx, opts.Email, user, params.PendingRegisterMaxAge)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// create user with oauth
 		user.OAuths = append(user.OAuths, *opts.UserOAuth)
-		return s.createUser(ctx, &user)
 	}
 
-	// create pending registration user
-	err = s.pendingStore.Set(ctx, opts.Email, user, params.PendingRegisterMaxAge)
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
+	return s.createUser(ctx, &user)
 }
 
 func (s *UserService) createUser(ctx context.Context, user *model.User) (*model.User, error) {
