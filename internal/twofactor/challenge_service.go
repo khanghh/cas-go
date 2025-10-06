@@ -61,20 +61,22 @@ func (s *ChallengeService) GetUserState(ctx context.Context, userID uint) (*User
 }
 
 func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
-	userState, err := s.GetUserState(ctx, opts.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if err := userState.CheckLockStatus(); err != nil {
-		return nil, err
-	}
+	if opts.UserID != 0 {
+		userState, err := s.GetUserState(ctx, opts.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if err := userState.CheckLockStatus(); err != nil {
+			return nil, err
+		}
 
-	userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, opts.UserID)
-	if err != nil {
-		return nil, err
-	}
-	if userState.ChallengeCount > params.TwoFactorUserMaxChallenges {
-		return nil, ErrTooManyAttemtps
+		userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, opts.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if userState.ChallengeCount > params.TwoFactorUserMaxChallenges {
+			return nil, ErrTooManyAttemtps
+		}
 	}
 
 	ch := Challenge{
@@ -83,8 +85,7 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOp
 		RedirectURL: opts.RedirectURL,
 		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
 	}
-	err = s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn)
-	if err != nil {
+	if err := s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn); err != nil {
 		return nil, err
 	}
 	return &ch, nil
