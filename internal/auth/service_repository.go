@@ -1,4 +1,4 @@
-package repository
+package auth
 
 import (
 	"context"
@@ -7,13 +7,6 @@ import (
 	"github.com/khanghh/cas-go/model/query"
 	"gorm.io/gen"
 )
-
-type ServiceRepository interface {
-	WithTx(tx *query.Query) ServiceRepository
-	First(ctx context.Context, conds ...gen.Condition) (*model.Service, error)
-	GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error)
-	AddService(ctx context.Context, service *model.Service) error
-}
 
 type serviceRepository struct {
 	query *query.Query

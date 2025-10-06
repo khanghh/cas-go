@@ -5,13 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 )
 
 type ServiceRegistry struct {
-	serviceRepo repository.ServiceRepository
+	serviceRepo ServiceRepository
 }
 
 func generateHMACKey(size int) (string, error) {
@@ -41,7 +40,7 @@ func (r *ServiceRegistry) GetService(ctx context.Context, svcCallbackURL string)
 	return r.serviceRepo.First(ctx, query.Service.CallbackURL.Eq(svcCallbackURL))
 }
 
-func NewServiceRegistry(serviceRepo repository.ServiceRepository) *ServiceRegistry {
+func NewServiceRegistry(serviceRepo ServiceRepository) *ServiceRegistry {
 	return &ServiceRegistry{
 		serviceRepo: serviceRepo,
 	}

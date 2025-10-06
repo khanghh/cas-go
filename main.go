@@ -30,7 +30,6 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
-	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
@@ -239,17 +238,16 @@ func run(ctx *cli.Context) error {
 
 	// repositories
 	var (
-		userRepo      = repository.NewUserRepository(query.Q)
-		userOAuthRepo = repository.NewUserOAuthRepository(query.Q)
-		serviceRepo   = repository.NewServiceRepository(query.Q)
-		tokenRepo     = repository.NewTokenRepository(query.Q)
+		userRepo      = users.NewUserRepository(query.Q)
+		userOAuthRepo = users.NewUserOAuthRepository(query.Q)
+		serviceRepo   = auth.NewServiceRepository(query.Q)
 	)
 
 	// services
 	var (
 		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserStore)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
-		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry, tokenRepo)
+		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry)
 		challengeService = twofactor.NewChallengeService(challengeStore, userStateStore, config.MasterKey)
 	)
 

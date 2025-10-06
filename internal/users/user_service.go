@@ -7,18 +7,33 @@ import (
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gen"
 	"gorm.io/gorm"
 )
 
+type UserRepository interface {
+	WithTx(tx *query.Query) UserRepository
+	First(ctx context.Context, conds ...gen.Condition) (*model.User, error)
+	Create(ctx context.Context, user *model.User) error
+	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
+}
+
+type UserOAuthRepository interface {
+	WithTx(tx *query.Query) UserOAuthRepository
+	First(ctx context.Context, conds ...gen.Condition) (*model.UserOAuth, error)
+	Upsert(ctx context.Context, userOAuth *model.UserOAuth) error
+	Find(ctx context.Context, conds ...gen.Condition) ([]*model.UserOAuth, error)
+	CreateIfNotExists(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
+}
+
 type UserService struct {
-	userRepo      repository.UserRepository
-	userOAuthRepo repository.UserOAuthRepository
+	userRepo      UserRepository
+	userOAuthRepo UserOAuthRepository
 	pendingStore  store.Store[model.User]
 }
 
@@ -124,7 +139,7 @@ func (s *UserService) GetOrCreateUserOAuth(ctx context.Context, userOAuth *model
 	return s.userOAuthRepo.CreateIfNotExists(ctx, userOAuth)
 }
 
-func NewUserService(userRepo repository.UserRepository, userOAuthRepo repository.UserOAuthRepository, pendingUserStore store.Store[model.User]) *UserService {
+func NewUserService(userRepo UserRepository, userOAuthRepo UserOAuthRepository, pendingUserStore store.Store[model.User]) *UserService {
 	return &UserService{
 		userRepo:      userRepo,
 		userOAuthRepo: userOAuthRepo,

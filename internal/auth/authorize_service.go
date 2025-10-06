@@ -8,10 +8,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/khanghh/cas-go/internal/repository"
 	"github.com/khanghh/cas-go/internal/store"
+	"github.com/khanghh/cas-go/model"
+	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
+	"gorm.io/gen"
 )
+
+type ServiceRepository interface {
+	WithTx(tx *query.Query) ServiceRepository
+	First(ctx context.Context, conds ...gen.Condition) (*model.Service, error)
+	GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error)
+	AddService(ctx context.Context, service *model.Service) error
+}
 
 type ServiceTicket struct {
 	TicketID    string    `json:"ticketID"    redis:"ticket_id"`
@@ -26,7 +35,6 @@ type registry = ServiceRegistry
 type AuthorizeService struct {
 	*registry
 	ticketStore store.Store[ServiceTicket]
-	tokenRepo   repository.TokenRepository
 }
 
 func signHMAC(secret, message string) string {
@@ -90,10 +98,9 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 	return &st, nil
 }
 
-func NewAuthorizeService(ticketStore store.Store[ServiceTicket], serviceRegistry *ServiceRegistry, tokenRepo repository.TokenRepository) *AuthorizeService {
+func NewAuthorizeService(ticketStore store.Store[ServiceTicket], serviceRegistry *ServiceRegistry) *AuthorizeService {
 	return &AuthorizeService{
 		ticketStore: ticketStore,
 		registry:    serviceRegistry,
-		tokenRepo:   tokenRepo,
 	}
 }
