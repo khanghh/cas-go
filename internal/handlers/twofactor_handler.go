@@ -61,7 +61,6 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMsg string) error {
 	session := sessions.Get(ctx)
 	session.CSRFToken = generateCSRFToken()
-	sessions.Set(ctx, session)
 	pageData := render.VerifyOTPPageData{
 		Email:       email,
 		IsMasked:    true,
@@ -228,7 +227,6 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	session.TwoFARequired = false
-	sessions.Set(ctx, session)
 	return redirect(ctx, ch.RedirectURL, nil)
 }
 

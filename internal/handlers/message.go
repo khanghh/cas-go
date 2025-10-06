@@ -19,6 +19,7 @@ const (
 	MsgLoginUnsupportedOAuth    = "This OAuth provider is not supported."
 	MsgTwoFactorChallengeFailed = "Two-factor authentication failed."
 	MsgTwoFactorUserLocked      = "%s. Please try again in %s."
+	MsgTooManyFailedLogin       = "Too many failed login attempts. Please try again later."
 )
 
 func formatDuration(d time.Duration) string {

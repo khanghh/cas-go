@@ -38,7 +38,7 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
 		"siteName":          globalVars["siteName"],
 		"identifier":        data.Identifier,
-		"loginError":        data.LoginError,
+		"loginError":        data.ErrorMsg,
 		"googleOAuthURL":    data.OAuthLoginURLs["google"],
 		"facebookOAuthURL":  data.OAuthLoginURLs["facebook"],
 		"discordOAuthURL":   data.OAuthLoginURLs["discord"],
@@ -125,7 +125,6 @@ func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
 		"siteName":     globalVars["siteName"],
 		"emailOrPhone": emailOrPhone,
 		"verifyError":  pageData.VerifyError,
-		"csrfToken":    pageData.CSRFToken,
 	})
 }
 

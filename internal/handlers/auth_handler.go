@@ -25,18 +25,19 @@ func NewAuthHandler(authorizeService AuthorizeService, userService UserService, 
 	}
 }
 
-func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) sessions.SessionData {
-	session := sessions.SessionData{
+func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) *sessions.Session {
+	session := sessions.Get(ctx)
+	sessionData := sessions.SessionData{
 		IP:            ctx.IP(),
 		UserID:        user.ID,
 		LoginTime:     time.Now(),
 		TwoFARequired: true,
 	}
 	if userOAuth != nil {
-		session.OAuthID = userOAuth.ID
-		session.TwoFARequired = false
+		sessionData.OAuthID = userOAuth.ID
+		sessionData.TwoFARequired = false
 	}
-	sessions.Reset(ctx, &session)
+	sessions.Reset(ctx, sessionData)
 	return session
 }
 

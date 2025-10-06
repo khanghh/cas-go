@@ -186,7 +186,7 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	sessions.Set(ctx, sessions.SessionData{
+	sessions.Get(ctx).Save(sessions.SessionData{
 		IP:        ctx.IP(),
 		UserID:    user.ID,
 		LoginTime: time.Now(),

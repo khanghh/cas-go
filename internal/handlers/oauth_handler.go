@@ -68,7 +68,7 @@ func (h *OAuthHandler) redirectRegisterOAuth(ctx *fiber.Ctx, userOAuth *model.Us
 	}
 
 	if userOAuth.UserID == 0 {
-		sessions.Set(ctx, sessions.SessionData{
+		sessions.Get(ctx).Save(sessions.SessionData{
 			IP:        ctx.IP(),
 			OAuthID:   userOAuth.ID,
 			LoginTime: time.Now(),

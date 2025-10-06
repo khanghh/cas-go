@@ -12,14 +12,15 @@ import (
 )
 
 const (
-	injectSessionKey = "session"
-	sessionDataKey   = "data"
+	sessionContextKey = "session"
+	sessionDataKey    = "data"
 )
 
-type Middleware func(next fiber.Handler) fiber.Handler
+func init() {
+	gob.Register(SessionData{})
+}
 
 type SessionData struct {
-	id               string    // session id
 	IP               string    // client ip address
 	UserID           uint      // user id
 	OAuthID          uint      // user oauth id
@@ -29,10 +30,6 @@ type SessionData struct {
 	TwoFARequired    bool      // is 2fa required
 	TwoFAChallengeID string    // 2fa challenge id
 	ExpireTime       time.Time // session expire time
-}
-
-func (s SessionData) ID() string {
-	return s.id
 }
 
 func (s *SessionData) IsLoggedIn() bool {
@@ -47,8 +44,39 @@ func (s *SessionData) IsAuthenticated() bool {
 	return s.UserID != 0 && !s.TwoFARequired
 }
 
-func init() {
-	gob.Register(SessionData{})
+type Session struct {
+	*session.Session
+	SessionData
+}
+
+func (s *Session) Save(data ...SessionData) {
+	if len(data) > 0 {
+		s.SessionData = data[0]
+	}
+	s.Set(sessionDataKey, s.SessionData)
+}
+
+func (s *Session) Reset(data ...SessionData) error {
+	if err := s.Session.Reset(); err != nil {
+		return err
+	}
+
+	s.SessionData = SessionData{}
+	s.Save(data...)
+	return nil
+}
+
+func (s *Session) Destroy() error {
+	s.SessionData = SessionData{}
+	return s.Session.Destroy()
+}
+
+func newSession(sess *session.Session) *Session {
+	data, _ := sess.Get(sessionDataKey).(SessionData)
+	return &Session{
+		Session:     sess,
+		SessionData: data,
+	}
 }
 
 func GenerateSessionID() string {
@@ -60,31 +88,30 @@ func GenerateSessionID() string {
 	return hex.EncodeToString(b)
 }
 
-func Get(ctx *fiber.Ctx) SessionData {
-	session := ctx.Locals(injectSessionKey).(*session.Session)
-	data, _ := session.Get(sessionDataKey).(SessionData)
-	data.id = session.ID()
-	return data
+func Get(ctx *fiber.Ctx) *Session {
+	return ctx.Locals(sessionContextKey).(*Session)
 }
 
-func Set(ctx *fiber.Ctx, data SessionData) {
-	session := ctx.Locals(injectSessionKey).(*session.Session)
-	session.Set(sessionDataKey, data)
+func Set(ctx *fiber.Ctx, session *Session) {
+	if session != nil {
+		return
+	}
+	session.Save()
+	ctx.Locals(sessionContextKey, session)
 }
 
 func Destroy(ctx *fiber.Ctx) error {
-	sess := ctx.Locals(injectSessionKey).(*session.Session)
-	return sess.Destroy()
+	session := ctx.Locals(sessionContextKey).(*Session)
+	return session.Destroy()
 }
 
-func Reset(ctx *fiber.Ctx, data *SessionData) error {
-	sess := ctx.Locals(injectSessionKey).(*session.Session)
-	err := sess.Reset()
-	if err != nil {
+func Reset(ctx *fiber.Ctx, data SessionData) error {
+	sess := ctx.Locals(sessionContextKey).(*Session)
+	if err := sess.Reset(); err != nil {
 		return err
 	}
-	data.id = sess.ID()
-	sess.Set(sessionDataKey, *data)
+	sess.SessionData = data
+	sess.Set(sessionDataKey, data)
 	return nil
 }
 
@@ -95,13 +122,13 @@ func SessionMiddleware(store *session.Store) fiber.Handler {
 			return err
 		}
 
-		ctx.Locals(injectSessionKey, sess)
+		session := newSession(sess)
+		ctx.Locals(sessionContextKey, session)
 		if err := ctx.Next(); err != nil {
 			return err
 		}
 
-		data, ok := sess.Get(sessionDataKey).(SessionData)
-		if ok {
+		if data := session.SessionData; data != (SessionData{}) {
 			data.LastSeen = time.Now()
 			sess.Set(sessionDataKey, data)
 			return sess.Save()

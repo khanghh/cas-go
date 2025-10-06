@@ -65,7 +65,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	if !session.IsAuthenticated() {
 		return render.RenderLogin(ctx, render.LoginPageData{
 			OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
-			LoginError:     mapLoginError(errorCode),
+			ErrorMsg:       mapLoginError(errorCode),
 		})
 	}
 
@@ -75,7 +75,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
 }
 
-func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.SessionData, redirectURL string) error {
+func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session, redirectURL string) error {
 	if session.TwoFAChallengeID != "" {
 		ch, err := h.challengeService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
 		if err == nil && ch.CanVerify() {
@@ -97,7 +97,7 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.SessionD
 		return err
 	}
 
-	sessions.Set(ctx, sessions.SessionData{
+	session.Save(sessions.SessionData{
 		IP:               ctx.IP(),
 		UserID:           session.UserID,
 		LoginTime:        time.Now(),
@@ -113,18 +113,17 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	password := ctx.FormValue("password")
 
 	session := sessions.Get(ctx)
-	if session.IsLoggedIn() {
-		return render.RenderBadRequestError(ctx)
+	if session.IsAuthenticated() {
+		return ctx.Redirect("/")
 	}
 
 	pageData := render.LoginPageData{
-		Identifier:     username,
 		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
 	}
 
 	user, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), username)
 	if err != nil {
-		pageData.LoginError = MsgLoginWrongCredentials
+		pageData.ErrorMsg = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
 	}
 
@@ -133,12 +132,12 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 		return err
 	}
 	if err := userState.CheckLockStatus(); err != nil {
-		pageData.LoginError = fmt.Sprintf(MsgTwoFactorUserLocked, err.Reason, formatDuration(time.Until(err.Until)))
+		pageData.ErrorMsg = fmt.Sprintf(MsgTwoFactorUserLocked, err.Reason, formatDuration(time.Until(err.Until)))
 		return render.RenderLogin(ctx, pageData)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		pageData.LoginError = MsgLoginWrongCredentials
+		pageData.ErrorMsg = MsgLoginWrongCredentials
 		return render.RenderLogin(ctx, pageData)
 	}
 
@@ -147,7 +146,7 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	if serviceURL != "" {
 		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
 	}
-	return h.handleLogin2FA(ctx, &session, redirectURL)
+	return h.handleLogin2FA(ctx, session, redirectURL)
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {
