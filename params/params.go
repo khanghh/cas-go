@@ -11,8 +11,7 @@ const (
 	TicketStoreKeyPrefix          = "t:"
 	ChallengeStoreKeyPrefix       = "c:"
 	UserStateStoreKeyPrefix       = "u:"
-	PendingRegisterStoreKeyPrefix = "r:"
-	PendingRegisterMaxAge         = 1 * time.Hour
+	PendingUserExpiration         = 1 * time.Hour
 	ServiceTicketExpiration       = 1 * time.Minute
 	AuthStateTimeout              = 10 * time.Minute
 	TwoFactorChallengeMaxAttempts = 5               // maximum number of attempts for a challenge

@@ -16,15 +16,17 @@ import (
 )
 
 var (
-	Q         = new(Query)
-	Service   *service
-	Token     *token
-	User      *user
-	UserOAuth *userOAuth
+	Q           = new(Query)
+	PendingUser *pendingUser
+	Service     *service
+	Token       *token
+	User        *user
+	UserOAuth   *userOAuth
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	PendingUser = &Q.PendingUser
 	Service = &Q.Service
 	Token = &Q.Token
 	User = &Q.User
@@ -33,32 +35,35 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:        db,
-		Service:   newService(db, opts...),
-		Token:     newToken(db, opts...),
-		User:      newUser(db, opts...),
-		UserOAuth: newUserOAuth(db, opts...),
+		db:          db,
+		PendingUser: newPendingUser(db, opts...),
+		Service:     newService(db, opts...),
+		Token:       newToken(db, opts...),
+		User:        newUser(db, opts...),
+		UserOAuth:   newUserOAuth(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	Service   service
-	Token     token
-	User      user
-	UserOAuth userOAuth
+	PendingUser pendingUser
+	Service     service
+	Token       token
+	User        user
+	UserOAuth   userOAuth
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:        db,
-		Service:   q.Service.clone(db),
-		Token:     q.Token.clone(db),
-		User:      q.User.clone(db),
-		UserOAuth: q.UserOAuth.clone(db),
+		db:          db,
+		PendingUser: q.PendingUser.clone(db),
+		Service:     q.Service.clone(db),
+		Token:       q.Token.clone(db),
+		User:        q.User.clone(db),
+		UserOAuth:   q.UserOAuth.clone(db),
 	}
 }
 
@@ -72,27 +77,30 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:        db,
-		Service:   q.Service.replaceDB(db),
-		Token:     q.Token.replaceDB(db),
-		User:      q.User.replaceDB(db),
-		UserOAuth: q.UserOAuth.replaceDB(db),
+		db:          db,
+		PendingUser: q.PendingUser.replaceDB(db),
+		Service:     q.Service.replaceDB(db),
+		Token:       q.Token.replaceDB(db),
+		User:        q.User.replaceDB(db),
+		UserOAuth:   q.UserOAuth.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Service   *serviceDo
-	Token     *tokenDo
-	User      *userDo
-	UserOAuth *userOAuthDo
+	PendingUser *pendingUserDo
+	Service     *serviceDo
+	Token       *tokenDo
+	User        *userDo
+	UserOAuth   *userOAuthDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Service:   q.Service.WithContext(ctx),
-		Token:     q.Token.WithContext(ctx),
-		User:      q.User.WithContext(ctx),
-		UserOAuth: q.UserOAuth.WithContext(ctx),
+		PendingUser: q.PendingUser.WithContext(ctx),
+		Service:     q.Service.WithContext(ctx),
+		Token:       q.Token.WithContext(ctx),
+		User:        q.User.WithContext(ctx),
+		UserOAuth:   q.UserOAuth.WithContext(ctx),
 	}
 }
 

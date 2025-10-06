@@ -21,7 +21,7 @@ type UserOAuth struct {
 }
 
 func (UserOAuth) TableName() string {
-	return "user_oauths"
+	return "user_oauth"
 }
 
 func (u *UserOAuth) BeforeCreate(tx *gorm.DB) error {

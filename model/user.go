@@ -9,11 +9,11 @@ import (
 // User stores user information
 type User struct {
 	ID        uint        `gorm:"primarykey"`
-	Username  string      `gorm:"uniqueIndex;size:32;not null"  redis:"username"`
-	FullName  string      `gorm:"size:64;not null"              redis:"full_name"`
-	Email     string      `gorm:"uniqueIndex;size:256;not null" redis:"email"`
-	Password  string      `gorm:"size:64;not null"              redis:"password"`
-	Picture   string      `gorm:"size:256;not null"             redis:"picture"`
+	Username  string      `gorm:"uniqueIndex;size:32;not null"`
+	FullName  string      `gorm:"size:64;not null"`
+	Email     string      `gorm:"uniqueIndex;size:256;not null"`
+	Password  string      `gorm:"size:64;not null"`
+	Picture   string      `gorm:"size:256;not null"`
 	Disabled  bool        `gorm:"default:false;not null"`
 	OAuths    []UserOAuth `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	CreatedAt time.Time

@@ -61,3 +61,17 @@ const ColTokenUpdatedAt = "updated_at"
 const ColTokenDeletedAt = "deleted_at"
 // Token index names
 const IdxTokenDeletedAt = "idx_token_deleted_at"
+// PendingUser column names
+const ColPendingUserID = "id"
+const ColPendingUserUsername = "username"
+const ColPendingUserFullName = "full_name"
+const ColPendingUserEmail = "email"
+const ColPendingUserPassword = "password"
+const ColPendingUserPicture = "picture"
+const ColPendingUserActiveToken = "active_token"
+const ColPendingUserApproved = "approved"
+const ColPendingUserCreatedAt = "created_at"
+const ColPendingUserUpdatedAt = "updated_at"
+const ColPendingUserDeletedAt = "deleted_at"
+// PendingUser index names
+const IdxPendingUserDeletedAt = "idx_pending_user_deleted_at"

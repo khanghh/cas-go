@@ -205,11 +205,10 @@ func run(ctx *cli.Context) error {
 
 	// initialize cache
 	var (
-		sessionStorage   fiber.Storage
-		ticketStore      store.Store[auth.ServiceTicket]
-		challengeStore   store.Store[twofactor.Challenge]
-		userStateStore   store.Store[twofactor.UserState]
-		pendingUserStore store.Store[model.User]
+		sessionStorage fiber.Storage
+		ticketStore    store.Store[auth.ServiceTicket]
+		challengeStore store.Store[twofactor.Challenge]
+		userStateStore store.Store[twofactor.UserState]
 	)
 	if config.RedisURL != "" {
 		redisStorage := redis.New(redis.Config{URL: config.RedisURL})
@@ -218,13 +217,11 @@ func run(ctx *cli.Context) error {
 		ticketStore = store.NewRedisStore[auth.ServiceTicket](redisClient, params.TicketStoreKeyPrefix)
 		challengeStore = store.NewRedisStore[twofactor.Challenge](redisClient, params.ChallengeStoreKeyPrefix)
 		userStateStore = store.NewRedisStore[twofactor.UserState](redisClient, params.UserStateStoreKeyPrefix)
-		pendingUserStore = store.NewRedisStore[model.User](redisClient, params.PendingRegisterStoreKeyPrefix)
 	} else {
 		sessionStorage = memory.New(memory.Config{GCInterval: 10 * time.Second})
 		ticketStore = store.NewMemoryStore[auth.ServiceTicket]()
 		challengeStore = store.NewMemoryStore[twofactor.Challenge]()
 		userStateStore = store.NewMemoryStore[twofactor.UserState]()
-		pendingUserStore = store.NewMemoryStore[model.User]()
 	}
 
 	sessionStore := session.New(session.Config{
@@ -238,14 +235,15 @@ func run(ctx *cli.Context) error {
 
 	// repositories
 	var (
-		userRepo      = users.NewUserRepository(query.Q)
-		userOAuthRepo = users.NewUserOAuthRepository(query.Q)
-		serviceRepo   = auth.NewServiceRepository(query.Q)
+		userRepo        = users.NewUserRepository(query.Q)
+		pendingUserRepo = users.NewPendingUserRepository(query.Q)
+		userOAuthRepo   = users.NewUserOAuthRepository(query.Q)
+		serviceRepo     = auth.NewServiceRepository(query.Q)
 	)
 
 	// services
 	var (
-		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserStore)
+		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserRepo)
 		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
 		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry)
 		challengeService = twofactor.NewChallengeService(challengeStore, userStateStore, config.MasterKey)
@@ -261,7 +259,7 @@ func run(ctx *cli.Context) error {
 	var (
 		authHandler      = handlers.NewAuthHandler(authorizeService, userService, challengeService)
 		loginHandler     = handlers.NewLoginHandler(serviceRegistry, userService, challengeService, oauthProviders)
-		registerHandler  = handlers.NewRegisterHandler(userService, challengeService, mailSender)
+		registerHandler  = handlers.NewRegisterHandler(userService, mailSender)
 		oauthHandler     = handlers.NewOAuthHandler(userService, oauthProviders)
 		twofactorHandler = handlers.NewTwoFactorHandler(challengeService, userService, mailSender)
 	)

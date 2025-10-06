@@ -12,7 +12,6 @@ import (
 	"github.com/khanghh/cas-go/internal/mail"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
-	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
 )
 
@@ -28,16 +27,14 @@ type RegisterForm struct {
 }
 
 type RegisterHandler struct {
-	userService      UserService
-	challengeService *twofactor.ChallengeService
-	mailSender       mail.MailSender
+	userService UserService
+	mailSender  mail.MailSender
 }
 
-func NewRegisterHandler(userService UserService, challengeService *twofactor.ChallengeService, mailSender mail.MailSender) *RegisterHandler {
+func NewRegisterHandler(userService UserService, mailSender mail.MailSender) *RegisterHandler {
 	return &RegisterHandler{
-		userService:      userService,
-		challengeService: challengeService,
-		mailSender:       mailSender,
+		userService: userService,
+		mailSender:  mailSender,
 	}
 }
 
@@ -97,7 +94,7 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		Email:    email,
 		Password: password,
 	}
-	_, err := h.userService.RegisterUser(ctx.Context(), userOpts)
+	pendingUser, err := h.userService.RegisterUser(ctx.Context(), userOpts)
 	if err != nil {
 		if errors.Is(err, users.ErrUsernameTaken) {
 			pageData.FormErrors["username"] = MsgUsernameTaken
@@ -110,19 +107,7 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		return render.RenderInternalServerError(ctx)
 	}
 
-	opts := twofactor.ChallengeOptions{ExpiresIn: 1 * time.Hour}
-	ch, err := h.challengeService.CreateChallenge(ctx.Context(), opts)
-	if err != nil {
-		return render.RenderInternalServerError(ctx)
-	}
-
-	registerClaims := RegisterClaims{username, email, time.Now().UnixMilli()}
-	token, err := h.challengeService.Token().Generate(ctx.Context(), ch, registerClaims)
-	if err != nil {
-		return render.RenderInternalServerError(ctx)
-	}
-
-	verifyURL := fmt.Sprintf("%s/register/verify?cid=%s&token=%s", ctx.BaseURL(), ch.ID, token)
+	verifyURL := fmt.Sprintf("%s/register/verify?email=%s&token=%s", ctx.BaseURL(), email, pendingUser.ActiveToken)
 	if err := mail.SendRegisterVerification(h.mailSender, email, verifyURL); err != nil {
 		return render.RenderInternalServerError(ctx)
 	}
@@ -132,13 +117,13 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 
 func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if session.IsLoggedIn() {
-		return ctx.Redirect("/")
+	if session.IsLoggedIn() || session.OAuthID == 0 {
+		return ctx.Redirect("/login")
 	}
 
 	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	return render.RenderOAuthRegister(ctx, render.RegisterPageData{
@@ -186,8 +171,9 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		Email:     userOAuth.Email,
 		Picture:   userOAuth.Picture,
 		UserOAuth: userOAuth,
+		Password:  password,
 	}
-	user, err := h.userService.RegisterUser(ctx.Context(), userOpts)
+	user, err := h.userService.CreateUser(ctx.Context(), userOpts)
 	if err != nil {
 		if errors.Is(err, users.ErrUsernameTaken) {
 			pageData.FormErrors["username"] = MsgUsernameTaken
@@ -214,23 +200,12 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 }
 
 func (h *RegisterHandler) GetRegisterVerify(ctx *fiber.Ctx) error {
-	cid := ctx.Query("cid")
+	email := ctx.Query("email")
 	token := ctx.Query("token")
 
-	ch, err := h.challengeService.GetChallenge(ctx.Context(), cid)
-	if err != nil {
-		return render.RenderNotFoundError(ctx)
-	}
-
-	var claims RegisterClaims
-	tokenChallenger := h.challengeService.Token()
-	if err := tokenChallenger.Verify(ctx.Context(), ch, token, &claims); err != nil {
+	if _, err := h.userService.ApprovePendingUser(ctx.Context(), email, token); err != nil {
 		return render.RenderEmailVerificationFailure(ctx)
 	}
 
-	if _, err := h.userService.ApprovePendingUser(ctx.Context(), claims.Email); err != nil {
-		return render.RenderEmailVerificationFailure(ctx)
-	}
-
-	return render.RenderEmailVerificationSuccess(ctx, claims.Email)
+	return render.RenderEmailVerificationSuccess(ctx, email)
 }

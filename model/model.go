@@ -5,7 +5,7 @@ import "github.com/bwmarrin/snowflake"
 var snowflakeNode *snowflake.Node
 
 var Models = []interface{}{
-	&User{}, &UserOAuth{}, &Service{}, &Token{},
+	&User{}, &UserOAuth{}, &Service{}, &Token{}, &PendingUser{},
 }
 
 func init() {

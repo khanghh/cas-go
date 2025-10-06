@@ -21,9 +21,9 @@ type AuthorizeService interface {
 
 type UserService interface {
 	GetUserByID(ctx context.Context, userID uint) (*model.User, error)
-	GetPendingUser(ctx context.Context, email string) (*model.User, error)
-	ApprovePendingUser(ctx context.Context, email string) (*model.User, error)
-	RegisterUser(ctx context.Context, opts users.CreateUserOptions) (*model.User, error)
+	CreateUser(ctx context.Context, opts users.CreateUserOptions) (*model.User, error)
+	RegisterUser(ctx context.Context, opts users.CreateUserOptions) (*model.PendingUser, error)
+	ApprovePendingUser(ctx context.Context, email string, token string) (*model.User, error)
 	GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error)
 	GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*model.UserOAuth, error)
 	GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
