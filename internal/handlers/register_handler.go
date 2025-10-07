@@ -107,12 +107,12 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 			return render.RenderRegister(ctx, pageData)
 		}
 		slog.Error("Failed to create user", "error", err)
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	verifyURL := fmt.Sprintf("%s/register/verify?email=%s&token=%s", ctx.BaseURL(), email, pendingUser.ActiveToken)
 	if err := mail.SendRegisterVerification(h.mailSender, email, verifyURL); err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	return render.RenderRegisterVerifyEmail(ctx, email)
@@ -146,7 +146,7 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 
 	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	var (
