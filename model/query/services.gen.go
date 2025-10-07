@@ -28,10 +28,11 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.ALL = field.NewAsterisk(tableName)
 	_service.ID = field.NewUint(tableName, "id")
 	_service.Name = field.NewString(tableName, "name")
-	_service.CallbackURL = field.NewString(tableName, "callback_url")
+	_service.LoginCallback = field.NewString(tableName, "login_callback")
+	_service.LogoutCallback = field.NewString(tableName, "logout_callback")
+	_service.StripQuery = field.NewBool(tableName, "strip_query")
 	_service.AutoLogin = field.NewBool(tableName, "auto_login")
 	_service.SigningKey = field.NewString(tableName, "signing_key")
-	_service.StripQuery = field.NewBool(tableName, "strip_query")
 	_service.CreatedAt = field.NewTime(tableName, "created_at")
 	_service.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_service.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -44,16 +45,17 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 type service struct {
 	serviceDo
 
-	ALL         field.Asterisk
-	ID          field.Uint
-	Name        field.String
-	CallbackURL field.String
-	AutoLogin   field.Bool
-	SigningKey  field.String
-	StripQuery  field.Bool
-	CreatedAt   field.Time
-	UpdatedAt   field.Time
-	DeletedAt   field.Field
+	ALL            field.Asterisk
+	ID             field.Uint
+	Name           field.String
+	LoginCallback  field.String
+	LogoutCallback field.String
+	StripQuery     field.Bool
+	AutoLogin      field.Bool
+	SigningKey     field.String
+	CreatedAt      field.Time
+	UpdatedAt      field.Time
+	DeletedAt      field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -72,10 +74,11 @@ func (s *service) updateTableName(table string) *service {
 	s.ALL = field.NewAsterisk(table)
 	s.ID = field.NewUint(table, "id")
 	s.Name = field.NewString(table, "name")
-	s.CallbackURL = field.NewString(table, "callback_url")
+	s.LoginCallback = field.NewString(table, "login_callback")
+	s.LogoutCallback = field.NewString(table, "logout_callback")
+	s.StripQuery = field.NewBool(table, "strip_query")
 	s.AutoLogin = field.NewBool(table, "auto_login")
 	s.SigningKey = field.NewString(table, "signing_key")
-	s.StripQuery = field.NewBool(table, "strip_query")
 	s.CreatedAt = field.NewTime(table, "created_at")
 	s.UpdatedAt = field.NewTime(table, "updated_at")
 	s.DeletedAt = field.NewField(table, "deleted_at")
@@ -95,13 +98,14 @@ func (s *service) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *service) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 9)
+	s.fieldMap = make(map[string]field.Expr, 10)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["name"] = s.Name
-	s.fieldMap["callback_url"] = s.CallbackURL
+	s.fieldMap["login_callback"] = s.LoginCallback
+	s.fieldMap["logout_callback"] = s.LogoutCallback
+	s.fieldMap["strip_query"] = s.StripQuery
 	s.fieldMap["auto_login"] = s.AutoLogin
 	s.fieldMap["signing_key"] = s.SigningKey
-	s.fieldMap["strip_query"] = s.StripQuery
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt
 	s.fieldMap["deleted_at"] = s.DeletedAt

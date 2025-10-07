@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,8 +19,8 @@ import (
 type ServiceRepository interface {
 	WithTx(tx *query.Query) ServiceRepository
 	First(ctx context.Context, conds ...gen.Condition) (*model.Service, error)
-	GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error)
-	AddService(ctx context.Context, service *model.Service) error
+	Create(ctx context.Context, service *model.Service) error
+	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
 }
 
 type ServiceTicket struct {
@@ -55,11 +56,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 		return nil, ErrTicketNotFound
 	}
 
-	if ticket.CallbackURL != serviceURL {
-		return ticket, ErrServiceUrlMismatch
-	}
-
-	service, err := s.registry.GetService(ctx, serviceURL)
+	service, err := s.registry.GetServiceByURL(ctx, serviceURL)
 	if err != nil {
 		return ticket, ErrServiceNotFound
 	}
@@ -77,16 +74,36 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 	return ticket, nil
 }
 
-func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, svcCallbackURL string) (*ServiceTicket, error) {
-	service, err := s.registry.GetService(ctx, svcCallbackURL)
+// removeQueryFromURL parses the service URL and returns the base URL without query
+func removeQueryFromURL(urlWithQuery string) (string, error) {
+	parsed, err := url.Parse(urlWithQuery)
+	if err != nil {
+		return "", err
+	}
+	parsed.RawQuery = ""
+	parsed.ForceQuery = false
+	return parsed.String(), nil
+}
+
+func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, callbackURL string) (*ServiceTicket, error) {
+	serviceURL, err := removeQueryFromURL(callbackURL)
 	if err != nil {
 		return nil, ErrServiceNotFound
+	}
+
+	service, err := s.registry.GetServiceByURL(ctx, serviceURL)
+	if err != nil {
+		return nil, ErrServiceNotFound
+	}
+
+	if service.StripQuery {
+		callbackURL = service.LoginCallback
 	}
 
 	st := ServiceTicket{
 		TicketID:    uuid.NewString(),
 		UserID:      userId,
-		CallbackURL: service.CallbackURL,
+		CallbackURL: callbackURL,
 		CreateTime:  time.Now(),
 	}
 

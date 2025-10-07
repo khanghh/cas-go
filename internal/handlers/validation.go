@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"net/mail"
-	"net/url"
 	"regexp"
 )
 
@@ -40,15 +39,4 @@ func validatePassword(password string) error {
 		return errors.New("Password must be at least 6 characters.")
 	}
 	return nil
-}
-
-// removeQueryFromURL parses the service URL and returns the base URL without query
-func removeQueryFromURL(urlWithQuery string) (string, error) {
-	parsed, err := url.Parse(urlWithQuery)
-	if err != nil {
-		return "", err
-	}
-	parsed.RawQuery = ""
-	parsed.ForceQuery = false
-	return parsed.String(), nil
 }

@@ -12,20 +12,20 @@ type serviceRepository struct {
 	query *query.Query
 }
 
-func (r *serviceRepository) First(ctx context.Context, conds ...gen.Condition) (*model.Service, error) {
-	return r.query.Service.WithContext(ctx).Where(conds...).First()
-}
-
 func (r *serviceRepository) WithTx(tx *query.Query) ServiceRepository {
 	return NewServiceRepository(tx)
 }
 
-func (r *serviceRepository) GetService(ctx context.Context, svcCallbackURL string) (*model.Service, error) {
-	return r.query.Service.WithContext(ctx).Where(query.Service.CallbackURL.Eq(svcCallbackURL)).First()
+func (r *serviceRepository) First(ctx context.Context, conds ...gen.Condition) (*model.Service, error) {
+	return r.query.Service.WithContext(ctx).Where(conds...).First()
 }
 
-func (r *serviceRepository) AddService(ctx context.Context, service *model.Service) error {
-	return r.query.Service.Create(service)
+func (r *serviceRepository) Create(ctx context.Context, service *model.Service) error {
+	return r.query.Service.WithContext(ctx).Create(service)
+}
+
+func (r *serviceRepository) Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error) {
+	return r.query.Service.WithContext(ctx).Where(conds...).Updates(columns)
 }
 
 func NewServiceRepository(query *query.Query) ServiceRepository {

@@ -1,10 +1,11 @@
 package handlers
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/auth"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
@@ -41,29 +42,6 @@ func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOA
 	return session
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, user *model.User, callbackURL string) error {
-	noQueryCallbackURL, err := removeQueryFromURL(callbackURL)
-	if err != nil {
-		return render.RenderDeniedError(ctx)
-	}
-
-	service, err := h.authorizeService.GetService(ctx.Context(), noQueryCallbackURL)
-	if err != nil {
-		return render.RenderDeniedError(ctx)
-	}
-
-	if service.StripQuery {
-		callbackURL = noQueryCallbackURL
-	}
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, callbackURL)
-	if err != nil {
-		return err
-	}
-
-	redirectURL := fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID)
-	return ctx.Redirect(redirectURL)
-}
-
 func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 	if serviceURL == "" {
@@ -72,25 +50,32 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 	session := sessions.Get(ctx)
 	if !session.IsAuthenticated() {
-		return redirect(ctx, "/login", fiber.Map{"service": serviceURL})
+		return redirect(ctx, "/login", "service", serviceURL)
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return render.RenderDeniedError(ctx)
+		return forceLogout(ctx)
 	}
-	return h.handleAuthorizeServiceAccess(ctx, user, serviceURL)
+
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceURL)
+	if errors.Is(err, auth.ErrServiceNotFound) {
+		return redirect(ctx, "/login")
+	} else if err != nil {
+		return err
+	}
+	return redirect(ctx, ticket.CallbackURL, "ticket", ticket.TicketID)
 }
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
 	if !session.IsAuthenticated() {
-		return performLogout(ctx)
+		return redirect(ctx, "/login")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return performLogout(ctx)
+		return forceLogout(ctx)
 	}
 
 	return render.RenderHomePage(ctx, render.HomePageData{
