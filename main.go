@@ -279,7 +279,7 @@ func run(ctx *cli.Context) error {
 	}))
 	router.Use(csrf.New())
 	router.Use(recover.New())
-	router.Static("/static/*", config.StaticDir)
+	router.Static("/static", config.StaticDir)
 	router.Get("/", authHandler.GetHome)
 	router.Get("/authorize", authHandler.GetAuthorize)
 	router.Get("/serviceValidate", authHandler.GetServiceValidate)
