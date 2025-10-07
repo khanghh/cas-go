@@ -51,7 +51,7 @@ func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAu
 	if serviceURL == "" {
 		return ctx.Redirect("/")
 	}
-	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+	return redirect(ctx, "/authorize", "service", serviceURL)
 }
 
 func (h *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userID uint, userOAuth *model.UserOAuth) error {
@@ -61,10 +61,7 @@ func (h *OAuthHandler) handleOAuthLink(ctx *fiber.Ctx, userID uint, userOAuth *m
 func (h *OAuthHandler) redirectRegisterOAuth(ctx *fiber.Ctx, userOAuth *model.UserOAuth) error {
 	_, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), userOAuth.Email)
 	if err == nil {
-		return redirect(ctx, "/login", fiber.Map{
-			"service": ctx.Query("service"),
-			"error":   "email_conflict",
-		})
+		return redirect(ctx, "/login", "service", ctx.Query("service"), "error", "email_conflict")
 	}
 
 	if userOAuth.UserID == 0 {
@@ -73,7 +70,7 @@ func (h *OAuthHandler) redirectRegisterOAuth(ctx *fiber.Ctx, userOAuth *model.Us
 			OAuthID:   userOAuth.ID,
 			LoginTime: time.Now(),
 		})
-		return redirect(ctx, "/register/oauth", fiber.Map{"service": ctx.Query("service")})
+		return redirect(ctx, "/register/oauth", "service", ctx.Query("service"))
 	}
 	return nil
 }

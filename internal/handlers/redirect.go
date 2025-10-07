@@ -9,17 +9,21 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 )
 
-func redirect(ctx *fiber.Ctx, location string, params fiber.Map) error {
+func redirect(ctx *fiber.Ctx, location string, pairs ...any) error {
 	url, err := url.Parse(location)
 	if err != nil {
 		return err
 	}
+
 	query := url.Query()
-	for key, value := range params {
-		if value != nil && value != "" {
-			query.Set(key, fmt.Sprintf("%v", value))
+	for i := 0; i < len(pairs); i += 2 {
+		key, ok := pairs[i].(string)
+		if !ok {
+			return fmt.Errorf("key at position %d is not a string", i)
 		}
+		query.Set(key, fmt.Sprint(pairs[i+1]))
 	}
+
 	url.RawQuery = query.Encode()
 	return ctx.Redirect(url.String())
 }
@@ -30,7 +34,7 @@ func redirectInternal(ctx *fiber.Ctx, location string) error {
 	return ctx.RestartRouting()
 }
 
-func performLogout(ctx *fiber.Ctx) error {
+func forceLogout(ctx *fiber.Ctx) error {
 	sessions.Destroy(ctx)
 	return redirect(ctx, "/login", nil)
 }

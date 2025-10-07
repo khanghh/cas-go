@@ -58,7 +58,7 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
-		return redirect(ctx, "/login", nil)
+		return redirect(ctx, "/login")
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
@@ -104,7 +104,7 @@ func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *m
 		return err
 	}
 
-	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
+	return redirect(ctx, "/2fa/otp/verify", "cid", ch.ID)
 }
 
 func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
@@ -113,7 +113,7 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
-		return redirect(ctx, "/login", nil)
+		return redirect(ctx, "/login")
 	}
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
@@ -154,7 +154,7 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
-		return redirect(ctx, "/login", nil)
+		return redirect(ctx, "/login")
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
@@ -180,7 +180,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
-		return redirect(ctx, "/login", nil)
+		return redirect(ctx, "/login")
 	}
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
@@ -219,7 +219,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		var userLockedErr *twofactor.UserLockedError
 		if errors.As(err, &userLockedErr) || ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 			sessions.Destroy(ctx)
-			return redirect(ctx, "/login", fiber.Map{"error": "tfa_failed"})
+			return redirect(ctx, "/login", "error", "tfa_failed")
 		}
 		if msg, ok := mapTwoFactorError(err); ok {
 			return h.renderVerifyOTP(ctx, user.Email, msg)
@@ -229,7 +229,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	session.TwoFARequired = false
 	session.Save()
-	return redirect(ctx, ch.RedirectURL, nil)
+	return redirect(ctx, ch.RedirectURL)
 }
 
 func NewTwoFactorHandler(challengeService *twofactor.ChallengeService, userService *users.UserService, mailSender mail.MailSender) *TwoFactorHandler {

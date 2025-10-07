@@ -202,7 +202,7 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	if serviceURL == "" {
 		return ctx.Redirect("/")
 	}
-	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+	return redirect(ctx, "/authorize", "service", serviceURL)
 }
 
 func (h *RegisterHandler) GetRegisterVerify(ctx *fiber.Ctx) error {

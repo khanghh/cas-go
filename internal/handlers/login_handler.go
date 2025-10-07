@@ -74,14 +74,14 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 	if serviceURL == "" {
 		return ctx.Redirect("/")
 	}
-	return redirect(ctx, "/authorize", fiber.Map{"service": serviceURL})
+	return redirect(ctx, "/authorize", "service", serviceURL)
 }
 
 func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session, redirectURL string) error {
 	if session.TwoFAChallengeID != "" {
 		ch, err := h.challengeService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
 		if err == nil && ch.CanVerify() {
-			return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": session.TwoFAChallengeID})
+			return redirect(ctx, "/2fa/challenge", "cid", session.TwoFAChallengeID)
 		}
 	}
 
@@ -106,7 +106,7 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		TwoFARequired:    true,
 		TwoFAChallengeID: ch.ID,
 	})
-	return redirect(ctx, "/2fa/challenge", fiber.Map{"cid": ch.ID})
+	return redirect(ctx, "/2fa/challenge", "cid", ch.ID)
 }
 
 func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
@@ -158,5 +158,5 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {
-	return performLogout(ctx)
+	return forceLogout(ctx)
 }
