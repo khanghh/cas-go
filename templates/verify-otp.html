@@ -49,10 +49,10 @@
           </button>
         </div>
 
-        {{if .verifyError }}
+        {{if .errorMsg}}
         <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
           <i class="fas fa-exclamation-circle mr-2"></i>
-          {{.verifyError}}
+          {{.errorMsg}}
         </div>
         {{end}}
 

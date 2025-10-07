@@ -23,4 +23,5 @@ const (
 	TwoFactorOTPRefreshCooldown   = 1 * time.Minute    // otp code refresh cooldown
 	TwoFactorJWTExpiration        = 1 * time.Hour      // jwt token expiration duration
 	TrustedDeviceExpiration       = 7 * 24 * time.Hour // trusted device expiration duration
+	CSRFTokenExpiration           = 5 * time.Minute
 )

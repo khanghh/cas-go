@@ -26,7 +26,7 @@ import (
 	"github.com/khanghh/cas-go/internal/handlers"
 	"github.com/khanghh/cas-go/internal/mail"
 	"github.com/khanghh/cas-go/internal/middlewares"
-
+	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
@@ -251,7 +251,6 @@ func run(ctx *cli.Context) error {
 
 	// middlewares and dependencies
 	var (
-		withSession    = sessions.SessionMiddleware(sessionStore)
 		oauthProviders = mustInitOAuthProviders(config)
 	)
 
@@ -274,12 +273,12 @@ func run(ctx *cli.Context) error {
 		Views:         htmlEngine,
 		ErrorHandler:  middlewares.ErrorHandler,
 	})
-
+	router.Use(sessions.New(sessionStore))
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
+	router.Use(csrf.New())
 	router.Use(recover.New())
-	router.Use(withSession)
 	router.Static("/static/*", config.StaticDir)
 	router.Get("/", authHandler.GetHome)
 	router.Get("/authorize", authHandler.GetAuthorize)
@@ -298,14 +297,6 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)
 	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
-
-	router.Get("/test", func(ctx *fiber.Ctx) error {
-		template := ctx.Query("t")
-		return ctx.Render(template, fiber.Map{
-			"email": "aaa",
-		})
-	})
-
 	return router.Listen(config.ListenAddr)
 }
 

@@ -24,7 +24,6 @@ type SessionData struct {
 	IP               string    // client ip address
 	UserID           uint      // user id
 	OAuthID          uint      // user oauth id
-	CSRFToken        string    // csrf token
 	LastSeen         time.Time // last request time
 	LoginTime        time.Time // last login time
 	TwoFARequired    bool      // is 2fa required
@@ -60,9 +59,11 @@ func (s *Session) Reset(data ...SessionData) error {
 	if err := s.Session.Reset(); err != nil {
 		return err
 	}
-
 	s.SessionData = SessionData{}
-	s.Save(data...)
+	if len(data) > 0 {
+		s.SessionData = data[0]
+	}
+	s.Set(sessionDataKey, s.SessionData)
 	return nil
 }
 
@@ -115,7 +116,7 @@ func Reset(ctx *fiber.Ctx, data SessionData) error {
 	return nil
 }
 
-func SessionMiddleware(store *session.Store) fiber.Handler {
+func New(store *session.Store) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		sess, err := store.Get(ctx)
 		if err != nil {
@@ -128,12 +129,13 @@ func SessionMiddleware(store *session.Store) fiber.Handler {
 			return err
 		}
 
-		if data := session.SessionData; data != (SessionData{}) {
-			data.LastSeen = time.Now()
-			sess.Set(sessionDataKey, data)
+		if len(session.Keys()) > 0 {
+			if data := session.SessionData; data != (SessionData{}) {
+				data.LastSeen = time.Now()
+				sess.Set(sessionDataKey, data)
+			}
 			return sess.Save()
 		}
-
 		return nil
 	}
 }

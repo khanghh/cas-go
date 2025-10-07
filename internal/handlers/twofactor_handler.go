@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
+	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
@@ -26,46 +25,13 @@ type TwoFactorHandler struct {
 	mailSender       mail.MailSender
 }
 
-func generateCSRFToken() string {
-	const tokenLength = 32
-	b := make([]byte, tokenLength)
-	if _, err := rand.Read(b); err != nil {
-		panic("failed to generate CSRF token: " + err.Error())
-	}
-	return hex.EncodeToString(b)
-}
-
-func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
-	session := sessions.Get(ctx)
-	otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch, session.UserID)
-	if err != nil {
-		if msg, ok := mapTwoFactorError(err); ok {
-			return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
-				ChallengeID:  ch.ID,
-				EmailEnabled: true,
-				Email:        user.Email,
-				IsMasked:     true,
-				MethodError:  msg,
-			})
-		}
-		return err
-	}
-
-	if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
-		return err
-	}
-
-	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
-}
-
 func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMsg string) error {
 	session := sessions.Get(ctx)
-	session.CSRFToken = generateCSRFToken()
 	pageData := render.VerifyOTPPageData{
-		Email:       email,
-		IsMasked:    true,
-		CSRFToken:   session.CSRFToken,
-		VerifyError: errorMsg,
+		Email:     email,
+		IsMasked:  true,
+		CSRFToken: csrf.Get(session).Token,
+		ErrorMsg:  errorMsg,
 	}
 	return render.RenderVerifyOTP(ctx, pageData)
 }
@@ -113,8 +79,32 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		EmailEnabled: true,
 		Email:        user.Email,
 		IsMasked:     true,
+		CSRFToken:    csrf.Get(session).Token,
 	}
 	return render.RenderVerificationRequired(ctx, pageData)
+}
+
+func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
+	session := sessions.Get(ctx)
+	otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch, session.UserID)
+	if err != nil {
+		if msg, ok := mapTwoFactorError(err); ok {
+			return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
+				ChallengeID:  ch.ID,
+				EmailEnabled: true,
+				Email:        user.Email,
+				IsMasked:     true,
+				ErrorMsg:     msg,
+			})
+		}
+		return err
+	}
+
+	if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
+		return err
+	}
+
+	return redirect(ctx, "/2fa/otp/verify", fiber.Map{"cid": ch.ID})
 }
 
 func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
@@ -125,9 +115,21 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 	if !session.IsLoggedIn() {
 		return redirect(ctx, "/login", nil)
 	}
+
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
 		return err
+	}
+
+	if !csrf.Verify(ctx) {
+		pageData := render.VerificationRequiredPageData{
+			EmailEnabled: true,
+			Email:        user.Email,
+			IsMasked:     true,
+			CSRFToken:    csrf.Get(session).Token,
+			ErrorMsg:     MsgInvalidRequest,
+		}
+		return render.RenderVerificationRequired(ctx, pageData)
 	}
 
 	ch, err := h.challengeService.GetChallenge(ctx.Context(), cid)
@@ -175,7 +177,6 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	cid := ctx.FormValue("cid")
 	otp := ctx.FormValue("otp")
 	resend := ctx.FormValue("resend") != ""
-	csrf := ctx.FormValue("_csrf")
 
 	session := sessions.Get(ctx)
 	if !session.IsLoggedIn() {
@@ -189,7 +190,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	if !resend && otp == "" {
 		return h.renderVerifyOTP(ctx, user.Email, MsgOTPCodeEmpty)
 	}
-	if csrf != session.CSRFToken {
+	if !csrf.Verify(ctx) {
 		return h.renderVerifyOTP(ctx, user.Email, MsgInvalidRequest)
 	}
 
@@ -227,6 +228,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	session.TwoFARequired = false
+	session.Save()
 	return redirect(ctx, ch.RedirectURL, nil)
 }
 

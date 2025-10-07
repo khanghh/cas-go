@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
+	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/users"
@@ -59,7 +60,7 @@ func (h *RegisterHandler) GetRegister(ctx *fiber.Ctx) error {
 	if session.IsLoggedIn() {
 		return ctx.Redirect("/")
 	}
-	return render.RenderRegister(ctx, render.RegisterPageData{})
+	return render.RenderRegister(ctx, render.RegisterPageData{CSRFToken: csrf.Get(session).Token})
 }
 
 type RegisterClaims struct {
@@ -80,11 +81,13 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		password = ctx.FormValue("password")
 	)
 
-	pageData := render.RegisterPageData{
-		Username:   username,
-		Email:      email,
-		FormErrors: validateRegisterForm(username, password, email),
+	pageData := render.RegisterPageData{Username: username, Email: email}
+	if !csrf.Verify(ctx) {
+		pageData.ErrorMsg = MsgInvalidRequest
+		pageData.CSRFToken = csrf.Get(session).Token
+		return render.RenderRegister(ctx, pageData)
 	}
+	pageData.FormErrors = validateRegisterForm(username, password, email)
 	if len(pageData.FormErrors) > 0 {
 		return render.RenderRegister(ctx, pageData)
 	}
@@ -131,17 +134,14 @@ func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 		FullName:      userOAuth.DisplayName,
 		Picture:       userOAuth.Picture,
 		OAuthProvider: userOAuth.Provider,
+		CSRFToken:     csrf.Get(session).Token,
 	})
 }
 
 func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	if session.IsLoggedIn() {
+	if session.IsLoggedIn() || session.OAuthID == 0 {
 		return ctx.Redirect("/")
-	}
-
-	if session.OAuthID == 0 {
-		return render.RenderInternalServerError(ctx)
 	}
 
 	userOAuth, err := h.userService.GetUserOAuthByID(ctx.Context(), session.OAuthID)
@@ -155,12 +155,18 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	)
 
 	pageData := render.RegisterPageData{
-		Username:   username,
-		Email:      userOAuth.Email,
-		FullName:   userOAuth.DisplayName,
-		Picture:    userOAuth.Picture,
-		FormErrors: validateRegisterForm(username, password, userOAuth.Email),
+		Username:      username,
+		Email:         userOAuth.Email,
+		FullName:      userOAuth.DisplayName,
+		Picture:       userOAuth.Picture,
+		OAuthProvider: userOAuth.Provider,
 	}
+	if !csrf.Verify(ctx) {
+		pageData.ErrorMsg = MsgInvalidRequest
+		pageData.CSRFToken = csrf.Get(session).Token
+		return render.RenderOAuthRegister(ctx, pageData)
+	}
+	pageData.FormErrors = validateRegisterForm(username, password, userOAuth.Email)
 	if len(pageData.FormErrors) > 0 {
 		return render.RenderOAuthRegister(ctx, pageData)
 	}

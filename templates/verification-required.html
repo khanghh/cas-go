@@ -20,15 +20,16 @@
         <p class="text-gray-600 mt-2">For your security, please verify your identity to continue.</p>
       </div>
 
-      {{if .methodError}}
+      {{if .errorMsg}}
       <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
         <i class="fas fa-exclamation-circle mr-2"></i>
-        {{.methodError}}
+        {{.errorMsg}}
       </div>
       {{end}}
 
       <form class="space-y-4" method="POST">
         <input type="hidden" name="cid" value="{{.challengeID}}">
+        <input type="hidden" name="_csrf" value="{{.csrfToken}}">
         {{if .smsEnabled}}
         <button type="submit" name="method" value="sms"
           class="w-full flex items-center p-4 border rounded-lg hover:bg-gray-50 transition group">

@@ -38,12 +38,13 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
 		"siteName":          globalVars["siteName"],
 		"identifier":        data.Identifier,
-		"loginError":        data.ErrorMsg,
 		"googleOAuthURL":    data.OAuthLoginURLs["google"],
 		"facebookOAuthURL":  data.OAuthLoginURLs["facebook"],
 		"discordOAuthURL":   data.OAuthLoginURLs["discord"],
 		"microsoftOAuthURL": data.OAuthLoginURLs["microsoft"],
 		"appleOAuthURL":     data.OAuthLoginURLs["apple"],
+		"csrfToken":         data.CSRFToken,
+		"errorMsg":          data.ErrorMsg,
 	})
 }
 
@@ -52,9 +53,11 @@ func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 		"siteName":      globalVars["siteName"],
 		"username":      data.Username,
 		"email":         data.Email,
+		"csrfToken":     data.CSRFToken,
 		"usernameError": data.FormErrors["username"],
 		"passwordError": data.FormErrors["password"],
 		"emailError":    data.FormErrors["email"],
+		"errorMsg":      data.ErrorMsg,
 	})
 }
 
@@ -66,9 +69,11 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 		"email":         data.Email,
 		"picture":       data.Picture,
 		"oauthProvider": data.OAuthProvider,
+		"csrfToken":     data.CSRFToken,
 		"usernameError": data.FormErrors["username"],
 		"passwordError": data.FormErrors["password"],
 		"emailError":    data.FormErrors["email"],
+		"errorMsg":      data.ErrorMsg,
 	})
 }
 
@@ -78,34 +83,35 @@ func RenderDeniedError(ctx *fiber.Ctx) error {
 	})
 }
 
-func RenderHomePage(ctx *fiber.Ctx, pageData HomePageData) error {
-	displayName := pageData.FullName
+func RenderHomePage(ctx *fiber.Ctx, data HomePageData) error {
+	displayName := data.FullName
 	if displayName == "" {
-		displayName = pageData.Username
+		displayName = data.Username
 	}
 	return ctx.Render("home", fiber.Map{
 		"siteName":    globalVars["siteName"],
 		"displayName": displayName,
-		"email":       pageData.Email,
+		"email":       data.Email,
 	})
 }
 
-func RenderVerificationRequired(ctx *fiber.Ctx, pageData VerificationRequiredPageData) error {
-	email := pageData.Email
-	phone := formatPhone(pageData.Phone)
-	if pageData.IsMasked {
+func RenderVerificationRequired(ctx *fiber.Ctx, data VerificationRequiredPageData) error {
+	email := data.Email
+	phone := formatPhone(data.Phone)
+	if data.IsMasked {
 		email = maskEmail(email)
 		phone = maskPhone(phone)
 	}
 	return ctx.Render("verification-required", fiber.Map{
 		"siteName":     globalVars["siteName"],
-		"challengeID":  pageData.ChallengeID,
-		"emailEnabled": pageData.EmailEnabled,
-		"smsEnabled":   pageData.SMSEnableled,
-		"totpEnabled":  pageData.TOTPEnabled,
+		"challengeID":  data.ChallengeID,
+		"emailEnabled": data.EmailEnabled,
+		"smsEnabled":   data.SMSEnableled,
+		"totpEnabled":  data.TOTPEnabled,
 		"email":        email,
 		"phone":        phone,
-		"methodError":  pageData.MethodError,
+		"csrfToken":    data.CSRFToken,
+		"errorMsg":     data.ErrorMsg,
 	})
 }
 
@@ -124,7 +130,8 @@ func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
 	return ctx.Render("verify-otp", fiber.Map{
 		"siteName":     globalVars["siteName"],
 		"emailOrPhone": emailOrPhone,
-		"verifyError":  pageData.VerifyError,
+		"csrfToken":    pageData.CSRFToken,
+		"errorMsg":     pageData.ErrorMsg,
 	})
 }
 

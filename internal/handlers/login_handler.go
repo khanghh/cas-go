@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
 	"github.com/khanghh/cas-go/internal/render"
@@ -66,6 +67,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 		return render.RenderLogin(ctx, render.LoginPageData{
 			OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
 			ErrorMsg:       mapLoginError(errorCode),
+			CSRFToken:      csrf.Get(session).Token,
 		})
 	}
 
@@ -119,6 +121,12 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 
 	pageData := render.LoginPageData{
 		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
+	}
+
+	if !csrf.Verify(ctx) {
+		pageData.ErrorMsg = MsgInvalidRequest
+		pageData.CSRFToken = csrf.Get(session).Token
+		return render.RenderLogin(ctx, pageData)
 	}
 
 	user, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), username)

@@ -12,15 +12,15 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	if e, ok := err.(*fiber.Error); ok {
 		code = e.Code
 	}
-	slog.Error("unhandled error", "code", code, "error", err)
 	switch code {
 	case fiber.StatusBadRequest:
 		return render.RenderBadRequestError(ctx)
 	case fiber.StatusForbidden:
 		return render.RenderForbiddenError(ctx)
-	case fiber.StatusNotFound:
+	case fiber.StatusNotFound, fiber.StatusMethodNotAllowed:
 		return render.RenderNotFoundError(ctx)
 	default:
+		slog.Error("unhandled error", "code", code, "error", err)
 		return render.RenderInternalServerError(ctx)
 	}
 }
