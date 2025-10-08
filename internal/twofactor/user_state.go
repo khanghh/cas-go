@@ -50,7 +50,7 @@ func (s *userStateStore) Save(ctx context.Context, uid uint, userState UserState
 }
 
 func (s *userStateStore) Del(ctx context.Context, uid uint) error {
-	return s.Store.Del(ctx, strconv.Itoa(int(uid)))
+	return s.Store.Delete(ctx, strconv.Itoa(int(uid)))
 }
 
 func (s *userStateStore) IncreaseFailCount(ctx context.Context, uid uint) (int, error) {
@@ -103,7 +103,7 @@ func (s *userStateStore) LockUserUntil(ctx context.Context, uid uint, reason str
 	if err != nil {
 		return err
 	}
-	return s.AttrExpireAt(ctx, uidKey, until, "lock_reason", "locked_until", "fail_count")
+	return s.ExpireAttr(ctx, uidKey, until, "lock_reason", "locked_until", "fail_count")
 }
 
 func (s *userStateStore) SetOTPSentAt(ctx context.Context, uid uint, sentAt time.Time) error {

@@ -29,7 +29,7 @@ func (s *TokenChallenger) Verify(ctx context.Context, ch *Challenge, token strin
 		return ErrTokenInvalid
 	}
 	if token == s.svc.calculateHash([]byte(ch.Secret), ch.UpdateAt.UnixNano()) {
-		if err := s.svc.challengeStore.Del(ctx, ch.ID); err != nil {
+		if err := s.svc.challengeStore.Delete(ctx, ch.ID); err != nil {
 			return ErrTokenExpired
 		}
 		return json.Unmarshal([]byte(ch.Secret), data)

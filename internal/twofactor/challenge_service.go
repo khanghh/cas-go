@@ -184,7 +184,7 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, u
 		return err
 	}
 	if success {
-		if err := s.challengeStore.Del(ctx, ch.ID); err != nil {
+		if err := s.challengeStore.Delete(ctx, ch.ID); err != nil {
 			return ErrChallengeExpired
 		}
 		s.userStateStore.ResetFailCount(ctx, userID)

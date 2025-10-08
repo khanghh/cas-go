@@ -56,7 +56,7 @@ func (s *JWTChallenger) VerifyToken(ctx context.Context, tokenStr string, data i
 		return ErrTokenInvalid
 	}
 
-	if err := s.svc.challengeStore.Del(ctx, claims.ChallengeID); err != nil {
+	if err := s.svc.challengeStore.Delete(ctx, claims.ChallengeID); err != nil {
 		return ErrTokenExpired
 	}
 	return nil

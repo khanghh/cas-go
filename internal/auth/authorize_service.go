@@ -67,7 +67,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 	}
 
 	// Attempt to remove the ticket. If it doesn't exist, it has either expired or been used.
-	if err := s.ticketStore.Del(ctx, ticketID); err != nil {
+	if err := s.ticketStore.Delete(ctx, ticketID); err != nil {
 		return ticket, ErrTicketExpired
 	}
 
