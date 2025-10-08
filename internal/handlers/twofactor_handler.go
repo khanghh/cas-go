@@ -227,8 +227,10 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	session.TwoFARequired = false
-	session.Save()
+	if session.Is2FARequired() && session.TwoFAChallengeID == ch.ID {
+		session.TwoFARequired = false
+		session.Save()
+	}
 	return redirect(ctx, ch.RedirectURL)
 }
 

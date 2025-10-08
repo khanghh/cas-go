@@ -16,16 +16,14 @@ import (
 
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
-	serviceRegistry  ServiceRegistry
 	userService      UserService
 	challengeService *twofactor.ChallengeService
 	oauthProviders   []oauth.OAuthProvider
 }
 
 // NewLoginHandler returns a new instance of AuthHandler.
-func NewLoginHandler(serviceRegistry ServiceRegistry, userService UserService, challengeService *twofactor.ChallengeService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
+func NewLoginHandler(userService UserService, challengeService *twofactor.ChallengeService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
 	return &LoginHandler{
-		serviceRegistry:  serviceRegistry,
 		userService:      userService,
 		challengeService: challengeService,
 		oauthProviders:   oauthProviders,

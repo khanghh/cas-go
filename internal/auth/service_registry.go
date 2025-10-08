@@ -47,7 +47,11 @@ func (r *ServiceRegistry) GetService(ctx context.Context, serviceName string) (*
 }
 
 func (r *ServiceRegistry) GetServiceByURL(ctx context.Context, loginURL string) (*model.Service, error) {
-	svc, err := r.serviceRepo.First(ctx, query.Service.LoginCallback.Eq(loginURL))
+	loginURL = removeQueryFromURL(loginURL)
+	if loginURL == "" {
+		return nil, ErrServiceNotFound
+	}
+	svc, err := r.serviceRepo.First(ctx, query.Service.LoginURL.Eq(loginURL))
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, ErrServiceNotFound
 	}

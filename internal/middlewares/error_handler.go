@@ -20,7 +20,7 @@ func ErrorHandler(ctx *fiber.Ctx, err error) error {
 	case fiber.StatusNotFound, fiber.StatusMethodNotAllowed:
 		return render.RenderNotFoundError(ctx)
 	default:
-		slog.Error("unhandled error", "code", code, "error", err)
+		slog.Error("unhandled error", "path", ctx.Path(), "code", code, "error", err)
 		return render.RenderInternalServerError(ctx)
 	}
 }

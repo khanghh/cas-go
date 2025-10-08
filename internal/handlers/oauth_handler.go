@@ -110,7 +110,7 @@ func (h *OAuthHandler) GetOAuthCallback(ctx *fiber.Ctx) error {
 		return h.handleOAuthLogin(ctx, userOAuth)
 	}
 
-	if session.UserID != 0 {
+	if session.IsAuthenticated() {
 		return h.handleOAuthLink(ctx, session.UserID, userOAuth)
 	}
 

@@ -228,8 +228,7 @@ func run(ctx *cli.Context) error {
 	// services
 	var (
 		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserRepo)
-		serviceRegistry  = auth.NewServiceRegistry(serviceRepo)
-		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRegistry)
+		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo)
 		challengeService = twofactor.NewChallengeService(challengeStore, userStateStore, config.MasterKey)
 	)
 
@@ -241,7 +240,7 @@ func run(ctx *cli.Context) error {
 	// handlers
 	var (
 		authHandler      = handlers.NewAuthHandler(authorizeService, userService, challengeService)
-		loginHandler     = handlers.NewLoginHandler(serviceRegistry, userService, challengeService, oauthProviders)
+		loginHandler     = handlers.NewLoginHandler(userService, challengeService, oauthProviders)
 		registerHandler  = handlers.NewRegisterHandler(userService, mailSender)
 		oauthHandler     = handlers.NewOAuthHandler(userService, oauthProviders)
 		twofactorHandler = handlers.NewTwoFactorHandler(challengeService, userService, mailSender)
@@ -266,6 +265,7 @@ func run(ctx *cli.Context) error {
 	router.Static("/static", config.StaticDir)
 	router.Get("/", authHandler.GetHome)
 	router.Get("/authorize", authHandler.GetAuthorize)
+	router.Post("/authorize", authHandler.PostAuthorize)
 	router.Get("/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/p3/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/login", loginHandler.GetLogin)
