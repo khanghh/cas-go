@@ -2,10 +2,6 @@ package auth
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
-	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,18 +34,6 @@ type AuthorizeService struct {
 	ticketStore store.Store[ServiceTicket]
 }
 
-func signHMAC(secret, message string) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(message))
-	signature := mac.Sum(nil)
-	return base64.StdEncoding.EncodeToString(signature)
-}
-
-func verifyHMAC(secret, message, signatureB64 string) bool {
-	expected := signHMAC(secret, message)
-	return hmac.Equal([]byte(expected), []byte(signatureB64))
-}
-
 func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL string, ticketID string, timestamp string, signature string) (*ServiceTicket, error) {
 	ticket, err := s.ticketStore.Get(ctx, ticketID)
 	if err != nil {
@@ -74,30 +58,14 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 	return ticket, nil
 }
 
-// removeQueryFromURL parses the service URL and returns the base URL without query
-func removeQueryFromURL(urlWithQuery string) (string, error) {
-	parsed, err := url.Parse(urlWithQuery)
-	if err != nil {
-		return "", err
-	}
-	parsed.RawQuery = ""
-	parsed.ForceQuery = false
-	return parsed.String(), nil
-}
-
 func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, callbackURL string) (*ServiceTicket, error) {
-	serviceURL, err := removeQueryFromURL(callbackURL)
-	if err != nil {
-		return nil, ErrServiceNotFound
-	}
-
-	service, err := s.registry.GetServiceByURL(ctx, serviceURL)
+	service, err := s.registry.GetServiceByURL(ctx, callbackURL)
 	if err != nil {
 		return nil, ErrServiceNotFound
 	}
 
 	if service.StripQuery {
-		callbackURL = service.LoginCallback
+		callbackURL = service.LoginURL
 	}
 
 	st := ServiceTicket{
@@ -115,9 +83,9 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 	return &st, nil
 }
 
-func NewAuthorizeService(ticketStore store.Store[ServiceTicket], serviceRegistry *ServiceRegistry) *AuthorizeService {
+func NewAuthorizeService(ticketStore store.Store[ServiceTicket], serviceRepo ServiceRepository) *AuthorizeService {
 	return &AuthorizeService{
 		ticketStore: ticketStore,
-		registry:    serviceRegistry,
+		registry:    NewServiceRegistry(serviceRepo),
 	}
 }

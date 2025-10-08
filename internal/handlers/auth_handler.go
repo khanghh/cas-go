@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/auth"
+	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
@@ -16,14 +18,6 @@ type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
 	challengeService *twofactor.ChallengeService
-}
-
-func NewAuthHandler(authorizeService AuthorizeService, userService UserService, challengeService *twofactor.ChallengeService) *AuthHandler {
-	return &AuthHandler{
-		authorizeService: authorizeService,
-		userService:      userService,
-		challengeService: challengeService,
-	}
 }
 
 func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) *sessions.Session {
@@ -42,6 +36,27 @@ func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOA
 	return session
 }
 
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string) error {
+	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), session.UserID, serviceURL)
+	if errors.Is(err, auth.ErrServiceNotFound) {
+		return redirect(ctx, "/login")
+	} else if err != nil {
+		return err
+	}
+
+	challengeOpts := twofactor.ChallengeOptions{
+		UserID:      session.UserID,
+		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
+		RedirectURL: fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID),
+		ExpiresIn:   15 * time.Minute,
+	}
+	ch, err := h.challengeService.CreateChallenge(ctx.Context(), challengeOpts)
+	if err != nil {
+		return err
+	}
+	return redirect(ctx, "/2fa/challenge", "cid", ch.ID)
+}
+
 func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 	serviceURL := ctx.Query("service")
 	if serviceURL == "" {
@@ -58,13 +73,43 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 		return forceLogout(ctx)
 	}
 
-	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), user.ID, serviceURL)
+	service, err := h.authorizeService.GetServiceByURL(ctx.Context(), serviceURL)
 	if errors.Is(err, auth.ErrServiceNotFound) {
-		return redirect(ctx, "/login")
-	} else if err != nil {
-		return err
+		return render.RenderNotFoundError(ctx)
 	}
-	return redirect(ctx, ticket.CallbackURL, "ticket", ticket.TicketID)
+
+	pageData := render.AuthorizeServicePageData{
+		Email:       user.Email,
+		ServiceName: service.Name,
+		ServiceURL:  service.LoginURL,
+		CSRFToken:   csrf.Get(session).Token,
+	}
+	return render.RenderAuthorizeServiceAccess(ctx, pageData)
+}
+
+func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
+	serviceURL := ctx.Query("service")
+	authorize := ctx.FormValue("authorize")
+
+	if serviceURL == "" {
+		return render.RenderNotFoundError(ctx)
+	}
+
+	session := sessions.Get(ctx)
+	if !session.IsAuthenticated() {
+		return redirect(ctx, "/login", "service", serviceURL)
+	}
+
+	if authorize != "true" {
+		return ctx.Redirect("/")
+	}
+
+	_, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return forceLogout(ctx)
+	}
+
+	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
 }
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
@@ -137,4 +182,12 @@ func (h *AuthHandler) GetServiceValidate(ctx *fiber.Ctx) error {
 			Picture:  user.Picture,
 		},
 	})
+}
+
+func NewAuthHandler(authorizeService AuthorizeService, userService UserService, challengeService *twofactor.ChallengeService) *AuthHandler {
+	return &AuthHandler{
+		authorizeService: authorizeService,
+		userService:      userService,
+		challengeService: challengeService,
+	}
 }

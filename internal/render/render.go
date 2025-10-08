@@ -156,3 +156,12 @@ func RenderEmailVerificationFailure(ctx *fiber.Ctx) error {
 		"success":  false,
 	})
 }
+
+func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData) error {
+	return ctx.Render("authorize-service", fiber.Map{
+		"siteName":    globalVars["siteName"],
+		"email":       data.Email,
+		"serviceName": data.ServiceName,
+		"serviceURL":  data.ServiceURL,
+	})
+}

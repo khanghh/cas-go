@@ -38,6 +38,15 @@ type VerifyOTPPageData struct {
 	ErrorMsg  string
 }
 
+type AuthorizeServicePageData struct {
+	Username    string
+	FullName    string
+	Email       string
+	ServiceName string
+	ServiceURL  string
+	CSRFToken   string
+}
+
 type HomePageData struct {
 	Username string
 	FullName string
