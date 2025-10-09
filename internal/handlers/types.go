@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/khanghh/cas-go/internal/auth"
+	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/model"
 )
@@ -17,6 +18,17 @@ type AuthorizeService interface {
 	ServiceRegistry
 	GenerateServiceTicket(ctx context.Context, userID uint, callbackURL string) (*auth.ServiceTicket, error)
 	ValidateServiceTicket(ctx context.Context, serviceURL string, ticketId string, timestamp string, signature string) (*auth.ServiceTicket, error)
+}
+
+type TwoFactorService interface {
+	GetUserState(ctx context.Context, userID uint) (*twofactor.UserState, error)
+	CreateChallenge(ctx context.Context, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
+	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
+	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge) error
+	LockUser(ctx context.Context, userID uint, reason string) (*twofactor.UserState, error)
+	OTP() *twofactor.OTPChallenger
+	JWT() *twofactor.JWTChallenger
+	Token() *twofactor.TokenChallenger
 }
 
 type UserService interface {

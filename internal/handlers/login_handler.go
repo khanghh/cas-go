@@ -87,8 +87,7 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		redirectURL = string(ctx.Context().URI().RequestURI())
 	}
 	opts := twofactor.ChallengeOptions{
-		UserID:      session.UserID,
-		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
+		Subject:     getChallengeTarget(ctx, session),
 		RedirectURL: redirectURL,
 		ExpiresIn:   15 * time.Minute,
 	}

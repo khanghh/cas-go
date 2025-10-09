@@ -10,7 +10,7 @@ var (
 	ErrChallengeInvalid       = errors.New("challenge invalid")
 	ErrChallengeExpired       = errors.New("challenge expired")
 	ErrTooManyAttemtps        = errors.New("too many attempts")
-	ErrContextMismatch        = errors.New("context mismatch")
+	ErrSubjectMismatch        = errors.New("subject mismatch")
 	ErrTokenInvalid           = errors.New("invalid token")
 	ErrTokenExpired           = errors.New("token is expired")
 	ErrOTPCodeExpired         = errors.New("OTP code is expired")

@@ -45,8 +45,7 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sess
 	}
 
 	challengeOpts := twofactor.ChallengeOptions{
-		UserID:      session.UserID,
-		Binding:     twofactor.BindingValues{session.UserID, session.ID(), ctx.IP()},
+		Subject:     getChallengeTarget(ctx, session),
 		RedirectURL: fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID),
 		ExpiresIn:   15 * time.Minute,
 	}

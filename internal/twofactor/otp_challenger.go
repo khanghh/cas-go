@@ -55,16 +55,16 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 	return otpCode, nil
 }
 
-func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, code string) error {
+func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, target Subject, code string) error {
 	verifyFunc := func(userState *UserState) (bool, error) {
 		success := ch.Secret == s.svc.calculateHash(code, userState.OTPRequestCount, s.svc.masterKey)
 		if success {
 			if time.Since(ch.UpdateAt) > params.TwoFactorOTPExpiration {
 				return false, ErrOTPCodeExpired
 			}
-			s.svc.userStateStore.ResetOTPRequestCount(ctx, userID)
+			s.svc.userStateStore.ResetOTPRequestCount(ctx, target.UserID)
 		}
 		return success, nil
 	}
-	return s.svc.verifyChallenge(ctx, ch, userID, binding, verifyFunc)
+	return s.svc.verifyChallenge(ctx, ch, target, verifyFunc)
 }

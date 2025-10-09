@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/params"
 )
@@ -19,10 +20,15 @@ type ChallengeService struct {
 	masterKey      string
 }
 
-type BindingValues []interface{}
+type Subject struct {
+	UserID    uint
+	SessionID string
+	IPAddress string
+	UserAgent string
+}
 
-func (s *ChallengeService) generateChallengeID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+func (s *ChallengeService) SubjectHash(sub Subject) string {
+	return s.calculateHash(sub.UserID, sub.SessionID, sub.IPAddress, sub.UserAgent)
 }
 
 func (s *ChallengeService) calculateHash(inputs ...interface{}) string {
@@ -41,13 +47,6 @@ func (s *ChallengeService) calculateHash(inputs ...interface{}) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-type ChallengeOptions struct {
-	UserID      uint
-	Binding     BindingValues
-	RedirectURL string
-	ExpiresIn   time.Duration
-}
-
 func (s *ChallengeService) GetUserState(ctx context.Context, userID uint) (*UserState, error) {
 	userState, err := s.userStateStore.Get(ctx, userID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -58,6 +57,12 @@ func (s *ChallengeService) GetUserState(ctx context.Context, userID uint) (*User
 		return nil, err
 	}
 	return userState, err
+}
+
+type ChallengeOptions struct {
+	Subject
+	RedirectURL string
+	ExpiresIn   time.Duration
 }
 
 func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
@@ -80,8 +85,8 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOp
 	}
 
 	ch := Challenge{
-		ID:          s.generateChallengeID(),
-		Hash:        s.calculateHash(opts.Binding...),
+		ID:          uuid.NewString(),
+		Subject:     s.calculateHash(opts.UserID, opts.SessionID, opts.IPAddress, opts.UserAgent),
 		RedirectURL: opts.RedirectURL,
 		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
 	}
@@ -99,7 +104,7 @@ func (s *ChallengeService) GetChallenge(ctx context.Context, cid string) (*Chall
 	return ch, err
 }
 
-func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge, binding BindingValues) error {
+func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge, sub Subject) error {
 	if ch.IsExpired() {
 		return ErrChallengeExpired
 	}
@@ -109,8 +114,8 @@ func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	if !ch.CanVerify() {
 		return ErrChallengeInvalid
 	}
-	if ch.Hash != s.calculateHash(binding...) {
-		return ErrContextMismatch
+	if ch.Subject != s.SubjectHash(sub) {
+		return ErrSubjectMismatch
 	}
 	return nil
 }
@@ -150,12 +155,12 @@ func (s *ChallengeService) LockUser(ctx context.Context, userID uint, reason str
 
 type verifyFunc func(userState *UserState) (bool, error)
 
-func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, userID uint, binding BindingValues, doChallengerVerify verifyFunc) error {
-	if err := s.ValidateChallenge(ctx, ch, binding); err != nil {
+func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, sub Subject, doChallengerVerify verifyFunc) error {
+	if err := s.ValidateChallenge(ctx, ch, sub); err != nil {
 		return err
 	}
 
-	userState, err := s.GetUserState(ctx, userID)
+	userState, err := s.GetUserState(ctx, sub.UserID)
 	if err != nil {
 		return err
 	}
@@ -163,7 +168,7 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, u
 		return err
 	}
 
-	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, userID)
+	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, sub.UserID)
 	if err != nil {
 		return err
 	}
@@ -187,14 +192,14 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, u
 		if err := s.challengeStore.Delete(ctx, ch.ID); err != nil {
 			return ErrChallengeExpired
 		}
-		s.userStateStore.ResetFailCount(ctx, userID)
-		s.userStateStore.ResetLockLevel(ctx, userID)
-		s.userStateStore.DecreaseChallengeCount(ctx, userID)
+		s.userStateStore.ResetFailCount(ctx, sub.UserID)
+		s.userStateStore.ResetLockLevel(ctx, sub.UserID)
+		s.userStateStore.DecreaseChallengeCount(ctx, sub.UserID)
 		return nil
 	}
 
 	if userState.FailCount == params.TwoFactorUserMaxFailCount {
-		userState, err = s.LockUser(ctx, userID, ErrTooManyAttemtps.Error())
+		userState, err = s.LockUser(ctx, sub.UserID, ErrTooManyAttemtps.Error())
 		if err != nil {
 			return err
 		}
