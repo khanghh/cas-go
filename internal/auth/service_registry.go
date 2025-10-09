@@ -38,15 +38,7 @@ func (r *ServiceRegistry) RegisterService(ctx context.Context, service *model.Se
 	return signingKey, nil
 }
 
-func (r *ServiceRegistry) GetService(ctx context.Context, serviceName string) (*model.Service, error) {
-	svc, err := r.serviceRepo.First(ctx, query.Service.Name.Eq(serviceName))
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, ErrServiceNotFound
-	}
-	return svc, err
-}
-
-func (r *ServiceRegistry) GetServiceByURL(ctx context.Context, loginURL string) (*model.Service, error) {
+func (r *ServiceRegistry) GetService(ctx context.Context, loginURL string) (*model.Service, error) {
 	loginURL = removeQueryFromURL(loginURL)
 	if loginURL == "" {
 		return nil, ErrServiceNotFound
@@ -56,6 +48,10 @@ func (r *ServiceRegistry) GetServiceByURL(ctx context.Context, loginURL string) 
 		return nil, ErrServiceNotFound
 	}
 	return svc, err
+}
+
+func (r *ServiceRegistry) RemoveService(ctx context.Context, loginURL string) error {
+	return r.serviceRepo.Delete(ctx, query.Service.LoginURL.Eq(loginURL))
 }
 
 func NewServiceRegistry(serviceRepo ServiceRepository) *ServiceRegistry {

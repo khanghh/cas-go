@@ -28,6 +28,11 @@ func (r *serviceRepository) Updates(ctx context.Context, columns map[string]inte
 	return r.query.Service.WithContext(ctx).Where(conds...).Updates(columns)
 }
 
+func (r *serviceRepository) Delete(ctx context.Context, conds ...gen.Condition) error {
+	_, err := r.query.Service.WithContext(ctx).Where(conds...).Delete()
+	return err
+}
+
 func NewServiceRepository(query *query.Query) ServiceRepository {
 	return &serviceRepository{
 		query: query,

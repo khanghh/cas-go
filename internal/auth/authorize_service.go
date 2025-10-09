@@ -17,6 +17,7 @@ type ServiceRepository interface {
 	First(ctx context.Context, conds ...gen.Condition) (*model.Service, error)
 	Create(ctx context.Context, service *model.Service) error
 	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
+	Delete(ctx context.Context, conds ...gen.Condition) error
 }
 
 type ServiceTicket struct {
@@ -40,7 +41,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 		return nil, ErrTicketNotFound
 	}
 
-	service, err := s.registry.GetServiceByURL(ctx, serviceURL)
+	service, err := s.registry.GetService(ctx, serviceURL)
 	if err != nil {
 		return ticket, ErrServiceNotFound
 	}
@@ -59,7 +60,7 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 }
 
 func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, callbackURL string) (*ServiceTicket, error) {
-	service, err := s.registry.GetServiceByURL(ctx, callbackURL)
+	service, err := s.registry.GetService(ctx, callbackURL)
 	if err != nil {
 		return nil, ErrServiceNotFound
 	}

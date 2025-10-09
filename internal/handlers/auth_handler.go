@@ -73,7 +73,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 		return forceLogout(ctx)
 	}
 
-	service, err := h.authorizeService.GetServiceByURL(ctx.Context(), serviceURL)
+	service, err := h.authorizeService.GetService(ctx.Context(), serviceURL)
 	if errors.Is(err, auth.ErrServiceNotFound) {
 		return render.RenderNotFoundError(ctx)
 	}

@@ -33,7 +33,7 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.StripQuery = field.NewBool(tableName, "strip_query")
 	_service.AutoLogin = field.NewBool(tableName, "auto_login")
 	_service.SigningKey = field.NewString(tableName, "signing_key")
-	_service.AlwaysChallenge = field.NewBool(tableName, "always_challenge")
+	_service.RequireChallenge = field.NewBool(tableName, "require_challenge")
 	_service.CreatedAt = field.NewTime(tableName, "created_at")
 	_service.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_service.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -46,18 +46,18 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 type service struct {
 	serviceDo
 
-	ALL             field.Asterisk
-	ID              field.Uint
-	Name            field.String
-	LoginURL        field.String
-	LogoutURL       field.String
-	StripQuery      field.Bool
-	AutoLogin       field.Bool
-	SigningKey      field.String
-	AlwaysChallenge field.Bool
-	CreatedAt       field.Time
-	UpdatedAt       field.Time
-	DeletedAt       field.Field
+	ALL              field.Asterisk
+	ID               field.Uint
+	Name             field.String
+	LoginURL         field.String
+	LogoutURL        field.String
+	StripQuery       field.Bool
+	AutoLogin        field.Bool
+	SigningKey       field.String
+	RequireChallenge field.Bool
+	CreatedAt        field.Time
+	UpdatedAt        field.Time
+	DeletedAt        field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -81,7 +81,7 @@ func (s *service) updateTableName(table string) *service {
 	s.StripQuery = field.NewBool(table, "strip_query")
 	s.AutoLogin = field.NewBool(table, "auto_login")
 	s.SigningKey = field.NewString(table, "signing_key")
-	s.AlwaysChallenge = field.NewBool(table, "always_challenge")
+	s.RequireChallenge = field.NewBool(table, "require_challenge")
 	s.CreatedAt = field.NewTime(table, "created_at")
 	s.UpdatedAt = field.NewTime(table, "updated_at")
 	s.DeletedAt = field.NewField(table, "deleted_at")
@@ -109,7 +109,7 @@ func (s *service) fillFieldMap() {
 	s.fieldMap["strip_query"] = s.StripQuery
 	s.fieldMap["auto_login"] = s.AutoLogin
 	s.fieldMap["signing_key"] = s.SigningKey
-	s.fieldMap["always_challenge"] = s.AlwaysChallenge
+	s.fieldMap["require_challenge"] = s.RequireChallenge
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt
 	s.fieldMap["deleted_at"] = s.DeletedAt
