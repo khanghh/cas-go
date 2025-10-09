@@ -84,9 +84,9 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 	return &st, nil
 }
 
-func NewAuthorizeService(ticketStore store.Store[ServiceTicket], serviceRepo ServiceRepository) *AuthorizeService {
+func NewAuthorizeService(storage store.Storage, serviceRepo ServiceRepository) *AuthorizeService {
 	return &AuthorizeService{
-		ticketStore: ticketStore,
+		ticketStore: store.New[ServiceTicket](storage, params.TicketStoreKeyPrefix),
 		registry:    NewServiceRegistry(serviceRepo),
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/khanghh/cas-go/internal/store"
+	"github.com/khanghh/cas-go/params"
 )
 
 type UserState struct {
@@ -110,8 +111,8 @@ func (s *userStateStore) SetOTPSentAt(ctx context.Context, uid uint, sentAt time
 	return s.SetAttr(ctx, strconv.Itoa(int(uid)), "otp_sent_at", sentAt)
 }
 
-func newUserStateStore(store store.Store[UserState]) *userStateStore {
+func newUserStateStore(storage store.Storage) *userStateStore {
 	return &userStateStore{
-		Store: store,
+		Store: store.New[UserState](storage, params.UserStateStoreKeyPrefix),
 	}
 }

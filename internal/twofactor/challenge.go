@@ -45,8 +45,8 @@ func (s *challengeStore) IncreaseAttempts(ctx context.Context, cid string) (int,
 	return int(attempts), err
 }
 
-func newChallengeStore(store store.Store[Challenge]) *challengeStore {
+func newChallengeStore(storage store.Storage) *challengeStore {
 	return &challengeStore{
-		Store: store,
+		Store: store.New[Challenge](storage, params.ChallengeStoreKeyPrefix),
 	}
 }

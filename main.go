@@ -204,21 +204,10 @@ func run(ctx *cli.Context) error {
 
 	// initialize storage
 	redisStorage := redis.New(redis.Config{URL: config.RedisURL})
-	storage := store.NewRedisStorage(redisStorage.Conn())
+	cacheStorage := store.NewRedisStorage(redisStorage.Conn())
 
-	// stores and repositories
+	// repositories
 	var (
-		sessionStore = session.New(session.Config{
-			Storage:        common.NewKVStorage(redisStorage, params.SessionStoreKeyPrefix),
-			Expiration:     config.Session.SessionMaxAge,
-			CookieSecure:   config.Session.CookieSecure,
-			CookieHTTPOnly: config.Session.CookieHttpOnly,
-			KeyLookup:      fmt.Sprintf("cookie:%s", config.Session.CookieName),
-			KeyGenerator:   sessions.GenerateSessionID,
-		})
-		ticketStore     = store.New[auth.ServiceTicket](storage, params.TicketStoreKeyPrefix)
-		challengeStore  = store.New[twofactor.Challenge](storage, params.ChallengeStoreKeyPrefix)
-		userStateStore  = store.New[twofactor.UserState](storage, params.UserStateStoreKeyPrefix)
 		userRepo        = users.NewUserRepository(query.Q)
 		pendingUserRepo = users.NewPendingUserRepository(query.Q)
 		userOAuthRepo   = users.NewUserOAuthRepository(query.Q)
@@ -228,13 +217,21 @@ func run(ctx *cli.Context) error {
 	// services
 	var (
 		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserRepo)
-		authorizeService = auth.NewAuthorizeService(ticketStore, serviceRepo)
-		challengeService = twofactor.NewChallengeService(challengeStore, userStateStore, config.MasterKey)
+		authorizeService = auth.NewAuthorizeService(cacheStorage, serviceRepo)
+		challengeService = twofactor.NewChallengeService(cacheStorage, config.MasterKey)
 	)
 
 	// middlewares and dependencies
 	var (
 		oauthProviders = mustInitOAuthProviders(config)
+		sessionStore   = session.New(session.Config{
+			Storage:        common.NewKVStorage(redisStorage, params.SessionStoreKeyPrefix),
+			Expiration:     config.Session.SessionMaxAge,
+			CookieSecure:   config.Session.CookieSecure,
+			CookieHTTPOnly: config.Session.CookieHttpOnly,
+			KeyLookup:      fmt.Sprintf("cookie:%s", config.Session.CookieName),
+			KeyGenerator:   sessions.GenerateSessionID,
+		})
 	)
 
 	// handlers

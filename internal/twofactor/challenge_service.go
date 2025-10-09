@@ -220,10 +220,10 @@ func (s *ChallengeService) Token() *TokenChallenger {
 	return &TokenChallenger{s}
 }
 
-func NewChallengeService(challengeStore store.Store[Challenge], userStateStore store.Store[UserState], masterKey string) *ChallengeService {
+func NewChallengeService(storage store.Storage, masterKey string) *ChallengeService {
 	return &ChallengeService{
-		userStateStore: newUserStateStore(userStateStore),
-		challengeStore: newChallengeStore(challengeStore),
+		userStateStore: newUserStateStore(storage),
+		challengeStore: newChallengeStore(storage),
 		masterKey:      masterKey,
 	}
 }
