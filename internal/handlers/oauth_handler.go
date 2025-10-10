@@ -21,7 +21,6 @@ func makeOAuthProvidersMap(oauthProviders []oauth.OAuthProvider) map[string]oaut
 }
 
 type OAuthHandler struct {
-	*AuthHandler
 	userService    UserService
 	oauthProviders map[string]oauth.OAuthProvider
 }

@@ -17,7 +17,7 @@ import (
 type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
-	challengeService *twofactor.ChallengeService
+	challengeService TwoFactorService
 }
 
 func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) *sessions.Session {
@@ -44,12 +44,12 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sess
 		return err
 	}
 
+	subject := getChallengeSubject(ctx, session)
 	challengeOpts := twofactor.ChallengeOptions{
-		Subject:     getChallengeTarget(ctx, session),
 		RedirectURL: fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID),
 		ExpiresIn:   15 * time.Minute,
 	}
-	ch, err := h.challengeService.CreateChallenge(ctx.Context(), challengeOpts)
+	ch, err := h.challengeService.CreateChallenge(ctx.Context(), &subject, challengeOpts)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (h *AuthHandler) GetServiceValidate(ctx *fiber.Ctx) error {
 	})
 }
 
-func NewAuthHandler(authorizeService AuthorizeService, userService UserService, challengeService *twofactor.ChallengeService) *AuthHandler {
+func NewAuthHandler(authorizeService AuthorizeService, userService UserService, challengeService TwoFactorService) *AuthHandler {
 	return &AuthHandler{
 		authorizeService: authorizeService,
 		userService:      userService,

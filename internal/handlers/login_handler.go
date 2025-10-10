@@ -17,12 +17,12 @@ import (
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
 	userService      UserService
-	challengeService *twofactor.ChallengeService
+	challengeService TwoFactorService
 	oauthProviders   []oauth.OAuthProvider
 }
 
 // NewLoginHandler returns a new instance of AuthHandler.
-func NewLoginHandler(userService UserService, challengeService *twofactor.ChallengeService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
+func NewLoginHandler(userService UserService, challengeService TwoFactorService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
 	return &LoginHandler{
 		userService:      userService,
 		challengeService: challengeService,
@@ -87,7 +87,6 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		redirectURL = string(ctx.Context().URI().RequestURI())
 	}
 	opts := twofactor.ChallengeOptions{
-		Subject:     getChallengeTarget(ctx, session),
 		RedirectURL: redirectURL,
 		ExpiresIn:   15 * time.Minute,
 	}
@@ -129,15 +128,6 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 	user, err := h.userService.GetUserByUsernameOrEmail(ctx.Context(), username)
 	if err != nil {
 		pageData.ErrorMsg = MsgLoginWrongCredentials
-		return render.RenderLogin(ctx, pageData)
-	}
-
-	userState, err := h.challengeService.GetUserState(ctx.Context(), user.ID)
-	if err != nil {
-		return err
-	}
-	if err := userState.CheckLockStatus(); err != nil {
-		pageData.ErrorMsg = fmt.Sprintf(MsgTwoFactorUserLocked, err.Reason, formatDuration(time.Until(err.Until)))
 		return render.RenderLogin(ctx, pageData)
 	}
 

@@ -21,11 +21,9 @@ type AuthorizeService interface {
 }
 
 type TwoFactorService interface {
-	GetUserState(ctx context.Context, userID uint) (*twofactor.UserState, error)
-	CreateChallenge(ctx context.Context, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
+	CreateChallenge(ctx context.Context, subject *twofactor.Subject, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
 	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
-	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge) error
-	LockUser(ctx context.Context, userID uint, reason string) (*twofactor.UserState, error)
+	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, subject twofactor.Subject) error
 	OTP() *twofactor.OTPChallenger
 	JWT() *twofactor.JWTChallenger
 	Token() *twofactor.TokenChallenger
