@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
@@ -238,6 +239,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	if session.Is2FARequired() && session.TwoFAChallengeID == ch.ID {
 		session.TwoFARequired = false
+		session.TwoFASuccessAt = time.Now()
 		session.Save()
 	}
 	return redirect(ctx, ch.RedirectURL)

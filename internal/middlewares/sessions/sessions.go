@@ -28,6 +28,7 @@ type SessionData struct {
 	LoginTime        time.Time // last login time
 	TwoFARequired    bool      // is 2fa required
 	TwoFAChallengeID string    // 2fa challenge id
+	TwoFASuccessAt   time.Time // 2fa success time
 	ExpireTime       time.Time // session expire time
 }
 
