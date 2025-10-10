@@ -7,10 +7,10 @@ const (
 	ServerIdleTimeout             = 30 * time.Second
 	ServerReadTimeout             = 10 * time.Second
 	ServerWriteTimeout            = 10 * time.Second
-	SessionStoreKeyPrefix         = "s:"
-	TicketStoreKeyPrefix          = "t:"
-	ChallengeStoreKeyPrefix       = "c:"
-	UserStateStoreKeyPrefix       = "u:"
+	SessionKeyPrefix              = "s:"
+	TicketKeyPrefix               = "t:"
+	ChallengeKeyPrefix            = "c:"
+	UserStateKeyPrefix            = "u:"
 	PendingUserExpiration         = 1 * time.Hour
 	ServiceTicketExpiration       = 1 * time.Minute
 	AuthStateTimeout              = 10 * time.Minute

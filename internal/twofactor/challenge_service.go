@@ -31,6 +31,10 @@ func (s *ChallengeService) SubjectHash(sub Subject) string {
 	return s.calculateHash(sub.UserID, sub.SessionID, sub.IPAddress, sub.UserAgent)
 }
 
+func (s *ChallengeService) getChallengeStateID(sub Subject) string {
+	return s.calculateHash(sub.UserID, sub.IPAddress)
+}
+
 func (s *ChallengeService) calculateHash(inputs ...interface{}) string {
 	if len(inputs) == 0 {
 		return ""
@@ -47,11 +51,11 @@ func (s *ChallengeService) calculateHash(inputs ...interface{}) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *ChallengeService) GetUserState(ctx context.Context, userID uint) (*UserState, error) {
-	userState, err := s.userStateStore.Get(ctx, userID)
+func (s *ChallengeService) getChallengeState(ctx context.Context, stateID string) (*UserChallengeState, error) {
+	userState, err := s.userStateStore.Get(ctx, stateID)
 	if errors.Is(err, store.ErrNotFound) {
-		userState = &UserState{UserID: userID}
-		err = s.userStateStore.Set(ctx, userID, *userState, params.TwoFactorUserStateMaxAge)
+		userState = &UserChallengeState{}
+		err = s.userStateStore.Set(ctx, stateID, *userState, params.TwoFactorUserStateMaxAge)
 	}
 	if err != nil {
 		return nil, err
@@ -60,14 +64,20 @@ func (s *ChallengeService) GetUserState(ctx context.Context, userID uint) (*User
 }
 
 type ChallengeOptions struct {
-	Subject
 	RedirectURL string
 	ExpiresIn   time.Duration
 }
 
-func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
-	if opts.UserID != 0 {
-		userState, err := s.GetUserState(ctx, opts.UserID)
+func (s *ChallengeService) CreateChallenge(ctx context.Context, subject *Subject, opts ChallengeOptions) (*Challenge, error) {
+	ch := Challenge{
+		ID:          uuid.NewString(),
+		RedirectURL: opts.RedirectURL,
+		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
+	}
+
+	if subject != nil {
+		stateID := s.calculateHash(subject.UserID, subject.IPAddress)
+		userState, err := s.getChallengeState(ctx, stateID)
 		if err != nil {
 			return nil, err
 		}
@@ -75,21 +85,17 @@ func (s *ChallengeService) CreateChallenge(ctx context.Context, opts ChallengeOp
 			return nil, err
 		}
 
-		userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, opts.UserID)
+		userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, stateID)
 		if err != nil {
 			return nil, err
 		}
 		if userState.ChallengeCount > params.TwoFactorUserMaxChallenges {
 			return nil, ErrTooManyAttemtps
 		}
+		ch.StateID = stateID
+		ch.Subject = s.SubjectHash(*subject)
 	}
 
-	ch := Challenge{
-		ID:          uuid.NewString(),
-		Subject:     s.calculateHash(opts.UserID, opts.SessionID, opts.IPAddress, opts.UserAgent),
-		RedirectURL: opts.RedirectURL,
-		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
-	}
 	if err := s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn); err != nil {
 		return nil, err
 	}
@@ -101,7 +107,7 @@ func (s *ChallengeService) GetChallenge(ctx context.Context, cid string) (*Chall
 	if errors.Is(err, store.ErrNotFound) {
 		return nil, ErrChallengeNotFound
 	}
-	return ch, err
+	return &ch, err
 }
 
 func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge, sub Subject) error {
@@ -120,8 +126,8 @@ func (s *ChallengeService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	return nil
 }
 
-func (s *ChallengeService) LockUser(ctx context.Context, userID uint, reason string) (*UserState, error) {
-	userState, err := s.GetUserState(ctx, userID)
+func (s *ChallengeService) lockUserAndIP(ctx context.Context, stateID string, reason string) (*UserChallengeState, error) {
+	userState, err := s.getChallengeState(ctx, stateID)
 	if err != nil {
 		return nil, err
 	}
@@ -140,27 +146,28 @@ func (s *ChallengeService) LockUser(ctx context.Context, userID uint, reason str
 	default:
 		lockDuration = 24 * time.Hour
 	}
-	userState.LockLevel, err = s.userStateStore.IncreaseLockLevel(ctx, userID)
+	userState.LockLevel, err = s.userStateStore.IncreaseLockLevel(ctx, stateID)
 	if err != nil {
 		return nil, err
 	}
 	userState.LockedUntil = time.Now().Add(lockDuration)
 	userState.LockReason = reason
-	err = s.userStateStore.LockUserUntil(ctx, userID, userState.LockReason, userState.LockedUntil)
+	err = s.userStateStore.LockUserUntil(ctx, stateID, userState.LockReason, userState.LockedUntil)
 	if err != nil {
 		return nil, err
 	}
 	return userState, nil
 }
 
-type verifyFunc func(userState *UserState) (bool, error)
+type verifyFunc func(userState *UserChallengeState) (bool, error)
 
 func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, sub Subject, doChallengerVerify verifyFunc) error {
 	if err := s.ValidateChallenge(ctx, ch, sub); err != nil {
 		return err
 	}
 
-	userState, err := s.GetUserState(ctx, sub.UserID)
+	stateID := s.calculateHash(sub.UserID, sub.IPAddress)
+	userState, err := s.getChallengeState(ctx, stateID)
 	if err != nil {
 		return err
 	}
@@ -168,7 +175,7 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, s
 		return err
 	}
 
-	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, sub.UserID)
+	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, stateID)
 	if err != nil {
 		return err
 	}
@@ -192,14 +199,14 @@ func (s *ChallengeService) verifyChallenge(ctx context.Context, ch *Challenge, s
 		if err := s.challengeStore.Delete(ctx, ch.ID); err != nil {
 			return ErrChallengeExpired
 		}
-		s.userStateStore.ResetFailCount(ctx, sub.UserID)
-		s.userStateStore.ResetLockLevel(ctx, sub.UserID)
-		s.userStateStore.DecreaseChallengeCount(ctx, sub.UserID)
+		s.userStateStore.ResetFailCount(ctx, stateID)
+		s.userStateStore.ResetLockLevel(ctx, stateID)
+		s.userStateStore.DecreaseChallengeCount(ctx, stateID)
 		return nil
 	}
 
 	if userState.FailCount == params.TwoFactorUserMaxFailCount {
-		userState, err = s.LockUser(ctx, sub.UserID, ErrTooManyAttemtps.Error())
+		userState, err = s.lockUserAndIP(ctx, stateID, ErrTooManyAttemtps.Error())
 		if err != nil {
 			return err
 		}

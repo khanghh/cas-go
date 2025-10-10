@@ -20,6 +20,7 @@ type ChallengeStatus string
 type Challenge struct {
 	ID          string    `json:"id"           redis:"id"`
 	Type        string    `json:"type"         redis:"type"`
+	StateID     string    `json:"stateID"      redis:"state_id"`
 	Subject     string    `json:"subject"      redis:"subject"`
 	Secret      string    `json:"secret"       redis:"secret"`
 	Attempts    int       `json:"attempts"     redis:"attempts"`
@@ -47,6 +48,6 @@ func (s *challengeStore) IncreaseAttempts(ctx context.Context, cid string) (int,
 
 func newChallengeStore(storage store.Storage) *challengeStore {
 	return &challengeStore{
-		Store: store.New[Challenge](storage, params.ChallengeStoreKeyPrefix),
+		Store: store.New[Challenge](storage, params.ChallengeKeyPrefix),
 	}
 }

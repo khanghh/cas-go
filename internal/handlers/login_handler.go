@@ -90,7 +90,8 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		RedirectURL: redirectURL,
 		ExpiresIn:   15 * time.Minute,
 	}
-	ch, err := h.challengeService.CreateChallenge(ctx.Context(), opts)
+	subject := getChallengeSubject(ctx, session)
+	ch, err := h.challengeService.CreateChallenge(ctx.Context(), &subject, opts)
 	if err != nil {
 		return err
 	}

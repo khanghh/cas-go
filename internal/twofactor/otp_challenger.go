@@ -25,8 +25,8 @@ func generateOTP(length int) string {
 	return b.String()
 }
 
-func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (string, error) {
-	userState, err := s.svc.GetUserState(ctx, uid)
+func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge) (string, error) {
+	userState, err := s.svc.getChallengeState(ctx, ch.StateID)
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +37,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 		return "", ErrOTPRequestRateLimited
 	}
 
-	userState.OTPRequestCount, err = s.svc.userStateStore.IncreaseOTPRequestCount(ctx, uid)
+	userState.OTPRequestCount, err = s.svc.userStateStore.IncreaseOTPRequestCount(ctx, ch.StateID)
 	if err != nil {
 		return "", err
 	}
@@ -55,16 +55,17 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, uid uint) (
 	return otpCode, nil
 }
 
-func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, target Subject, code string) error {
-	verifyFunc := func(userState *UserState) (bool, error) {
+func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, subject Subject, code string) error {
+	verifyFunc := func(userState *UserChallengeState) (bool, error) {
 		success := ch.Secret == s.svc.calculateHash(code, userState.OTPRequestCount, s.svc.masterKey)
 		if success {
 			if time.Since(ch.UpdateAt) > params.TwoFactorOTPExpiration {
 				return false, ErrOTPCodeExpired
 			}
-			s.svc.userStateStore.ResetOTPRequestCount(ctx, target.UserID)
+			stateID := s.svc.getChallengeStateID(subject)
+			s.svc.userStateStore.ResetOTPRequestCount(ctx, stateID)
 		}
 		return success, nil
 	}
-	return s.svc.verifyChallenge(ctx, ch, target, verifyFunc)
+	return s.svc.verifyChallenge(ctx, ch, subject, verifyFunc)
 }
