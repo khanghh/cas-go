@@ -92,7 +92,8 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 }
 
 func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
-	otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch)
+	subject := getChallengeSubject(ctx, sessions.Get(ctx))
+	otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch, subject)
 	if err != nil {
 		if msg, ok := mapTwoFactorError(err); ok {
 			return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
@@ -220,7 +221,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	if resend {
-		otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch)
+		otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch, subject)
 		if err != nil {
 			return handleTwoFactorError(err)
 		}

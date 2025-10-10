@@ -25,8 +25,9 @@ func generateOTP(length int) string {
 	return b.String()
 }
 
-func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge) (string, error) {
-	userState, err := s.svc.getChallengeState(ctx, ch.StateID)
+func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, subject Subject) (string, error) {
+	stateID := s.svc.getStateID(subject)
+	userState, err := s.svc.getUserState(ctx, stateID)
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +38,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge) (string, er
 		return "", ErrOTPRequestRateLimited
 	}
 
-	userState.OTPRequestCount, err = s.svc.userStateStore.IncreaseOTPRequestCount(ctx, ch.StateID)
+	userState.OTPRequestCount, err = s.svc.userStateStore.IncreaseOTPRequestCount(ctx, stateID)
 	if err != nil {
 		return "", err
 	}

@@ -27,7 +27,10 @@ type Subject struct {
 	UserAgent string
 }
 
-func (s *TwoFactorService) subjectHash(sub Subject) string {
+func (s *TwoFactorService) subjectHash(sub *Subject) string {
+	if sub == nil {
+		return ""
+	}
 	return s.calculateHash(sub.UserID, sub.SessionID, sub.IPAddress, sub.UserAgent)
 }
 
@@ -51,7 +54,7 @@ func (s *TwoFactorService) calculateHash(inputs ...interface{}) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (s *TwoFactorService) getChallengeState(ctx context.Context, stateID string) (*UserState, error) {
+func (s *TwoFactorService) getUserState(ctx context.Context, stateID string) (*UserState, error) {
 	userState, err := s.userStateStore.Get(ctx, stateID)
 	if errors.Is(err, store.ErrNotFound) {
 		userState = &UserState{}
@@ -68,16 +71,17 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject *Subject, opts ChallengeOptions) (*Challenge, error) {
+func (s *TwoFactorService) CreateChallenge(ctx context.Context, sub *Subject, opts ChallengeOptions) (*Challenge, error) {
 	ch := Challenge{
 		ID:          uuid.NewString(),
+		Subject:     s.subjectHash(sub),
 		RedirectURL: opts.RedirectURL,
 		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
 	}
 
-	if subject != nil {
-		stateID := s.calculateHash(subject.UserID, subject.IPAddress)
-		userState, err := s.getChallengeState(ctx, stateID)
+	if sub != nil {
+		stateID := s.calculateHash(sub.UserID, sub.IPAddress)
+		userState, err := s.getUserState(ctx, stateID)
 		if err != nil {
 			return nil, err
 		}
@@ -93,8 +97,6 @@ func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject *Subject
 				return nil, ErrTooManyAttemtps
 			}
 		}
-		ch.StateID = stateID
-		ch.Subject = s.subjectHash(*subject)
 	}
 
 	if err := s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn); err != nil {
@@ -118,7 +120,7 @@ func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 		return ErrTooManyAttemtps
 	}
-	if ch.Subject != s.subjectHash(sub) {
+	if ch.Subject != s.subjectHash(&sub) {
 		return ErrSubjectMismatch
 	}
 	return nil
@@ -128,7 +130,7 @@ type verifyFunc func(userState *UserState) (bool, error)
 
 func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, sub Subject, doChallengerVerify verifyFunc) error {
 	stateID := s.calculateHash(sub.UserID, sub.IPAddress)
-	userState, err := s.getChallengeState(ctx, stateID)
+	userState, err := s.getUserState(ctx, stateID)
 	if err != nil {
 		return err
 	}
