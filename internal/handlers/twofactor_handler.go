@@ -11,7 +11,6 @@ import (
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/model"
-	"github.com/khanghh/cas-go/params"
 )
 
 var (
@@ -19,7 +18,7 @@ var (
 )
 
 type TwoFactorHandler struct {
-	challengeService TwoFactorService
+	twoFactorService TwoFactorService
 	userService      UserService
 	mailSender       mail.MailSender
 }
@@ -45,7 +44,7 @@ func mapTwoFactorError(err error) (string, bool) {
 	if errors.Is(err, twofactor.ErrOTPRequestRateLimited) {
 		return MsgOTPRequestRateLimited, true
 	}
-	var verifyErr *twofactor.VerifyFailError
+	var verifyErr *twofactor.AttemptFailError
 	if errors.As(err, &verifyErr) {
 		return fmt.Sprintf(MsgInvalidOTP, verifyErr.AttemtpsLeft), true
 	}
@@ -73,12 +72,12 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	ch, err := h.challengeService.GetChallenge(ctx.Context(), cid)
+	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	subject := getChallengeSubject(ctx, session)
-	if h.challengeService.ValidateChallenge(ctx.Context(), ch, subject) != nil {
+	if h.twoFactorService.ValidateChallenge(ctx.Context(), ch, subject) != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -93,7 +92,7 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 }
 
 func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
-	otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch)
+	otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch)
 	if err != nil {
 		if msg, ok := mapTwoFactorError(err); ok {
 			return render.RenderVerificationRequired(ctx, render.VerificationRequiredPageData{
@@ -139,12 +138,12 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 		return render.RenderVerificationRequired(ctx, pageData)
 	}
 
-	ch, err := h.challengeService.GetChallenge(ctx.Context(), cid)
+	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	subject := getChallengeSubject(ctx, session)
-	if err := h.challengeService.ValidateChallenge(ctx.Context(), ch, subject); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, subject); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -168,12 +167,12 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	ch, err := h.challengeService.GetChallenge(ctx.Context(), cid)
+	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 	subject := getChallengeSubject(ctx, session)
-	if err := h.challengeService.ValidateChallenge(ctx.Context(), ch, subject); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, subject); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -201,18 +200,29 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return h.renderVerifyOTP(ctx, user.Email, MsgInvalidRequest)
 	}
 
-	ch, err := h.challengeService.GetChallenge(ctx.Context(), cid)
+	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
 	if err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
+	subject := getChallengeSubject(ctx, session)
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, subject); err != nil {
+		return render.RenderNotFoundError(ctx)
+	}
+
+	handleTwoFactorError := func(err error) error {
+		if errors.Is(err, twofactor.ErrSubjectMismatch) {
+			return render.RenderNotFoundError(ctx)
+		}
+		if msg, ok := mapTwoFactorError(err); ok {
+			return h.renderVerifyOTP(ctx, user.Email, msg)
+		}
+		return err
+	}
 
 	if resend {
-		otpCode, err := h.challengeService.OTP().Generate(ctx.Context(), ch)
+		otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch)
 		if err != nil {
-			if msg, ok := mapTwoFactorError(err); ok {
-				return h.renderVerifyOTP(ctx, user.Email, msg)
-			}
-			return err
+			return handleTwoFactorError(err)
 		}
 		if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
 			return err
@@ -220,23 +230,9 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return h.renderVerifyOTP(ctx, user.Email, "")
 	}
 
-	subject := twofactor.Subject{
-		UserID:    user.ID,
-		SessionID: session.ID(),
-		IPAddress: ctx.IP(),
-		UserAgent: ctx.Get("User-Agent"),
-	}
-	err = h.challengeService.OTP().Verify(ctx.Context(), ch, subject, otp)
+	err = h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp)
 	if err != nil {
-		var userLockedErr *twofactor.UserLockedError
-		if errors.As(err, &userLockedErr) || ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
-			sessions.Destroy(ctx)
-			return redirect(ctx, "/login", "error", "tfa_failed")
-		}
-		if msg, ok := mapTwoFactorError(err); ok {
-			return h.renderVerifyOTP(ctx, user.Email, msg)
-		}
-		return err
+		return handleTwoFactorError(err)
 	}
 
 	if session.Is2FARequired() && session.TwoFAChallengeID == ch.ID {
@@ -246,9 +242,9 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	return redirect(ctx, ch.RedirectURL)
 }
 
-func NewTwoFactorHandler(challengeService TwoFactorService, userService UserService, mailSender mail.MailSender) *TwoFactorHandler {
+func NewTwoFactorHandler(twoFactorService TwoFactorService, userService UserService, mailSender mail.MailSender) *TwoFactorHandler {
 	return &TwoFactorHandler{
-		challengeService: challengeService,
+		twoFactorService: twoFactorService,
 		userService:      userService,
 		mailSender:       mailSender,
 	}

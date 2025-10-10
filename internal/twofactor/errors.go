@@ -34,16 +34,16 @@ func NewUserLockedError(reason string, until time.Time) *UserLockedError {
 	}
 }
 
-type VerifyFailError struct {
+type AttemptFailError struct {
 	AttemtpsLeft int
 }
 
-func (e *VerifyFailError) Error() string {
+func (e *AttemptFailError) Error() string {
 	return "verify attempt failed"
 }
 
-func NewVerifyFailError(attemtpsLeft int) *VerifyFailError {
-	return &VerifyFailError{
+func NewAttemptFailError(attemtpsLeft int) *AttemptFailError {
+	return &AttemptFailError{
 		AttemtpsLeft: attemtpsLeft,
 	}
 }

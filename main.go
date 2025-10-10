@@ -218,7 +218,7 @@ func run(ctx *cli.Context) error {
 	var (
 		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserRepo)
 		authorizeService = auth.NewAuthorizeService(cacheStorage, serviceRepo)
-		challengeService = twofactor.NewChallengeService(cacheStorage, config.MasterKey)
+		twoFactorService = twofactor.NewTwoFactorService(cacheStorage, config.MasterKey)
 	)
 
 	// middlewares and dependencies
@@ -236,11 +236,11 @@ func run(ctx *cli.Context) error {
 
 	// handlers
 	var (
-		authHandler      = handlers.NewAuthHandler(authorizeService, userService, challengeService)
-		loginHandler     = handlers.NewLoginHandler(userService, challengeService, oauthProviders)
+		authHandler      = handlers.NewAuthHandler(authorizeService, userService, twoFactorService)
+		loginHandler     = handlers.NewLoginHandler(userService, twoFactorService, oauthProviders)
 		registerHandler  = handlers.NewRegisterHandler(userService, mailSender)
 		oauthHandler     = handlers.NewOAuthHandler(userService, oauthProviders)
-		twofactorHandler = handlers.NewTwoFactorHandler(challengeService, userService, mailSender)
+		twofactorHandler = handlers.NewTwoFactorHandler(twoFactorService, userService, mailSender)
 	)
 
 	router := fiber.New(fiber.Config{

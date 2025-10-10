@@ -7,7 +7,7 @@ import (
 )
 
 type TokenChallenger struct {
-	svc *ChallengeService
+	svc *TwoFactorService
 }
 
 func (s *TokenChallenger) Generate(ctx context.Context, ch *Challenge, data interface{}) (string, error) {

@@ -17,15 +17,15 @@ import (
 // LoginHandler handles authentication and authorization
 type LoginHandler struct {
 	userService      UserService
-	challengeService TwoFactorService
+	twoFactorService TwoFactorService
 	oauthProviders   []oauth.OAuthProvider
 }
 
 // NewLoginHandler returns a new instance of AuthHandler.
-func NewLoginHandler(userService UserService, challengeService TwoFactorService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
+func NewLoginHandler(userService UserService, twoFactorService TwoFactorService, oauthProviders []oauth.OAuthProvider) *LoginHandler {
 	return &LoginHandler{
 		userService:      userService,
-		challengeService: challengeService,
+		twoFactorService: twoFactorService,
 		oauthProviders:   oauthProviders,
 	}
 }
@@ -77,7 +77,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 
 func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session, redirectURL string) error {
 	if session.TwoFAChallengeID != "" {
-		ch, err := h.challengeService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
+		ch, err := h.twoFactorService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
 		if err == nil && ch.CanVerify() {
 			return redirect(ctx, "/2fa/challenge", "cid", session.TwoFAChallengeID)
 		}
@@ -91,7 +91,7 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		ExpiresIn:   15 * time.Minute,
 	}
 	subject := getChallengeSubject(ctx, session)
-	ch, err := h.challengeService.CreateChallenge(ctx.Context(), &subject, opts)
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, opts)
 	if err != nil {
 		return err
 	}

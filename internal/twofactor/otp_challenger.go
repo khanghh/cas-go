@@ -11,7 +11,7 @@ import (
 )
 
 type OTPChallenger struct {
-	svc *ChallengeService
+	svc *TwoFactorService
 }
 
 func generateOTP(length int) string {
@@ -30,8 +30,8 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge) (string, er
 	if err != nil {
 		return "", err
 	}
-	if err := userState.CheckLockStatus(); err != nil {
-		return "", err
+	if userState.FailCount > params.TwoFactorMaxFailCount {
+		return "", ErrTooManyAttemtps
 	}
 	if time.Since(ch.UpdateAt) < params.TwoFactorOTPRefreshCooldown {
 		return "", ErrOTPRequestRateLimited
@@ -41,7 +41,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge) (string, er
 	if err != nil {
 		return "", err
 	}
-	if userState.OTPRequestCount > params.TwoFactorUserMaxOTPRequests {
+	if userState.OTPRequestCount > params.TwoFactorMaxOTPRequests {
 		return "", ErrOTPRequestLimitReached
 	}
 
@@ -56,13 +56,13 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge) (string, er
 }
 
 func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, subject Subject, code string) error {
-	verifyFunc := func(userState *UserChallengeState) (bool, error) {
+	verifyFunc := func(userState *UserState) (bool, error) {
 		success := ch.Secret == s.svc.calculateHash(code, userState.OTPRequestCount, s.svc.masterKey)
 		if success {
 			if time.Since(ch.UpdateAt) > params.TwoFactorOTPExpiration {
 				return false, ErrOTPCodeExpired
 			}
-			stateID := s.svc.getChallengeStateID(subject)
+			stateID := s.svc.getStateID(subject)
 			s.svc.userStateStore.ResetOTPRequestCount(ctx, stateID)
 		}
 		return success, nil
