@@ -22,7 +22,7 @@ type Storage interface {
 }
 
 type Store[T any] interface {
-	Get(ctx context.Context, key string) (*T, error)
+	Get(ctx context.Context, key string) (T, error)
 	Set(ctx context.Context, key string, val T, expiresIn time.Duration) error
 	Save(ctx context.Context, key string, val T) error
 	Delete(ctx context.Context, key string) error

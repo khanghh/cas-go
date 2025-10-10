@@ -225,7 +225,7 @@ func run(ctx *cli.Context) error {
 	var (
 		oauthProviders = mustInitOAuthProviders(config)
 		sessionStore   = session.New(session.Config{
-			Storage:        common.NewKVStorage(redisStorage, params.SessionStoreKeyPrefix),
+			Storage:        common.NewKVStorage(redisStorage, params.SessionKeyPrefix),
 			Expiration:     config.Session.SessionMaxAge,
 			CookieSecure:   config.Session.CookieSecure,
 			CookieHTTPOnly: config.Session.CookieHttpOnly,

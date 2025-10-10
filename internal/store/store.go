@@ -10,10 +10,10 @@ type store[T any] struct {
 	keyPrefix string
 }
 
-func (s *store[T]) Get(ctx context.Context, key string) (*T, error) {
+func (s *store[T]) Get(ctx context.Context, key string) (T, error) {
 	var obj T
 	err := s.storage.Get(ctx, s.keyPrefix+key, &obj)
-	return &obj, err
+	return obj, err
 }
 
 func (s *store[T]) Set(ctx context.Context, key string, val T, expiresIn time.Duration) error {

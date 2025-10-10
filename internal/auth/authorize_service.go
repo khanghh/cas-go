@@ -43,20 +43,20 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 
 	service, err := s.registry.GetService(ctx, serviceURL)
 	if err != nil {
-		return ticket, ErrServiceNotFound
+		return &ticket, ErrServiceNotFound
 	}
 
 	message := serviceURL + ticketID + timestamp
 	if !verifyHMAC(service.SigningKey, message, signature) {
-		return ticket, ErrInvalidSignature
+		return &ticket, ErrInvalidSignature
 	}
 
 	// Attempt to remove the ticket. If it doesn't exist, it has either expired or been used.
 	if err := s.ticketStore.Delete(ctx, ticketID); err != nil {
-		return ticket, ErrTicketExpired
+		return &ticket, ErrTicketExpired
 	}
 
-	return ticket, nil
+	return &ticket, nil
 }
 
 func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, callbackURL string) (*ServiceTicket, error) {
@@ -86,7 +86,7 @@ func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uin
 
 func NewAuthorizeService(storage store.Storage, serviceRepo ServiceRepository) *AuthorizeService {
 	return &AuthorizeService{
-		ticketStore: store.New[ServiceTicket](storage, params.TicketStoreKeyPrefix),
+		ticketStore: store.New[ServiceTicket](storage, params.TicketKeyPrefix),
 		registry:    NewServiceRegistry(serviceRepo),
 	}
 }
