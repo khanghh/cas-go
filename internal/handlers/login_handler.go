@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
@@ -45,12 +46,12 @@ func mapLoginError(errorCode string) string {
 	switch errorCode {
 	case "email_conflict":
 		return MsgLoginEmailConflict
-	case "session_expired":
-		return MsgLoginSessionExpired
 	case "unsupported_provider":
 		return MsgLoginUnsupportedOAuth
 	case "tfa_failed":
 		return MsgTwoFactorChallengeFailed
+	case "login_locked":
+		return MsgTooManyFailedLogin
 	default:
 		return ""
 	}
@@ -88,12 +89,12 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 	}
 	opts := twofactor.ChallengeOptions{
 		RedirectURL: redirectURL,
-		ExpiresIn:   15 * time.Minute,
+		ExpiresIn:   5 * time.Minute,
 	}
 	subject := getChallengeSubject(ctx, session)
 	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, opts)
-	if err != nil {
-		return err
+	if errors.Is(err, twofactor.ErrTooManyAttemtps) {
+		return redirect(ctx, "/login", "error", "login_locked")
 	}
 
 	session.Save(sessions.SessionData{

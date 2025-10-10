@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"strings"
 
@@ -192,12 +191,7 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	sessions.Get(ctx).Save(sessions.SessionData{
-		IP:        ctx.IP(),
-		UserID:    user.ID,
-		LoginTime: time.Now(),
-	})
-
+	session.UserID = user.ID
 	serviceURL := ctx.Query("service")
 	if serviceURL == "" {
 		return ctx.Redirect("/")
