@@ -39,7 +39,12 @@ func (h *OAuthHandler) handleOAuthLogin(ctx *fiber.Ctx, userOAuth *model.UserOAu
 		return ctx.SendStatus(http.StatusForbidden)
 	}
 
-	createUserSession(ctx, user, userOAuth)
+	sessions.Reset(ctx, sessions.SessionData{
+		IP:        ctx.IP(),
+		UserID:    user.ID,
+		LoginTime: time.Now(),
+		OAuthID:   userOAuth.ID,
+	})
 
 	state := ctx.Query("state")
 	queryParams, err := url.ParseQuery(state)

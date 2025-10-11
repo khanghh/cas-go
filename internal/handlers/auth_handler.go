@@ -11,29 +11,12 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
-	"github.com/khanghh/cas-go/model"
 )
 
 type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
 	twoFactorService TwoFactorService
-}
-
-func createUserSession(ctx *fiber.Ctx, user *model.User, userOAuth *model.UserOAuth) *sessions.Session {
-	session := sessions.Get(ctx)
-	sessionData := sessions.SessionData{
-		IP:            ctx.IP(),
-		UserID:        user.ID,
-		LoginTime:     time.Now(),
-		TwoFARequired: true,
-	}
-	if userOAuth != nil {
-		sessionData.OAuthID = userOAuth.ID
-		sessionData.TwoFARequired = false
-	}
-	sessions.Reset(ctx, sessionData)
-	return session
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string) error {

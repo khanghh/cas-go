@@ -243,11 +243,9 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return handleTwoFactorError(ctx, err)
 	}
 
-	if session.TwoFARequired {
-		session.TwoFARequired = false
-		session.TwoFASuccessAt = time.Now()
-		session.Save()
-	}
+	session.TwoFARequired = false
+	session.TwoFASuccessAt = time.Now()
+	session.Save()
 	return redirect(ctx, ch.RedirectURL)
 }
 

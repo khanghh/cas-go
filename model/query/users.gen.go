@@ -32,6 +32,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Email = field.NewString(tableName, "email")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Picture = field.NewString(tableName, "picture")
+	_user.TwoFAEnabled = field.NewBool(tableName, "two_fa_enabled")
 	_user.Disabled = field.NewBool(tableName, "disabled")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -50,18 +51,19 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo
 
-	ALL       field.Asterisk
-	ID        field.Uint
-	Username  field.String
-	FullName  field.String
-	Email     field.String
-	Password  field.String
-	Picture   field.String
-	Disabled  field.Bool
-	CreatedAt field.Time
-	UpdatedAt field.Time
-	DeletedAt field.Field
-	OAuths    userHasManyOAuths
+	ALL          field.Asterisk
+	ID           field.Uint
+	Username     field.String
+	FullName     field.String
+	Email        field.String
+	Password     field.String
+	Picture      field.String
+	TwoFAEnabled field.Bool
+	Disabled     field.Bool
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Field
+	OAuths       userHasManyOAuths
 
 	fieldMap map[string]field.Expr
 }
@@ -84,6 +86,7 @@ func (u *user) updateTableName(table string) *user {
 	u.Email = field.NewString(table, "email")
 	u.Password = field.NewString(table, "password")
 	u.Picture = field.NewString(table, "picture")
+	u.TwoFAEnabled = field.NewBool(table, "two_fa_enabled")
 	u.Disabled = field.NewBool(table, "disabled")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
@@ -104,13 +107,14 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 11)
+	u.fieldMap = make(map[string]field.Expr, 12)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["username"] = u.Username
 	u.fieldMap["full_name"] = u.FullName
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["picture"] = u.Picture
+	u.fieldMap["two_fa_enabled"] = u.TwoFAEnabled
 	u.fieldMap["disabled"] = u.Disabled
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
