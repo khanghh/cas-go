@@ -47,6 +47,13 @@ type AuthorizeServicePageData struct {
 	CSRFToken   string
 }
 
+type ForgotPasswordPageData struct {
+	Email     string
+	EmailSent bool
+	ErrorMsg  string
+	CSRFToken string
+}
+
 type HomePageData struct {
 	Username string
 	FullName string

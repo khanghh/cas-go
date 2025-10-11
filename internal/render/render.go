@@ -166,10 +166,12 @@ func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData)
 	})
 }
 
-func RenderForgotPassword(ctx *fiber.Ctx, sentEmail string) error {
+func RenderForgotPassword(ctx *fiber.Ctx, pageData ForgotPasswordPageData) error {
 	return ctx.Render("forgot-password", fiber.Map{
 		"siteName":  globalVars["siteName"],
-		"sentEmail": sentEmail,
+		"email":     pageData.Email,
+		"emailSent": pageData.EmailSent,
+		"errorMsg":  pageData.ErrorMsg,
 		"csrfToken": globalVars["csrfToken"],
 	})
 }

@@ -55,10 +55,10 @@
 </head>
 
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-lg overflow-hidden w-full max-w-md">
-    <div class="p-8">
+  <main class="w-full max-w-md sm:max-w-lg bg-white shadow-lg rounded-2xl overflow-hidden">
+    <div class="px-6 sm:px-10 py-10">
       <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-gray-800">Create your account</h1>
+        <h1 class="text-3xl font-bold text-gray-800 mb-3 text-center">Create yaour account</h1>
         <p class="text-gray-600 mt-2">Fill out the form to create your account</p>
       </div>
 
@@ -70,11 +70,12 @@
       {{end}}
 
       <form id="registerForm" class="space-y-6" method="POST" novalidate>
+        <input type="hidden" name="_csrf" value="{{.csrfToken}}">
         <div>
           <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Choose a username</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-              <i class="fas fa-user"></i>
+              <i class="fas fa-user text-gray-400"></i>
             </span>
             <input type="text" id="username" name="username" autocomplete="username" required
               class="form-input w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
@@ -87,7 +88,7 @@
           <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-              <i class="fas fa-envelope"></i>
+              <i class="fas fa-envelope text-gray-400"></i>
             </span>
             <input type="text" id="email" name="email" required
               class="form-input w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
@@ -100,7 +101,7 @@
           <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Create password</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-              <i class="fas fa-lock"></i>
+              <i class="fas fa-lock text-gray-400"></i>
             </span>
             <input type="password" id="password" name="password" autocomplete="new-password" required
               class="form-input w-full pl-10 pr-10 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
@@ -123,7 +124,7 @@
           <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
           <div class="relative">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-              <i class="fas fa-lock"></i>
+              <i class="fas fa-lock text-gray-400"></i>
             </span>
             <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password" required
               class="form-input w-full pl-10 pr-10 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
@@ -148,7 +149,6 @@
           </div>
         </div>
 
-        <input type="hidden" name="_csrf" value="{{.csrfToken}}">
         <div class="pt-2">
           <button type="submit"
             class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 w-full flex items-center justify-center">
@@ -159,13 +159,13 @@
 
       </form>
     </div>
-    <div class="bg-gray-50 px-8 py-6 text-center">
+    <div class="bg-gray-50 px-6 py-4 text-center border-t border-gray-100">
       <p class="text-gray-600 text-sm">
         Already have an account?
         <a href="/login" class="text-blue-600 hover:text-blue-500 font-medium">Sign in</a>
       </p>
     </div>
-  </div>
+  </main>
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
