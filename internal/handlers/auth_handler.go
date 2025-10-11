@@ -69,7 +69,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return forceLogout(ctx)
+		return forceLogout(ctx, "")
 	}
 
 	service, err := h.authorizeService.GetService(ctx.Context(), serviceURL)
@@ -105,7 +105,7 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 
 	_, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return forceLogout(ctx)
+		return forceLogout(ctx, "")
 	}
 
 	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
@@ -119,7 +119,7 @@ func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 
 	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
 	if err != nil {
-		return forceLogout(ctx)
+		return forceLogout(ctx, "")
 	}
 
 	return render.RenderHomePage(ctx, render.HomePageData{

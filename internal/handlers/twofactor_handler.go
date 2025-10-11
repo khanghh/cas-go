@@ -211,9 +211,15 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	handleTwoFactorError := func(err error) error {
+	handleTwoFactorError := func(ctx *fiber.Ctx, err error) error {
 		if errors.Is(err, twofactor.ErrSubjectMismatch) {
 			return render.RenderNotFoundError(ctx)
+		}
+		if errors.Is(err, twofactor.ErrTooManyAttemtps) {
+			if !session.IsAuthenticated() {
+				return forceLogout(ctx, "tfa_failed")
+			}
+			return ctx.Redirect("/")
 		}
 		if msg, ok := mapTwoFactorError(err); ok {
 			return h.renderVerifyOTP(ctx, user.Email, msg)
@@ -224,7 +230,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	if resend {
 		otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch, subject)
 		if err != nil {
-			return handleTwoFactorError(err)
+			return handleTwoFactorError(ctx, err)
 		}
 		if err := mail.SendOTP(h.mailSender, user.Email, otpCode); err != nil {
 			return err
@@ -234,10 +240,10 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 
 	err = h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp)
 	if err != nil {
-		return handleTwoFactorError(err)
+		return handleTwoFactorError(ctx, err)
 	}
 
-	if session.Is2FARequired() && session.TwoFAChallengeID == ch.ID {
+	if session.TwoFARequired {
 		session.TwoFARequired = false
 		session.TwoFASuccessAt = time.Now()
 		session.Save()

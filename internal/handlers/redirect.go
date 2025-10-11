@@ -38,7 +38,10 @@ func redirectInternal(ctx *fiber.Ctx, location string) error {
 	return ctx.RestartRouting()
 }
 
-func forceLogout(ctx *fiber.Ctx) error {
+func forceLogout(ctx *fiber.Ctx, errCode string) error {
 	sessions.Destroy(ctx)
+	if errCode != "" {
+		return redirect(ctx, "/login", "error", errCode)
+	}
 	return redirect(ctx, "/login")
 }

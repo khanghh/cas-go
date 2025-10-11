@@ -77,13 +77,6 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session, redirectURL string) error {
-	if session.TwoFAChallengeID != "" {
-		ch, err := h.twoFactorService.GetChallenge(ctx.Context(), session.TwoFAChallengeID)
-		if err == nil && ch.CanVerify() {
-			return redirect(ctx, "/2fa/challenge", "cid", session.TwoFAChallengeID)
-		}
-	}
-
 	if redirectURL == "" {
 		redirectURL = string(ctx.Context().URI().RequestURI())
 	}
@@ -147,5 +140,5 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 }
 
 func (h *LoginHandler) PostLogout(ctx *fiber.Ctx) error {
-	return forceLogout(ctx)
+	return forceLogout(ctx, "")
 }
