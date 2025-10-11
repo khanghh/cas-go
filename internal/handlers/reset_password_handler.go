@@ -62,6 +62,17 @@ func (h *ResetPasswordHandler) verifyResetPasswordToken(ctx *fiber.Ctx, cid, tok
 }
 
 func (h *ResetPasswordHandler) GetResetPassword(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
+	cid, ok := session.Get(passwordResetCID).(string)
+	if !ok {
+		return render.RenderNotFoundError(ctx)
+	}
+
+	_, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
+	if err != nil {
+		return render.RenderNotFoundError(ctx)
+	}
+
 	csrfToken := csrf.Get(sessions.Get(ctx)).Token
 	return render.RenderSetNewPassword(ctx, csrfToken, "")
 }
@@ -69,7 +80,6 @@ func (h *ResetPasswordHandler) GetResetPassword(ctx *fiber.Ctx) error {
 func (h *ResetPasswordHandler) PostResetPassword(ctx *fiber.Ctx) error {
 	token := ctx.Query("token")
 	newPassword := ctx.FormValue("newPassword")
-	fmt.Println(ctx.FormValue("_csrf"))
 
 	csrfToken := csrf.Get(sessions.Get(ctx)).Token
 	if !csrf.Verify(ctx) {
