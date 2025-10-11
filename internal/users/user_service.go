@@ -65,14 +65,27 @@ func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.
 	if _, err := mail.ParseAddress(email); err != nil {
 		return nil, err
 	}
-	return s.userRepo.First(ctx, query.User.Email.Eq(email))
+	user, err := s.userRepo.First(ctx, query.User.Email.Eq(email))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrUserNotFound
+	}
+	return user, err
 }
 
 func (s *UserService) GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error) {
-	if _, err := mail.ParseAddress(identifier); err == nil {
-		return s.userRepo.First(ctx, query.User.Email.Eq(identifier))
+	var (
+		user *model.User
+		err  error
+	)
+	if _, err = mail.ParseAddress(identifier); err == nil {
+		user, err = s.userRepo.First(ctx, query.User.Email.Eq(identifier))
+	} else {
+		user, err = s.userRepo.First(ctx, query.User.Username.Eq(identifier))
 	}
-	return s.userRepo.First(ctx, query.User.Username.Eq(identifier))
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrUserNotFound
+	}
+	return user, err
 }
 
 func (s *UserService) checkUserExist(ctx context.Context, email string, username string) error {

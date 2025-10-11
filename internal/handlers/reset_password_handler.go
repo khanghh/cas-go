@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
+	"github.com/khanghh/cas-go/internal/users"
 )
 
 const (
@@ -28,7 +30,7 @@ type ResetPasswordClaims struct {
 }
 
 func (h *ResetPasswordHandler) generateResetPasswordToken(ctx *fiber.Ctx, email string) (string, string, error) {
-	subject := getChallengeSubject(ctx, sessions.Get(ctx))
+	subject := twofactor.Subject{IPAddress: ctx.IP()}
 	opts := twofactor.ChallengeOptions{ExpiresIn: 5 * time.Minute}
 	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, opts)
 	if err != nil {
@@ -103,22 +105,30 @@ func (h *ResetPasswordHandler) GetForogtPassword(ctx *fiber.Ctx) error {
 func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
 	email := ctx.FormValue("email")
 
+	pageData := render.ForgotPasswordPageData{
+		CSRFToken: csrf.Get(sessions.Get(ctx)).Token,
+	}
 	if err := validateEmail(email); err != nil {
-		pageData := render.ForgotPasswordPageData{
-			ErrorMsg:  err.Error(),
-			CSRFToken: csrf.Get(sessions.Get(ctx)).Token,
-		}
+		pageData.ErrorMsg = err.Error()
 		return render.RenderForgotPassword(ctx, pageData)
 	}
 
 	user, err := h.userService.GetUserByEmail(ctx.Context(), email)
+	if errors.Is(err, users.ErrUserNotFound) {
+		pageData.ErrorMsg = err.Error()
+		return render.RenderForgotPassword(ctx, pageData)
+	}
 	if err != nil {
 		return err
 	}
 
 	cid, token, err := h.generateResetPasswordToken(ctx, email)
 	if err != nil {
-		return render.RenderNotFoundError(ctx)
+		if errorMsg, ok := mapTwoFactorError(err); ok {
+			pageData.ErrorMsg = errorMsg
+			return render.RenderForgotPassword(ctx, pageData)
+		}
+		return err
 	}
 
 	sessions.Get(ctx).Set(passwordResetCID, cid)
