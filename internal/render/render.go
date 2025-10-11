@@ -165,3 +165,25 @@ func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData)
 		"serviceURL":  data.ServiceURL,
 	})
 }
+
+func RenderForgotPassword(ctx *fiber.Ctx, sentEmail string) error {
+	return ctx.Render("forgot-password", fiber.Map{
+		"siteName":  globalVars["siteName"],
+		"sentEmail": sentEmail,
+		"csrfToken": globalVars["csrfToken"],
+	})
+}
+
+func RenderSetNewPassword(ctx *fiber.Ctx, csrfToken string, errorMsg string) error {
+	return ctx.Render("set-new-password", fiber.Map{
+		"siteName":  globalVars["siteName"],
+		"errorMsg":  errorMsg,
+		"csrfToken": csrfToken,
+	})
+}
+
+func RenderPasswordUpdated(ctx *fiber.Ctx) error {
+	return ctx.Render("password-updated", fiber.Map{
+		"siteName": globalVars["siteName"],
+	})
+}

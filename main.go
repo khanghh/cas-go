@@ -236,11 +236,12 @@ func run(ctx *cli.Context) error {
 
 	// handlers
 	var (
-		authHandler      = handlers.NewAuthHandler(authorizeService, userService, twoFactorService)
-		loginHandler     = handlers.NewLoginHandler(userService, twoFactorService, oauthProviders)
-		registerHandler  = handlers.NewRegisterHandler(userService, mailSender)
-		oauthHandler     = handlers.NewOAuthHandler(userService, oauthProviders)
-		twofactorHandler = handlers.NewTwoFactorHandler(twoFactorService, userService, mailSender)
+		authHandler          = handlers.NewAuthHandler(authorizeService, userService, twoFactorService)
+		loginHandler         = handlers.NewLoginHandler(userService, twoFactorService, oauthProviders)
+		registerHandler      = handlers.NewRegisterHandler(userService, mailSender)
+		oauthHandler         = handlers.NewOAuthHandler(userService, oauthProviders)
+		twofactorHandler     = handlers.NewTwoFactorHandler(twoFactorService, userService, mailSender)
+		resetPasswordHandler = handlers.NewResetPasswordHandler(userService, twoFactorService, mailSender)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -273,6 +274,10 @@ func run(ctx *cli.Context) error {
 	router.Get("/register/oauth", registerHandler.GetRegisterWithOAuth)
 	router.Post("/register/oauth", registerHandler.PostRegisterWithOAuth)
 	router.Get("/register/verify", registerHandler.GetRegisterVerify)
+	router.Get("/reset-password", resetPasswordHandler.GetResetPassword)
+	router.Post("/reset-password", resetPasswordHandler.PostResetPassword)
+	router.Get("/forgot-password", resetPasswordHandler.GetForogtPassword)
+	router.Post("/forgot-password", resetPasswordHandler.PostForgotPassword)
 	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
 	router.Get("/2fa/challenge", twofactorHandler.GetChallenge)
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)

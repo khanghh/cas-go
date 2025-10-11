@@ -29,6 +29,7 @@ type SessionData struct {
 	TwoFARequired    bool      // is 2fa required
 	TwoFAChallengeID string    // 2fa challenge id
 	TwoFASuccessAt   time.Time // 2fa success time
+	IsTemporary      bool      // temporary logged in session
 	ExpireTime       time.Time // session expire time
 }
 
@@ -37,11 +38,11 @@ func (s *SessionData) IsLoggedIn() bool {
 }
 
 func (s *SessionData) Is2FARequired() bool {
-	return s.UserID != 0 && s.TwoFARequired
+	return s.UserID != 0 && s.TwoFARequired && !s.IsTemporary
 }
 
 func (s *SessionData) IsAuthenticated() bool {
-	return s.UserID != 0 && !s.TwoFARequired
+	return s.UserID != 0 && !s.TwoFARequired && !s.IsTemporary
 }
 
 type Session struct {

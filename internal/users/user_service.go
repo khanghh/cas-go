@@ -61,6 +61,13 @@ func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*model.User
 	return s.userRepo.First(ctx, query.User.ID.Eq(userID))
 }
 
+func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	if _, err := mail.ParseAddress(email); err != nil {
+		return nil, err
+	}
+	return s.userRepo.First(ctx, query.User.Email.Eq(email))
+}
+
 func (s *UserService) GetUserByUsernameOrEmail(ctx context.Context, identifier string) (*model.User, error) {
 	if _, err := mail.ParseAddress(identifier); err == nil {
 		return s.userRepo.First(ctx, query.User.Email.Eq(identifier))
@@ -226,6 +233,18 @@ func (s *UserService) GetUserOAuthByID(ctx context.Context, userOAuthID uint) (*
 
 func (s *UserService) GetOrCreateUserOAuth(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error) {
 	return s.userOAuthRepo.CreateIfNotExists(ctx, userOAuth)
+}
+
+func (s *UserService) ResetPassword(ctx context.Context, email string, newPassword string) error {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	updates := map[string]interface{}{
+		query.ColUserPassword: string(passwordHash),
+	}
+	_, err = s.userRepo.Updates(ctx, updates, query.User.Email.Eq(email))
+	return err
 }
 
 func NewUserService(userRepo UserRepository, userOAuthRepo UserOAuthRepository, pendingUserRepo PendingUserRepository) *UserService {

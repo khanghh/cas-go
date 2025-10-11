@@ -38,3 +38,20 @@ func SendRegisterVerification(sender MailSender, email string, verifyURL string)
 		IsHTML:  true,
 	})
 }
+
+func SendResetPasswordLink(sender MailSender, email string, resetLink string) error {
+	params := fiber.Map{
+		"resetLink":     resetLink,
+		"expireMinutes": 5,
+	}
+	body, err := renderHTML("mail/reset-password", params)
+	if err != nil {
+		return err
+	}
+	return sender.Send(&Message{
+		To:      []string{email},
+		Subject: "Reset your password",
+		Body:    body,
+		IsHTML:  true,
+	})
+}
