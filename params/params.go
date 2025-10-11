@@ -14,15 +14,15 @@ const (
 	PendingUserExpiration         = 1 * time.Hour
 	ServiceTicketExpiration       = 1 * time.Minute
 	AuthStateTimeout              = 10 * time.Minute
-	TwoFactorChallengeMaxAttempts = 5                  // maximum number of attempts for a challenge
-	TwoFactorMaxFailCount         = 10                 // maximum number of fail attempts allowed per user, reset at challenge success
-	TwoFactorMaxOTPRequests       = 20                 // maximum number of OTP requests allowed per user
-	TwoFactorMaxChallenges        = 20                 // maximum number of challenges allowed per window
-	TwoFactorChallengeCooldown    = 5 * time.Minute    // challenge counter reset cooldown duration
-	TwoFactorStateMaxAge          = 12 * time.Hour     // time to live for a user state
+	TwoFactorChallengeMaxAttempts = 5                  // maximum number of verification attempts allowed per challenge; reset with user state
+	TwoFactorMaxFailCount         = 15                 // maximum total failed verification attempts per user; resets on successful verification
+	TwoFactorMaxOTPRequests       = 20                 // maximum number of OTP code requests allowed per user; reset with user state
+	TwoFactorMaxChallenges        = 5                  // maximum number of pending challenges allowed per user; reset with user state
+	TwoFactorStateMaxAge          = 24 * time.Hour     // time to live for user state
+	TwoFactorChallengeCooldown    = 5 * time.Minute    // cooldown duration for the challenge counter to reset
 	TwoFactorOTPExpiration        = 5 * time.Minute    // otp code expiration duration
 	TwoFactorOTPRefreshCooldown   = 1 * time.Minute    // otp code refresh cooldown
 	TwoFactorJWTExpiration        = 1 * time.Hour      // jwt token expiration duration
 	TrustedDeviceExpiration       = 7 * 24 * time.Hour // trusted device expiration duration
-	CSRFTokenExpiration           = 5 * time.Minute
+	CSRFTokenExpiration           = 5 * time.Minute    // csrf token expiration duration
 )
