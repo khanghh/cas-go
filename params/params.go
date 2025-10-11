@@ -17,7 +17,8 @@ const (
 	TwoFactorChallengeMaxAttempts = 5                  // maximum number of attempts for a challenge
 	TwoFactorMaxFailCount         = 10                 // maximum number of fail attempts allowed per user, reset at challenge success
 	TwoFactorMaxOTPRequests       = 20                 // maximum number of OTP requests allowed per user
-	TwoFactorMaxChallenges        = 20                 // maximum number of challenges created per user
+	TwoFactorMaxChallenges        = 20                 // maximum number of challenges allowed per window
+	TwoFactorChallengeCooldown    = 5 * time.Minute    // challenge counter reset cooldown duration
 	TwoFactorStateMaxAge          = 12 * time.Hour     // time to live for a user state
 	TwoFactorOTPExpiration        = 5 * time.Minute    // otp code expiration duration
 	TwoFactorOTPRefreshCooldown   = 1 * time.Minute    // otp code refresh cooldown

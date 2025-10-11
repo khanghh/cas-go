@@ -88,15 +88,14 @@ func (s *TwoFactorService) CreateChallenge(ctx context.Context, sub *Subject, op
 		if userState.FailCount >= params.TwoFactorMaxFailCount {
 			return nil, ErrTooManyAttemtps
 		}
-		if userState.ChallengeCount < params.TwoFactorMaxChallenges {
-			userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, stateID)
-			if err != nil {
-				return nil, err
-			}
-			if userState.ChallengeCount > params.TwoFactorMaxChallenges {
-				return nil, ErrTooManyAttemtps
-			}
+		userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, stateID)
+		if err != nil {
+			return nil, err
 		}
+		if userState.ChallengeCount > params.TwoFactorMaxChallenges {
+			return nil, ErrTooManyAttemtps
+		}
+		s.userStateStore.ResetChallengeCountAt(ctx, stateID, time.Now().Add(params.TwoFactorChallengeCooldown))
 	}
 
 	if err := s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn); err != nil {

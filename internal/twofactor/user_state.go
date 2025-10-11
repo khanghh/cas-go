@@ -59,6 +59,10 @@ func (s *userStateStore) DecreaseChallengeCount(ctx context.Context, id string) 
 	return int(failCount), err
 }
 
+func (s *userStateStore) ResetChallengeCountAt(ctx context.Context, id string, expiresAt time.Time) error {
+	return s.ExpireAttr(ctx, id, expiresAt, "challenge_count")
+}
+
 func (s *userStateStore) SetChallengeCount(ctx context.Context, id string, count int) error {
 	return s.SetAttr(ctx, id, "challenge_count", count)
 }
