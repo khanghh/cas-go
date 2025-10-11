@@ -24,7 +24,7 @@ type ServiceTicket struct {
 	TicketID    string    `json:"ticketID"    redis:"ticket_id"`
 	UserID      uint      `json:"userID"      redis:"user_id"`
 	ServiceName string    `json:"serviceName" redis:"service_name"`
-	CallbackURL string    `json:"callbackURL" redis:"callback_url"`
+	ServiceURL  string    `json:"serviceURL"  redis:"service_url"`
 	CreateTime  time.Time `json:"createTime"  redis:"create_time"`
 }
 
@@ -59,24 +59,15 @@ func (s *AuthorizeService) ValidateServiceTicket(ctx context.Context, serviceURL
 	return &ticket, nil
 }
 
-func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, callbackURL string) (*ServiceTicket, error) {
-	service, err := s.registry.GetService(ctx, callbackURL)
-	if err != nil {
-		return nil, ErrServiceNotFound
-	}
-
-	if service.StripQuery {
-		callbackURL = service.LoginURL
-	}
-
+func (s *AuthorizeService) GenerateServiceTicket(ctx context.Context, userId uint, serviceURL string) (*ServiceTicket, error) {
 	st := ServiceTicket{
-		TicketID:    uuid.NewString(),
-		UserID:      userId,
-		CallbackURL: callbackURL,
-		CreateTime:  time.Now(),
+		TicketID:   uuid.NewString(),
+		UserID:     userId,
+		ServiceURL: serviceURL,
+		CreateTime: time.Now(),
 	}
 
-	err = s.ticketStore.Set(ctx, st.TicketID, st, params.ServiceTicketExpiration)
+	err := s.ticketStore.Set(ctx, st.TicketID, st, params.ServiceTicketExpiration)
 	if err != nil {
 		return nil, err
 	}

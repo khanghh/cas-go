@@ -30,10 +30,11 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 	_service.Name = field.NewString(tableName, "name")
 	_service.LoginURL = field.NewString(tableName, "login_url")
 	_service.LogoutURL = field.NewString(tableName, "logout_url")
+	_service.SigningKey = field.NewString(tableName, "signing_key")
 	_service.StripQuery = field.NewBool(tableName, "strip_query")
 	_service.AutoLogin = field.NewBool(tableName, "auto_login")
-	_service.SigningKey = field.NewString(tableName, "signing_key")
-	_service.RequireChallenge = field.NewBool(tableName, "require_challenge")
+	_service.ChallengeRequired = field.NewBool(tableName, "challenge_required")
+	_service.ChallengeValidity = field.NewInt64(tableName, "challenge_validity")
 	_service.CreatedAt = field.NewTime(tableName, "created_at")
 	_service.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_service.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -46,18 +47,19 @@ func newService(db *gorm.DB, opts ...gen.DOOption) service {
 type service struct {
 	serviceDo
 
-	ALL              field.Asterisk
-	ID               field.Uint
-	Name             field.String
-	LoginURL         field.String
-	LogoutURL        field.String
-	StripQuery       field.Bool
-	AutoLogin        field.Bool
-	SigningKey       field.String
-	RequireChallenge field.Bool
-	CreatedAt        field.Time
-	UpdatedAt        field.Time
-	DeletedAt        field.Field
+	ALL               field.Asterisk
+	ID                field.Uint
+	Name              field.String
+	LoginURL          field.String
+	LogoutURL         field.String
+	SigningKey        field.String
+	StripQuery        field.Bool
+	AutoLogin         field.Bool
+	ChallengeRequired field.Bool
+	ChallengeValidity field.Int64
+	CreatedAt         field.Time
+	UpdatedAt         field.Time
+	DeletedAt         field.Field
 
 	fieldMap map[string]field.Expr
 }
@@ -78,10 +80,11 @@ func (s *service) updateTableName(table string) *service {
 	s.Name = field.NewString(table, "name")
 	s.LoginURL = field.NewString(table, "login_url")
 	s.LogoutURL = field.NewString(table, "logout_url")
+	s.SigningKey = field.NewString(table, "signing_key")
 	s.StripQuery = field.NewBool(table, "strip_query")
 	s.AutoLogin = field.NewBool(table, "auto_login")
-	s.SigningKey = field.NewString(table, "signing_key")
-	s.RequireChallenge = field.NewBool(table, "require_challenge")
+	s.ChallengeRequired = field.NewBool(table, "challenge_required")
+	s.ChallengeValidity = field.NewInt64(table, "challenge_validity")
 	s.CreatedAt = field.NewTime(table, "created_at")
 	s.UpdatedAt = field.NewTime(table, "updated_at")
 	s.DeletedAt = field.NewField(table, "deleted_at")
@@ -101,15 +104,16 @@ func (s *service) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *service) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 11)
+	s.fieldMap = make(map[string]field.Expr, 12)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["name"] = s.Name
 	s.fieldMap["login_url"] = s.LoginURL
 	s.fieldMap["logout_url"] = s.LogoutURL
+	s.fieldMap["signing_key"] = s.SigningKey
 	s.fieldMap["strip_query"] = s.StripQuery
 	s.fieldMap["auto_login"] = s.AutoLogin
-	s.fieldMap["signing_key"] = s.SigningKey
-	s.fieldMap["require_challenge"] = s.RequireChallenge
+	s.fieldMap["challenge_required"] = s.ChallengeRequired
+	s.fieldMap["challenge_validity"] = s.ChallengeValidity
 	s.fieldMap["created_at"] = s.CreatedAt
 	s.fieldMap["updated_at"] = s.UpdatedAt
 	s.fieldMap["deleted_at"] = s.DeletedAt

@@ -59,7 +59,7 @@ func mapLoginError(errorCode string) string {
 }
 
 func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
-	serviceURL := ctx.Query("service")
+	serviceURL := sanitizeURL(ctx.Query("service"))
 	errorCode := ctx.Query("error")
 
 	session := sessions.Get(ctx)
@@ -111,7 +111,7 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 }
 
 func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
-	serviceURL := ctx.Query("service")
+	serviceURL := sanitizeURL(ctx.Query("service"))
 	username := ctx.FormValue("username")
 	password := ctx.FormValue("password")
 

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -19,7 +18,7 @@ type AuthHandler struct {
 	twoFactorService TwoFactorService
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string) error {
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string, challengeRequired bool) error {
 	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), session.UserID, serviceURL)
 	if errors.Is(err, auth.ErrServiceNotFound) {
 		return redirect(ctx, "/login")
@@ -27,20 +26,26 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sess
 		return err
 	}
 
-	subject := getChallengeSubject(ctx, session)
-	challengeOpts := twofactor.ChallengeOptions{
-		RedirectURL: fmt.Sprintf("%s?ticket=%s", ticket.CallbackURL, ticket.TicketID),
-		ExpiresIn:   15 * time.Minute,
+	redirectURL := appendQuery(serviceURL, "ticket", ticket.TicketID)
+
+	if challengeRequired {
+		subject := getChallengeSubject(ctx, session)
+		challengeOpts := twofactor.ChallengeOptions{
+			RedirectURL: redirectURL,
+			ExpiresIn:   5 * time.Minute,
+		}
+		ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, challengeOpts)
+		if err != nil {
+			return err
+		}
+		return redirect(ctx, "/2fa/challenge", "cid", ch.ID)
 	}
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, challengeOpts)
-	if err != nil {
-		return err
-	}
-	return redirect(ctx, "/2fa/challenge", "cid", ch.ID)
+
+	return ctx.Redirect(redirectURL)
 }
 
 func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
-	serviceURL := ctx.Query("service")
+	serviceURL := sanitizeURL(ctx.Query("service"))
 	if serviceURL == "" {
 		return render.RenderNotFoundError(ctx)
 	}
@@ -70,7 +75,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
-	serviceURL := ctx.Query("service")
+	serviceURL := sanitizeURL(ctx.Query("service"))
 	authorize := ctx.FormValue("authorize")
 
 	if serviceURL == "" {
@@ -91,7 +96,13 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 		return forceLogout(ctx, "")
 	}
 
-	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
+	service, err := h.authorizeService.GetService(ctx.Context(), serviceURL)
+	if errors.Is(err, auth.ErrServiceNotFound) {
+		return render.RenderNotFoundError(ctx)
+	}
+
+	challengeRequired := service.ChallengeRequired && time.Since(session.TwoFASuccessAt) > service.ChallengeValidity
+	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL, challengeRequired)
 }
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
@@ -122,7 +133,7 @@ type UserInfoResponse struct {
 
 func (h *AuthHandler) GetServiceValidate(ctx *fiber.Ctx) error {
 	ticketID := ctx.Query("ticket")
-	serviceURL := ctx.Query("service")
+	serviceURL := sanitizeURL(ctx.Query("service"))
 	signature := string(ctx.Request().Header.Peek("X-Signature"))
 	timestamp := string(ctx.Request().Header.Peek("X-Timestamp"))
 
