@@ -27,10 +27,7 @@ type Subject struct {
 	UserAgent string
 }
 
-func (s *TwoFactorService) subjectHash(sub *Subject) string {
-	if sub == nil {
-		return ""
-	}
+func (s *TwoFactorService) subjectHash(sub Subject) string {
 	return s.calculateHash(sub.UserID, sub.SessionID, sub.IPAddress, sub.UserAgent)
 }
 
@@ -67,36 +64,35 @@ func (s *TwoFactorService) getUserState(ctx context.Context, stateID string) (*U
 }
 
 type ChallengeOptions struct {
+	Subject     Subject
 	RedirectURL string
 	ExpiresIn   time.Duration
 }
 
-func (s *TwoFactorService) CreateChallenge(ctx context.Context, sub *Subject, opts ChallengeOptions) (*Challenge, error) {
+func (s *TwoFactorService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
 	ch := Challenge{
 		ID:          uuid.NewString(),
-		Subject:     s.subjectHash(sub),
+		Subject:     s.subjectHash(opts.Subject),
 		RedirectURL: opts.RedirectURL,
 		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
 	}
 
-	if sub != nil {
-		stateID := s.calculateHash(sub.UserID, sub.IPAddress)
-		userState, err := s.getUserState(ctx, stateID)
-		if err != nil {
-			return nil, err
-		}
-		if userState.FailCount >= params.TwoFactorMaxFailCount {
-			return nil, ErrTooManyAttemtps
-		}
-		userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, stateID)
-		if err != nil {
-			return nil, err
-		}
-		if userState.ChallengeCount > params.TwoFactorMaxChallenges {
-			return nil, ErrTooManyAttemtps
-		}
-		s.userStateStore.ResetChallengeCountAt(ctx, stateID, time.Now().Add(params.TwoFactorChallengeCooldown))
+	stateID := s.calculateHash(opts.Subject.UserID, opts.Subject.IPAddress)
+	userState, err := s.getUserState(ctx, stateID)
+	if err != nil {
+		return nil, err
 	}
+	if userState.FailCount >= params.TwoFactorMaxFailCount {
+		return nil, ErrTooManyAttemtps
+	}
+	userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, stateID)
+	if err != nil {
+		return nil, err
+	}
+	if userState.ChallengeCount > params.TwoFactorMaxChallenges {
+		return nil, ErrTooManyAttemtps
+	}
+	s.userStateStore.ResetChallengeCountAt(ctx, stateID, time.Now().Add(params.TwoFactorChallengeCooldown))
 
 	if err := s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn); err != nil {
 		return nil, err
@@ -119,7 +115,7 @@ func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
 		return ErrTooManyAttemtps
 	}
-	if ch.Subject != s.subjectHash(&sub) {
+	if ch.Subject != s.subjectHash(sub) {
 		return ErrSubjectMismatch
 	}
 	return nil

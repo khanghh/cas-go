@@ -30,9 +30,11 @@ type ResetPasswordClaims struct {
 }
 
 func (h *ResetPasswordHandler) generateResetPasswordToken(ctx *fiber.Ctx, email string) (string, string, error) {
-	subject := twofactor.Subject{IPAddress: ctx.IP()}
-	opts := twofactor.ChallengeOptions{ExpiresIn: 5 * time.Minute}
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, opts)
+	opts := twofactor.ChallengeOptions{
+		Subject:   twofactor.Subject{IPAddress: ctx.IP()},
+		ExpiresIn: 5 * time.Minute,
+	}
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
 	if err != nil {
 		return "", "", err
 	}

@@ -95,11 +95,11 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 	}
 
 	opts := twofactor.ChallengeOptions{
+		Subject:     getChallengeSubject(ctx, session),
 		RedirectURL: redirectURL,
 		ExpiresIn:   5 * time.Minute,
 	}
-	subject := getChallengeSubject(ctx, session)
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, opts)
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
 	if errors.Is(err, twofactor.ErrTooManyAttemtps) {
 		return redirect(ctx, "/login", "error", "login_locked")
 	}

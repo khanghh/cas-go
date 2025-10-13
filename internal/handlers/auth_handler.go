@@ -28,12 +28,12 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sess
 	redirectURL := appendQuery(serviceURL, "ticket", ticket.TicketID)
 
 	if challengeRequired {
-		subject := getChallengeSubject(ctx, session)
 		challengeOpts := twofactor.ChallengeOptions{
+			Subject:     getChallengeSubject(ctx, session),
 			RedirectURL: redirectURL,
 			ExpiresIn:   5 * time.Minute,
 		}
-		ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), &subject, challengeOpts)
+		ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), challengeOpts)
 		if err != nil {
 			return err
 		}

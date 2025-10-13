@@ -21,7 +21,7 @@ type AuthorizeService interface {
 }
 
 type TwoFactorService interface {
-	CreateChallenge(ctx context.Context, subject *twofactor.Subject, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
+	CreateChallenge(ctx context.Context, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
 	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
 	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, subject twofactor.Subject) error
 	OTP() *twofactor.OTPChallenger
