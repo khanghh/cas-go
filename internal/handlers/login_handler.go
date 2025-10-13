@@ -67,7 +67,6 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 		return render.RenderLogin(ctx, render.LoginPageData{
 			OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
 			ErrorMsg:       mapLoginError(errorCode),
-			CSRFToken:      csrf.Get(session).Token,
 		})
 	}
 
@@ -126,7 +125,6 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 
 	if !csrf.Verify(ctx) {
 		pageData.ErrorMsg = MsgInvalidRequest
-		pageData.CSRFToken = csrf.Get(session).Token
 		return render.RenderLogin(ctx, pageData)
 	}
 

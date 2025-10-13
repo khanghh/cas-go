@@ -6,7 +6,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/auth"
-	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
@@ -69,7 +68,6 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 		Email:       user.Email,
 		ServiceName: service.Name,
 		ServiceURL:  service.LoginURL,
-		CSRFToken:   csrf.Get(session).Token,
 	}
 	return render.RenderAuthorizeServiceAccess(ctx, pageData)
 }

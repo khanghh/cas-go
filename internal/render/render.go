@@ -2,6 +2,8 @@ package render
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/middlewares/csrf"
+	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 )
 
 var globalVars fiber.Map
@@ -37,13 +39,13 @@ func RenderBadRequestError(ctx *fiber.Ctx) error {
 func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Render("login", fiber.Map{
 		"siteName":          globalVars["siteName"],
+		"csrfToken":         csrf.Get(sessions.Get(ctx)).Token,
 		"identifier":        data.Identifier,
 		"googleOAuthURL":    data.OAuthLoginURLs["google"],
 		"facebookOAuthURL":  data.OAuthLoginURLs["facebook"],
 		"discordOAuthURL":   data.OAuthLoginURLs["discord"],
 		"microsoftOAuthURL": data.OAuthLoginURLs["microsoft"],
 		"appleOAuthURL":     data.OAuthLoginURLs["apple"],
-		"csrfToken":         data.CSRFToken,
 		"errorMsg":          data.ErrorMsg,
 	})
 }
@@ -51,9 +53,9 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("register", fiber.Map{
 		"siteName":      globalVars["siteName"],
+		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
 		"username":      data.Username,
 		"email":         data.Email,
-		"csrfToken":     data.CSRFToken,
 		"usernameError": data.FormErrors["username"],
 		"passwordError": data.FormErrors["password"],
 		"emailError":    data.FormErrors["email"],
@@ -64,12 +66,12 @@ func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("oauth-register", fiber.Map{
 		"siteName":      globalVars["siteName"],
+		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
 		"username":      data.Username,
 		"fullName":      data.FullName,
 		"email":         data.Email,
 		"picture":       data.Picture,
 		"oauthProvider": data.OAuthProvider,
-		"csrfToken":     data.CSRFToken,
 		"usernameError": data.FormErrors["username"],
 		"passwordError": data.FormErrors["password"],
 		"emailError":    data.FormErrors["email"],
@@ -104,13 +106,13 @@ func RenderVerificationRequired(ctx *fiber.Ctx, data VerificationRequiredPageDat
 	}
 	return ctx.Render("verification-required", fiber.Map{
 		"siteName":     globalVars["siteName"],
+		"csrfToken":    csrf.Get(sessions.Get(ctx)).Token,
 		"challengeID":  data.ChallengeID,
 		"emailEnabled": data.EmailEnabled,
 		"smsEnabled":   data.SMSEnableled,
 		"totpEnabled":  data.TOTPEnabled,
 		"email":        email,
 		"phone":        phone,
-		"csrfToken":    data.CSRFToken,
 		"errorMsg":     data.ErrorMsg,
 	})
 }
@@ -129,8 +131,8 @@ func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
 	}
 	return ctx.Render("verify-otp", fiber.Map{
 		"siteName":     globalVars["siteName"],
+		"csrfToken":    csrf.Get(sessions.Get(ctx)).Token,
 		"emailOrPhone": emailOrPhone,
-		"csrfToken":    pageData.CSRFToken,
 		"errorMsg":     pageData.ErrorMsg,
 	})
 }
@@ -169,18 +171,18 @@ func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData)
 func RenderForgotPassword(ctx *fiber.Ctx, pageData ForgotPasswordPageData) error {
 	return ctx.Render("forgot-password", fiber.Map{
 		"siteName":  globalVars["siteName"],
+		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
 		"email":     pageData.Email,
 		"emailSent": pageData.EmailSent,
 		"errorMsg":  pageData.ErrorMsg,
-		"csrfToken": globalVars["csrfToken"],
 	})
 }
 
 func RenderSetNewPassword(ctx *fiber.Ctx, csrfToken string, errorMsg string) error {
 	return ctx.Render("set-new-password", fiber.Map{
 		"siteName":  globalVars["siteName"],
+		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
 		"errorMsg":  errorMsg,
-		"csrfToken": csrfToken,
 	})
 }
 

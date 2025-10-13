@@ -25,12 +25,10 @@ type TwoFactorHandler struct {
 }
 
 func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMsg string) error {
-	session := sessions.Get(ctx)
 	pageData := render.VerifyOTPPageData{
-		Email:     email,
-		IsMasked:  true,
-		CSRFToken: csrf.Get(session).Token,
-		ErrorMsg:  errorMsg,
+		Email:    email,
+		IsMasked: true,
+		ErrorMsg: errorMsg,
 	}
 	return render.RenderVerifyOTP(ctx, pageData)
 }
@@ -87,13 +85,13 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		EmailEnabled: true,
 		Email:        user.Email,
 		IsMasked:     true,
-		CSRFToken:    csrf.Get(session).Token,
 	}
 	return render.RenderVerificationRequired(ctx, pageData)
 }
 
 func (h *TwoFactorHandler) handleGenerateAndSendEmailOTP(ctx *fiber.Ctx, user *model.User, ch *twofactor.Challenge) error {
-	subject := getChallengeSubject(ctx, sessions.Get(ctx))
+	session := sessions.Get(ctx)
+	subject := getChallengeSubject(ctx, session)
 	otpCode, err := h.twoFactorService.OTP().Generate(ctx.Context(), ch, subject)
 	if err != nil {
 		if msg, ok := mapTwoFactorError(err); ok {
@@ -134,7 +132,6 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 			EmailEnabled: true,
 			Email:        user.Email,
 			IsMasked:     true,
-			CSRFToken:    csrf.Get(session).Token,
 			ErrorMsg:     MsgInvalidRequest,
 		}
 		return render.RenderVerificationRequired(ctx, pageData)

@@ -115,9 +115,7 @@ func (h *ResetPasswordHandler) GetForogtPassword(ctx *fiber.Ctx) error {
 func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
 	email := ctx.FormValue("email")
 
-	pageData := render.ForgotPasswordPageData{
-		CSRFToken: csrf.Get(sessions.Get(ctx)).Token,
-	}
+	pageData := render.ForgotPasswordPageData{}
 	if err := validateEmail(email); err != nil {
 		pageData.ErrorMsg = err.Error()
 		return render.RenderForgotPassword(ctx, pageData)

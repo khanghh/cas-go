@@ -59,7 +59,7 @@ func (h *RegisterHandler) GetRegister(ctx *fiber.Ctx) error {
 	if session.IsLoggedIn() {
 		return ctx.Redirect("/")
 	}
-	return render.RenderRegister(ctx, render.RegisterPageData{CSRFToken: csrf.Get(session).Token})
+	return render.RenderRegister(ctx, render.RegisterPageData{})
 }
 
 type RegisterClaims struct {
@@ -80,10 +80,12 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		password = ctx.FormValue("password")
 	)
 
-	pageData := render.RegisterPageData{Username: username, Email: email}
+	pageData := render.RegisterPageData{
+		Username: username,
+		Email:    email,
+	}
 	if !csrf.Verify(ctx) {
 		pageData.ErrorMsg = MsgInvalidRequest
-		pageData.CSRFToken = csrf.Get(session).Token
 		return render.RenderRegister(ctx, pageData)
 	}
 	pageData.FormErrors = validateRegisterForm(username, password, email)
@@ -133,7 +135,6 @@ func (h *RegisterHandler) GetRegisterWithOAuth(ctx *fiber.Ctx) error {
 		FullName:      userOAuth.DisplayName,
 		Picture:       userOAuth.Picture,
 		OAuthProvider: userOAuth.Provider,
-		CSRFToken:     csrf.Get(session).Token,
 	})
 }
 
@@ -162,7 +163,6 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 	}
 	if !csrf.Verify(ctx) {
 		pageData.ErrorMsg = MsgInvalidRequest
-		pageData.CSRFToken = csrf.Get(session).Token
 		return render.RenderOAuthRegister(ctx, pageData)
 	}
 	pageData.FormErrors = validateRegisterForm(username, password, userOAuth.Email)
