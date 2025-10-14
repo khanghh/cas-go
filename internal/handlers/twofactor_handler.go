@@ -33,7 +33,7 @@ func (h *TwoFactorHandler) renderVerifyOTP(ctx *fiber.Ctx, email string, errorMs
 }
 
 func mapTwoFactorError(err error) (string, bool) {
-	if errors.Is(err, twofactor.ErrTooManyAttemtps) {
+	if errors.Is(err, twofactor.ErrTooManyFailedAttempts) {
 		return MsgTooManyFailedAttempts, true
 	}
 	if errors.Is(err, twofactor.ErrOTPRequestLimitReached) {
@@ -44,7 +44,7 @@ func mapTwoFactorError(err error) (string, bool) {
 	}
 	var verifyErr *twofactor.AttemptFailError
 	if errors.As(err, &verifyErr) {
-		return fmt.Sprintf(MsgInvalidOTP, verifyErr.AttemtpsLeft), true
+		return fmt.Sprintf(MsgInvalidOTP, verifyErr.AttemptsLeft), true
 	}
 	return "", false
 }
@@ -66,7 +66,7 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/login")
 	}
 
-	var state State
+	var state TwoFactorState
 	if err := decryptState(ctx, encryptedState, &state); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
@@ -109,7 +109,7 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 		return forceLogout(ctx, "")
 	}
 
-	var state State
+	var state TwoFactorState
 	if err := decryptState(ctx, encryptedState, &state); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
@@ -128,7 +128,7 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 	}
 
 	sub := getChallengeSubject(ctx, session)
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), sub, state.RedirectURL, 5*time.Minute)
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), sub, state.CallbackURL, 5*time.Minute)
 	if err != nil {
 		if msg, ok := mapTwoFactorError(err); ok {
 			pageData.ErrorMsg = msg
@@ -213,10 +213,10 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	handleTwoFactorError := func(ctx *fiber.Ctx, err error) error {
-		if errors.Is(err, twofactor.ErrSubjectMismatch) {
+		if errors.Is(err, twofactor.ErrChallengeSubjectMismatch) {
 			return render.RenderNotFoundError(ctx)
 		}
-		if errors.Is(err, twofactor.ErrTooManyAttemtps) {
+		if errors.Is(err, twofactor.ErrTooManyFailedAttempts) {
 			if !session.IsAuthenticated() {
 				return forceLogout(ctx, "tfa_failed")
 			}
@@ -247,7 +247,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		session.Save()
 	}
 
-	return redirect(ctx, ch.RedirectURL)
+	return redirect(ctx, ch.CallbackURL)
 }
 
 func NewTwoFactorHandler(twoFactorService TwoFactorService, userService UserService, mailSender mail.MailSender) *TwoFactorHandler {

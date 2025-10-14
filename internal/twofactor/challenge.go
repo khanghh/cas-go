@@ -23,7 +23,8 @@ type Challenge struct {
 	Subject     string    `json:"subject"      redis:"subject"`
 	Secret      string    `json:"secret"       redis:"secret"`
 	Attempts    int       `json:"attempts"     redis:"attempts"`
-	RedirectURL string    `json:"redirectURL"  redis:"redirect_url"`
+	CallbackURL string    `json:"redirectURL"  redis:"redirect_url"`
+	Success     int       `json:"success"      redis:"success"`
 	UpdateAt    time.Time `json:"updateAt"     redis:"update_at"`
 	ExpiresAt   time.Time `json:"expiresAt"    redis:"expires_at"`
 }
@@ -43,6 +44,17 @@ type challengeStore struct {
 func (s *challengeStore) IncreaseAttempts(ctx context.Context, cid string) (int, error) {
 	attempts, err := s.IncrAttr(ctx, cid, "attempts", 1)
 	return int(attempts), err
+}
+
+func (s *challengeStore) MarkSuccess(ctx context.Context, cid string) error {
+	count, err := s.IncrAttr(ctx, cid, "success", 1)
+	if err != nil {
+		return err
+	}
+	if count == 1 {
+		return nil
+	}
+	return ErrChallengeAlreadyVerified
 }
 
 func newChallengeStore(storage store.Storage) *challengeStore {

@@ -8,12 +8,13 @@ import (
 	"io"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/common"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 )
 
-type State struct {
+type TwoFactorState struct {
 	Action      string `json:"action"`
-	RedirectURL string `json:"redirectURL"`
+	CallbackURL string `json:"callbackURL"`
 	Timestamp   int64  `json:"timestamp"`
 }
 
@@ -59,4 +60,9 @@ func decryptState(ctx *fiber.Ctx, encryted string, state any) error {
 	}
 	blob := xorBytes(cipherBytes, []byte(key))
 	return json.Unmarshal(blob, state)
+}
+
+func calculateHash(ctx *fiber.Ctx, values ...any) string {
+	key := getStateEncryptionKey(ctx)
+	return common.CalculateHash(key, values...)
 }

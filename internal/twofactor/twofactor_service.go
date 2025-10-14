@@ -69,11 +69,11 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject, redirectURL string, expiresIn time.Duration) (*Challenge, error) {
+func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject, callbackURL string, expiresIn time.Duration) (*Challenge, error) {
 	ch := Challenge{
 		ID:          uuid.NewString(),
 		Subject:     s.subjectHash(subject),
-		RedirectURL: redirectURL,
+		CallbackURL: callbackURL,
 		ExpiresAt:   time.Now().Add(expiresIn),
 	}
 
@@ -83,14 +83,14 @@ func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject,
 		return nil, err
 	}
 	if userState.FailCount >= params.TwoFactorMaxFailCount {
-		return nil, ErrTooManyAttemtps
+		return nil, ErrTooManyFailedAttempts
 	}
 	userState.ChallengeCount, err = s.userStateStore.IncreaseChallengeCount(ctx, stateID)
 	if err != nil {
 		return nil, err
 	}
 	if userState.ChallengeCount > params.TwoFactorMaxChallenges {
-		return nil, ErrTooManyAttemtps
+		return nil, ErrTooManyFailedAttempts
 	}
 	s.userStateStore.ResetChallengeCountAt(ctx, stateID, time.Now().Add(params.TwoFactorChallengeCooldown))
 
@@ -113,10 +113,10 @@ func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 		return ErrChallengeExpired
 	}
 	if ch.Attempts >= params.TwoFactorChallengeMaxAttempts {
-		return ErrTooManyAttemtps
+		return ErrTooManyFailedAttempts
 	}
 	if ch.Subject != s.subjectHash(sub) {
-		return ErrSubjectMismatch
+		return ErrChallengeSubjectMismatch
 	}
 	return nil
 }
@@ -135,7 +135,7 @@ func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, s
 		return err
 	}
 	if userState.FailCount > params.TwoFactorMaxFailCount {
-		return ErrTooManyAttemtps
+		return ErrTooManyFailedAttempts
 	}
 
 	ch.Attempts, err = s.challengeStore.IncreaseAttempts(ctx, ch.ID)
@@ -143,7 +143,7 @@ func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, s
 		return err
 	}
 	if ch.Attempts > params.TwoFactorChallengeMaxAttempts {
-		return ErrTooManyAttemtps
+		return ErrChallengeAttemptsExceeded
 	}
 
 	success, err := doChallengerVerify(userState)
@@ -151,8 +151,8 @@ func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, s
 		return err
 	}
 	if success {
-		if err := s.challengeStore.Delete(ctx, ch.ID); err != nil {
-			return ErrChallengeExpired
+		if err := s.challengeStore.MarkSuccess(ctx, ch.ID); err != nil {
+			return err
 		}
 		s.userStateStore.ResetFailCount(ctx, stateID)
 		s.userStateStore.DecreaseChallengeCount(ctx, stateID)
@@ -161,9 +161,27 @@ func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, s
 
 	attemptsLeft := min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorMaxFailCount-userState.FailCount)
 	if attemptsLeft == 0 {
-		return ErrTooManyAttemtps
+		return ErrTooManyFailedAttempts
 	}
 	return NewAttemptFailError(attemptsLeft)
+}
+
+func (s *TwoFactorService) FinalizeChallenge(ctx context.Context, cid string, sub Subject) error {
+	ch, err := s.challengeStore.Get(ctx, cid)
+	if errors.Is(err, store.ErrNotFound) {
+		return ErrChallengeNotFound
+	}
+	if ch.Subject != s.subjectHash(sub) {
+		return ErrChallengeSubjectMismatch
+	}
+	if ch.Success == 0 {
+		return ErrChallengeNotVerified
+	}
+	err = s.challengeStore.Delete(ctx, ch.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		return ErrChallengeNotFound
+	}
+	return nil
 }
 
 func (s *TwoFactorService) OTP() *OTPChallenger {

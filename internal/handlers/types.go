@@ -22,9 +22,10 @@ type AuthorizeService interface {
 }
 
 type TwoFactorService interface {
-	CreateChallenge(ctx context.Context, sub twofactor.Subject, url string, expiresIn time.Duration) (*twofactor.Challenge, error)
 	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
+	CreateChallenge(ctx context.Context, sub twofactor.Subject, url string, expiresIn time.Duration) (*twofactor.Challenge, error)
 	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, sub twofactor.Subject) error
+	FinalizeChallenge(ctx context.Context, cid string, sub twofactor.Subject) error
 	OTP() *twofactor.OTPChallenger
 	JWT() *twofactor.JWTChallenger
 	Token() *twofactor.TokenChallenger

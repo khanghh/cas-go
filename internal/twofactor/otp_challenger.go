@@ -45,7 +45,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, subject Sub
 		return "", err
 	}
 	if userState.FailCount > params.TwoFactorMaxFailCount {
-		return "", ErrTooManyAttemtps
+		return "", ErrTooManyFailedAttempts
 	}
 	if time.Since(ch.UpdateAt) < params.TwoFactorOTPRefreshCooldown {
 		return "", ErrOTPRequestRateLimited

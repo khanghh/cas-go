@@ -6,16 +6,20 @@ import (
 )
 
 var (
-	ErrChallengeNotFound      = errors.New("challenge not found")
-	ErrChallengeInvalid       = errors.New("challenge invalid")
-	ErrChallengeExpired       = errors.New("challenge expired")
-	ErrTooManyAttemtps        = errors.New("too many attempts")
-	ErrSubjectMismatch        = errors.New("subject mismatch")
-	ErrTokenInvalid           = errors.New("invalid token")
-	ErrTokenExpired           = errors.New("token is expired")
-	ErrOTPCodeExpired         = errors.New("OTP code is expired")
-	ErrOTPRequestLimitReached = errors.New("OTP request limit reached")
-	ErrOTPRequestRateLimited  = errors.New("otp request rate limited")
+	ErrChallengeNotFound         = errors.New("challenge not found")
+	ErrChallengeInvalid          = errors.New("challenge invalid")
+	ErrChallengeExpired          = errors.New("challenge expired")
+	ErrChallengeAttemptsExceeded = errors.New("max challenge attempts exceeded")
+	ErrChallengeAlreadyVerified  = errors.New("challenge already verified")
+	ErrChallengeNotVerified      = errors.New("challenge not verified")
+	ErrChallengeSubjectMismatch  = errors.New("challenge subject mismatch")
+	ErrTooManyFailedAttempts     = errors.New("too many failed attempts")
+	ErrUserChallengeRateLimited  = errors.New("challenge request rate limited")
+	ErrTokenInvalid              = errors.New("invalid token")
+	ErrTokenExpired              = errors.New("token is expired")
+	ErrOTPCodeExpired            = errors.New("OTP code is expired")
+	ErrOTPRequestLimitReached    = errors.New("OTP request limit reached")
+	ErrOTPRequestRateLimited     = errors.New("otp request rate limited")
 )
 
 type UserLockedError struct {
@@ -35,15 +39,15 @@ func NewUserLockedError(reason string, until time.Time) *UserLockedError {
 }
 
 type AttemptFailError struct {
-	AttemtpsLeft int
+	AttemptsLeft int
 }
 
 func (e *AttemptFailError) Error() string {
 	return "verify attempt failed"
 }
 
-func NewAttemptFailError(attemtpsLeft int) *AttemptFailError {
+func NewAttemptFailError(attemptsLeft int) *AttemptFailError {
 	return &AttemptFailError{
-		AttemtpsLeft: attemtpsLeft,
+		AttemptsLeft: attemptsLeft,
 	}
 }

@@ -83,9 +83,9 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		return redirect(ctx, redirectURL)
 	}
 
-	state := State{
+	state := TwoFactorState{
 		Action:      "login",
-		RedirectURL: redirectURL,
+		CallbackURL: redirectURL,
 		Timestamp:   time.Now().Unix(),
 	}
 	return redirect(ctx, "/2fa/challenge", "state", encryptState(ctx, state))
