@@ -18,8 +18,21 @@ type JWTChallenger struct {
 	svc *TwoFactorService
 }
 
+func (s *JWTChallenger) Create(ctx context.Context, subject Subject, redirecrURL string, expiresIn time.Duration, data interface{}) (string, *Challenge, error) {
+	ch, err := s.svc.CreateChallenge(ctx, subject, redirecrURL, expiresIn)
+	if err != nil {
+		return "", nil, err
+	}
+	token, err := s.Generate(ctx, ch, subject, data)
+	if err != nil {
+		s.svc.challengeStore.Delete(ctx, ch.ID)
+		return "", nil, err
+	}
+	return token, ch, nil
+}
+
 // GenerateToken creates a JWT signed with svc.MasterKey.
-func (s *JWTChallenger) GenerateToken(ctx context.Context, ch *Challenge, data interface{}) (string, error) {
+func (s *JWTChallenger) Generate(ctx context.Context, ch *Challenge, subject Subject, data interface{}) (string, error) {
 	claims := TokenClaims{
 		Data:        data,
 		ChallengeID: ch.ID,

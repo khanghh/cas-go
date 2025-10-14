@@ -69,15 +69,15 @@ type ChallengeOptions struct {
 	ExpiresIn   time.Duration
 }
 
-func (s *TwoFactorService) CreateChallenge(ctx context.Context, opts ChallengeOptions) (*Challenge, error) {
+func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject, redirectURL string, expiresIn time.Duration) (*Challenge, error) {
 	ch := Challenge{
 		ID:          uuid.NewString(),
-		Subject:     s.subjectHash(opts.Subject),
-		RedirectURL: opts.RedirectURL,
-		ExpiresAt:   time.Now().Add(opts.ExpiresIn),
+		Subject:     s.subjectHash(subject),
+		RedirectURL: redirectURL,
+		ExpiresAt:   time.Now().Add(expiresIn),
 	}
 
-	stateID := s.calculateHash(opts.Subject.UserID, opts.Subject.IPAddress)
+	stateID := s.calculateHash(subject.UserID, subject.IPAddress)
 	userState, err := s.getUserState(ctx, stateID)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (s *TwoFactorService) CreateChallenge(ctx context.Context, opts ChallengeOp
 	}
 	s.userStateStore.ResetChallengeCountAt(ctx, stateID, time.Now().Add(params.TwoFactorChallengeCooldown))
 
-	if err := s.challengeStore.Set(ctx, ch.ID, ch, opts.ExpiresIn); err != nil {
+	if err := s.challengeStore.Set(ctx, ch.ID, ch, expiresIn); err != nil {
 		return nil, err
 	}
 	return &ch, nil

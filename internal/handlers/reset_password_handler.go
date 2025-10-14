@@ -10,7 +10,6 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
-	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
 )
 
@@ -30,11 +29,9 @@ type ResetPasswordClaims struct {
 }
 
 func (h *ResetPasswordHandler) generateResetPasswordToken(ctx *fiber.Ctx, email string) (string, string, error) {
-	opts := twofactor.ChallengeOptions{
-		Subject:   twofactor.Subject{IPAddress: ctx.IP()},
-		ExpiresIn: 5 * time.Minute,
-	}
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), opts)
+	session := sessions.Get(ctx)
+	sub := getChallengeSubject(ctx, session)
+	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), sub, "", 5*time.Minute)
 	if err != nil {
 		return "", "", err
 	}
@@ -42,7 +39,7 @@ func (h *ResetPasswordHandler) generateResetPasswordToken(ctx *fiber.Ctx, email 
 		SessionID: sessions.Get(ctx).ID(),
 		Email:     email,
 	}
-	token, err := h.twoFactorService.Token().Generate(ctx.Context(), ch, claims)
+	token, err := h.twoFactorService.Token().Generate(ctx.Context(), ch, sub, claims)
 	if err != nil {
 		return "", "", err
 	}

@@ -25,6 +25,19 @@ func generateOTP(length int) string {
 	return b.String()
 }
 
+func (s *OTPChallenger) Create(ctx context.Context, subject Subject, redirecrURL string, expiresIn time.Duration) (string, *Challenge, error) {
+	ch, err := s.svc.CreateChallenge(ctx, subject, redirecrURL, expiresIn)
+	if err != nil {
+		return "", nil, err
+	}
+	otpCode, err := s.Generate(ctx, ch, subject)
+	if err != nil {
+		s.svc.challengeStore.Delete(ctx, ch.ID)
+		return "", nil, err
+	}
+	return otpCode, ch, nil
+}
+
 func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, subject Subject) (string, error) {
 	stateID := s.svc.getStateID(subject)
 	userState, err := s.svc.getUserState(ctx, stateID)

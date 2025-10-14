@@ -8,7 +8,6 @@ import (
 	"github.com/khanghh/cas-go/internal/auth"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
-	"github.com/khanghh/cas-go/internal/twofactor"
 )
 
 type AuthHandler struct {
@@ -20,7 +19,7 @@ type AuthHandler struct {
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string, challengeRequired bool) error {
 	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), session.UserID, serviceURL)
 	if errors.Is(err, auth.ErrServiceNotFound) {
-		return redirect(ctx, "/login")
+		return render.RenderDeniedError(ctx)
 	} else if err != nil {
 		return err
 	}
@@ -28,12 +27,8 @@ func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sess
 	redirectURL := appendQuery(serviceURL, "ticket", ticket.TicketID)
 
 	if challengeRequired {
-		challengeOpts := twofactor.ChallengeOptions{
-			Subject:     getChallengeSubject(ctx, session),
-			RedirectURL: redirectURL,
-			ExpiresIn:   5 * time.Minute,
-		}
-		ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), challengeOpts)
+		sub := getChallengeSubject(ctx, session)
+		ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), sub, redirectURL, 5*time.Minute)
 		if err != nil {
 			return err
 		}
@@ -62,6 +57,8 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 	service, err := h.authorizeService.GetService(ctx.Context(), serviceURL)
 	if errors.Is(err, auth.ErrServiceNotFound) {
 		return render.RenderNotFoundError(ctx)
+	} else if err != nil {
+		return err
 	}
 
 	pageData := render.AuthorizeServicePageData{

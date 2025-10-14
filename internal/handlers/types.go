@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"time"
 
 	"github.com/khanghh/cas-go/internal/auth"
 	"github.com/khanghh/cas-go/internal/twofactor"
@@ -21,9 +22,9 @@ type AuthorizeService interface {
 }
 
 type TwoFactorService interface {
-	CreateChallenge(ctx context.Context, opts twofactor.ChallengeOptions) (*twofactor.Challenge, error)
+	CreateChallenge(ctx context.Context, sub twofactor.Subject, url string, expiresIn time.Duration) (*twofactor.Challenge, error)
 	GetChallenge(ctx context.Context, cid string) (*twofactor.Challenge, error)
-	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, subject twofactor.Subject) error
+	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, sub twofactor.Subject) error
 	OTP() *twofactor.OTPChallenger
 	JWT() *twofactor.JWTChallenger
 	Token() *twofactor.TokenChallenger

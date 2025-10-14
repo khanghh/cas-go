@@ -10,7 +10,20 @@ type TokenChallenger struct {
 	svc *TwoFactorService
 }
 
-func (s *TokenChallenger) Generate(ctx context.Context, ch *Challenge, data interface{}) (string, error) {
+func (s *TokenChallenger) Create(ctx context.Context, sub Subject, redirecrURL string, expiresIn time.Duration, data interface{}) (string, *Challenge, error) {
+	ch, err := s.svc.CreateChallenge(ctx, sub, redirecrURL, expiresIn)
+	if err != nil {
+		return "", nil, err
+	}
+	token, err := s.Generate(ctx, ch, sub, data)
+	if err != nil {
+		s.svc.challengeStore.Delete(ctx, ch.ID)
+		return "", nil, err
+	}
+	return token, ch, nil
+}
+
+func (s *TokenChallenger) Generate(ctx context.Context, ch *Challenge, sub Subject, data interface{}) (string, error) {
 	blob, err := json.Marshal(data)
 	if err != nil {
 		return "", err
