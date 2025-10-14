@@ -69,7 +69,7 @@ func (s *OTPChallenger) Generate(ctx context.Context, ch *Challenge, subject Sub
 	return otpCode, nil
 }
 
-func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, subject Subject, code string) error {
+func (s *OTPChallenger) Verify(ctx context.Context, ch *Challenge, subject Subject, code string) (string, error) {
 	verifyFunc := func(userState *UserState) (bool, error) {
 		success := ch.Secret == s.svc.calculateHash(code, userState.OTPRequestCount, s.svc.masterKey)
 		if success {

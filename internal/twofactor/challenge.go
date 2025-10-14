@@ -26,6 +26,7 @@ type Challenge struct {
 	CallbackURL string    `json:"redirectURL"  redis:"redirect_url"`
 	Success     int       `json:"success"      redis:"success"`
 	UpdateAt    time.Time `json:"updateAt"     redis:"update_at"`
+	VerifiedAt  time.Time `json:"verifiedAt"   redis:"verified_at"`
 	ExpiresAt   time.Time `json:"expiresAt"    redis:"expires_at"`
 }
 
@@ -52,9 +53,14 @@ func (s *challengeStore) MarkSuccess(ctx context.Context, cid string) error {
 		return err
 	}
 	if count == 1 {
+		s.SetAttr(ctx, cid, "verified_at", time.Now())
 		return nil
 	}
 	return ErrChallengeAlreadyVerified
+}
+
+func (s *challengeStore) SetVerifiedAt(ctx context.Context, cid string, verifiedAt time.Time) error {
+	return s.SetAttr(ctx, cid, "verified_at", verifiedAt)
 }
 
 func newChallengeStore(storage store.Storage) *challengeStore {

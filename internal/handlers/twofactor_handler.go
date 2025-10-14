@@ -95,6 +95,15 @@ func (h *TwoFactorHandler) generateAndSendEmailOTP(ctx *fiber.Ctx, ch *twofactor
 	return mail.SendOTP(h.mailSender, email, otpCode)
 }
 
+func (h *TwoFactorHandler) handleChallengeSuccess(ctx *fiber.Ctx, session *sessions.Session, ch *twofactor.Challenge, sub twofactor.Subject) error {
+	if session.TwoFARequired && session.TwoFAChallengeID == ch.ID {
+		session.TwoFARequired = false
+		session.TwoFASuccessAt = time.Now()
+		session.Save()
+	}
+	return redirect(ctx, ch.CallbackURL, "cid", ch.ID)
+}
+
 func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 	encryptedState := ctx.Query("state")
 	method := ctx.FormValue("method")
@@ -236,18 +245,12 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/2fa/verify-otp", "cid", ch.ID)
 	}
 
-	err = h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp)
+	_, err = h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp)
 	if err != nil {
 		return handleTwoFactorError(ctx, err)
 	}
 
-	if session.TwoFARequired && session.TwoFAChallengeID == ch.ID {
-		session.TwoFARequired = false
-		session.TwoFASuccessAt = time.Now()
-		session.Save()
-	}
-
-	return redirect(ctx, ch.CallbackURL)
+	return h.handleChallengeSuccess(ctx, session, ch, subject)
 }
 
 func NewTwoFactorHandler(twoFactorService TwoFactorService, userService UserService, mailSender mail.MailSender) *TwoFactorHandler {
