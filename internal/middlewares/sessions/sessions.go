@@ -21,16 +21,17 @@ func init() {
 }
 
 type SessionData struct {
-	IP               string    // client ip address
-	UserID           uint      // user id
-	OAuthID          uint      // user oauth id
-	LastSeen         time.Time // last request time
-	LoginTime        time.Time // last login time
-	TwoFARequired    bool      // is 2fa required
-	TwoFAChallengeID string    // 2fa challenge id
-	TwoFASuccessAt   time.Time // 2fa success time
-	IsTemporary      bool      // temporary logged in session
-	ExpireTime       time.Time // session expire time
+	IP                 string    // client ip address
+	UserID             uint      // user id
+	OAuthID            uint      // user oauth id
+	LastSeen           time.Time // last request time
+	LoginTime          time.Time // last login time
+	TwoFARequired      bool      // is 2fa required
+	TwoFAChallengeID   string    // 2fa challenge id
+	TwoFASuccessAt     time.Time // 2fa success time
+	StateEncryptionKey string    // state encryption key
+	IsTemporary        bool      // temporary logged in session
+	ExpireTime         time.Time // session expire time
 }
 
 func (s *SessionData) IsLoggedIn() bool {

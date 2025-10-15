@@ -16,29 +16,18 @@ type AuthHandler struct {
 	twoFactorService TwoFactorService
 }
 
-func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string, challengeRequired bool) error {
+func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string) error {
 	ticket, err := h.authorizeService.GenerateServiceTicket(ctx.Context(), session.UserID, serviceURL)
 	if errors.Is(err, auth.ErrServiceNotFound) {
 		return render.RenderDeniedError(ctx)
 	} else if err != nil {
 		return err
 	}
-
-	redirectURL := appendQuery(serviceURL, "ticket", ticket.TicketID)
-
-	if challengeRequired {
-		sub := getChallengeSubject(ctx, session)
-		ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), sub, redirectURL, 5*time.Minute)
-		if err != nil {
-			return err
-		}
-		return redirect(ctx, "/2fa/challenge", "cid", ch.ID)
-	}
-
-	return ctx.Redirect(redirectURL)
+	return redirect(ctx, ticket.ServiceURL, "ticket", ticket.TicketID)
 }
 
 func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
+	cid := ctx.Query("cid")
 	serviceURL := sanitizeURL(ctx.Query("service"))
 	if serviceURL == "" {
 		return render.RenderNotFoundError(ctx)
@@ -61,6 +50,15 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 		return err
 	}
 
+	if cid != "" {
+		sub := getChallengeSubject(ctx, sessions.Get(ctx))
+		endpoint := appendQuery("/authorize", "service", serviceURL)
+		err = h.twoFactorService.FinalizeChallenge(ctx.Context(), cid, sub, endpoint)
+		if err == nil {
+			return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
+		}
+	}
+
 	pageData := render.AuthorizeServicePageData{
 		Email:       user.Email,
 		ServiceName: service.Name,
@@ -71,7 +69,7 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 	serviceURL := sanitizeURL(ctx.Query("service"))
-	authorize := ctx.FormValue("authorize")
+	confirm := ctx.FormValue("confirm")
 
 	if serviceURL == "" {
 		return render.RenderNotFoundError(ctx)
@@ -82,7 +80,7 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/login", "service", serviceURL)
 	}
 
-	if authorize != "true" {
+	if confirm != "true" {
 		return ctx.Redirect("/")
 	}
 
@@ -96,8 +94,16 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	challengeRequired := service.ChallengeRequired && time.Since(session.TwoFASuccessAt) > service.ChallengeValidity
-	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL, challengeRequired)
+	if service.ChallengeRequired {
+		state := TwoFactorState{
+			Action:      "authorize",
+			CallbackURL: appendQuery("/authorize", "service", serviceURL),
+			Timestamp:   time.Now().UnixNano(),
+		}
+		return redirect(ctx, "/2fa/challenge", "state", encryptState(ctx, state))
+	}
+
+	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
 }
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {

@@ -66,11 +66,15 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/login")
 	}
 
+	if encryptedState == "" {
+		return render.RenderNotFoundError(ctx)
+	}
 	var state TwoFactorState
 	if err := decryptState(ctx, encryptedState, &state); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
-	if time.Since(time.Unix(state.Timestamp, 0)) > 5*time.Minute {
+	if time.Since(time.Unix(0, state.Timestamp)) > 5*time.Minute {
+		// TODO: if this is 2fa login, logout user when it's expired
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -113,17 +117,21 @@ func (h *TwoFactorHandler) PostChallenge(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/login")
 	}
 
-	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
-	if err != nil {
-		return forceLogout(ctx, "")
+	if encryptedState == "" {
+		return render.RenderNotFoundError(ctx)
 	}
-
 	var state TwoFactorState
 	if err := decryptState(ctx, encryptedState, &state); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
-	if time.Since(time.Unix(state.Timestamp, 0)) > 5*time.Minute {
+	if time.Since(time.Unix(0, state.Timestamp)) > 5*time.Minute {
+		// TODO: if this is 2fa login, logout user when it's expired
 		return render.RenderNotFoundError(ctx)
+	}
+
+	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return forceLogout(ctx, "")
 	}
 
 	pageData := render.VerificationRequiredPageData{
