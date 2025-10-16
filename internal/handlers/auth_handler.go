@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/auth"
+	"github.com/khanghh/cas-go/internal/common"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 )
@@ -14,6 +15,22 @@ type AuthHandler struct {
 	authorizeService AuthorizeService
 	userService      UserService
 	twoFactorService TwoFactorService
+}
+
+func (h *AuthHandler) getAuthorizedTime(ctx *fiber.Ctx, serviceURL string) time.Time {
+	session := sessions.Get(ctx)
+	key := "authz:" + common.CalculateHash(session.StateEncryptionKey, serviceURL)
+	nsec, ok := session.Get(key).(int64)
+	if ok {
+		return time.Unix(0, nsec)
+	}
+	return time.Time{}
+}
+
+func (h *AuthHandler) setAuthorizedTime(ctx *fiber.Ctx, serviceURL string, expiresAt time.Time) {
+	session := sessions.Get(ctx)
+	key := "authz:" + common.CalculateHash(session.StateEncryptionKey, serviceURL)
+	session.Set(key, expiresAt.UnixNano())
 }
 
 func (h *AuthHandler) handleAuthorizeServiceAccess(ctx *fiber.Ctx, session *sessions.Session, serviceURL string) error {
@@ -50,11 +67,17 @@ func (h *AuthHandler) GetAuthorize(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	if cid != "" {
+	authorizeTime := h.getAuthorizedTime(ctx, service.LoginURL)
+	challengeRequired := service.ChallengeRequired && time.Since(authorizeTime) > service.ChallengeValidity
+	if !challengeRequired && service.AutoLogin {
+		return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
+	}
+	if challengeRequired && cid != "" {
 		sub := getChallengeSubject(ctx, sessions.Get(ctx))
 		endpoint := appendQuery("/authorize", "service", serviceURL)
 		err = h.twoFactorService.FinalizeChallenge(ctx.Context(), cid, sub, endpoint)
 		if err == nil {
+			h.setAuthorizedTime(ctx, serviceURL, time.Now())
 			return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
 		}
 	}
@@ -94,7 +117,8 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	if service.ChallengeRequired {
+	challengeRequired := service.ChallengeRequired && time.Since(h.getAuthorizedTime(ctx, service.LoginURL)) > service.ChallengeValidity
+	if challengeRequired {
 		state := TwoFactorState{
 			Action:      "authorize",
 			CallbackURL: appendQuery("/authorize", "service", serviceURL),
@@ -103,6 +127,7 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/2fa/challenge", "state", encryptState(ctx, state))
 	}
 
+	h.setAuthorizedTime(ctx, service.LoginURL, time.Now())
 	return h.handleAuthorizeServiceAccess(ctx, session, serviceURL)
 }
 

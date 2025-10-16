@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/url"
 	"time"
 
@@ -69,7 +68,7 @@ func (h *LoginHandler) GetLogin(ctx *fiber.Ctx) error {
 func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session, user *model.User, serviceURL string) error {
 	redirectURL := "/"
 	if serviceURL != "" {
-		redirectURL = fmt.Sprintf("/authorize?service=%s", serviceURL)
+		redirectURL = appendQuery("/authorize", "service", serviceURL)
 	}
 
 	session.Reset(sessions.SessionData{
