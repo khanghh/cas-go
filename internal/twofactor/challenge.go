@@ -59,10 +59,6 @@ func (s *challengeStore) MarkSuccess(ctx context.Context, cid string) error {
 	return ErrChallengeAlreadyVerified
 }
 
-func (s *challengeStore) SetVerifiedAt(ctx context.Context, cid string, verifiedAt time.Time) error {
-	return s.SetAttr(ctx, cid, "verified_at", verifiedAt)
-}
-
 func newChallengeStore(storage store.Storage) *challengeStore {
 	return &challengeStore{
 		Store: store.New[Challenge](storage, params.ChallengeKeyPrefix),

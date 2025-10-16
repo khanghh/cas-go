@@ -253,8 +253,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/2fa/verify-otp", "cid", ch.ID)
 	}
 
-	_, err = h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp)
-	if err != nil {
+	if err := h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp); err != nil {
 		return handleTwoFactorError(ctx, err)
 	}
 

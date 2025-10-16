@@ -117,54 +117,47 @@ func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 
 type verifyFunc func(userState *UserState) (bool, error)
 
-func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, sub Subject, doChallengerVerify verifyFunc) (string, error) {
+func (s *TwoFactorService) verifyChallenge(ctx context.Context, ch *Challenge, sub Subject, doChallengerVerify verifyFunc) error {
 	stateID := s.calculateHash(sub.UserID, sub.IPAddress)
 	userState, err := s.getUserState(ctx, stateID)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	userState.FailCount, err = s.userStateStore.IncreaseFailCount(ctx, stateID)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if userState.FailCount > params.TwoFactorMaxFailCount {
-		return "", ErrTooManyFailedAttempts
+		return ErrTooManyFailedAttempts
 	}
 
 	ch.Attempts, err = s.challengeStore.IncreaseAttempts(ctx, ch.ID)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if ch.Attempts > params.TwoFactorChallengeMaxAttempts {
-		return "", ErrChallengeAttemptsExceeded
+		return ErrChallengeAttemptsExceeded
 	}
 
 	success, err := doChallengerVerify(userState)
 	if err != nil {
-		return "", err
+		return err
 	}
 	if success {
-
 		if err := s.challengeStore.MarkSuccess(ctx, ch.ID); err != nil {
-			return "", err
-		}
-
-		verifiedAt := time.Now()
-		if err := s.challengeStore.SetVerifiedAt(ctx, ch.ID, verifiedAt); err != nil {
-			return "", err
+			return err
 		}
 		s.userStateStore.ResetFailCount(ctx, stateID)
 		s.userStateStore.DecreaseChallengeCount(ctx, stateID)
-		token := s.calculateHash(ch.ID, verifiedAt.UnixNano())
-		return token, nil
+		return nil
 	}
 
 	attemptsLeft := min(params.TwoFactorChallengeMaxAttempts-ch.Attempts, params.TwoFactorMaxFailCount-userState.FailCount)
 	if attemptsLeft == 0 {
-		return "", ErrTooManyFailedAttempts
+		return ErrTooManyFailedAttempts
 	}
-	return "", NewAttemptFailError(attemptsLeft)
+	return NewAttemptFailError(attemptsLeft)
 }
 
 func (s *TwoFactorService) FinalizeChallenge(ctx context.Context, cid string, sub Subject, callbackURL string) error {
