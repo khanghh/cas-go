@@ -10,11 +10,8 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
+	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
-)
-
-const (
-	passwordResetCID = "password_reset_cid"
 )
 
 type ResetPasswordHandler struct {
@@ -24,86 +21,90 @@ type ResetPasswordHandler struct {
 }
 
 type ResetPasswordClaims struct {
-	SessionID string `json:"sessionID"`
 	Email     string `json:"email"`
+	Timestamp int64  `json:"timestamp"`
 }
 
-func (h *ResetPasswordHandler) generateResetPasswordToken(ctx *fiber.Ctx, email string) (string, string, error) {
-	session := sessions.Get(ctx)
-	sub := getChallengeSubject(ctx, session)
-	ch, err := h.twoFactorService.CreateChallenge(ctx.Context(), sub, "", 5*time.Minute)
+func (h *ResetPasswordHandler) generateResetPasswordToken(ctx *fiber.Ctx, email string) (string, error) {
+	sub := twofactor.Subject{IPAddress: ctx.IP()}
+	claims := ResetPasswordClaims{Email: email, Timestamp: time.Now().Unix()}
+	token, _, err := h.twoFactorService.Token().Create(ctx.Context(), sub, "", claims, 5*time.Minute)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	claims := ResetPasswordClaims{
-		SessionID: sessions.Get(ctx).ID(),
-		Email:     email,
-	}
-	token, err := h.twoFactorService.Token().Generate(ctx.Context(), ch, sub, claims)
-	if err != nil {
-		return "", "", err
-	}
-	return ch.ID, token, nil
+	return token, nil
 }
 
-func (h *ResetPasswordHandler) verifyResetPasswordToken(ctx *fiber.Ctx, cid, token string) (*ResetPasswordClaims, error) {
-	ch, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
-	if err != nil {
-		return nil, err
-	}
-
+func (h *ResetPasswordHandler) verifyResetPasswordToken(ctx *fiber.Ctx, cid, token string) (ResetPasswordClaims, error) {
 	var claims ResetPasswordClaims
-	err = h.twoFactorService.Token().Verify(ctx.Context(), ch, token, &claims)
+	err := h.twoFactorService.Token().Verify(ctx.Context(), token, &claims)
 	if err != nil {
-		return nil, err
+		return claims, err
 	}
-	return &claims, nil
+	return claims, nil
 }
 
 func (h *ResetPasswordHandler) GetResetPassword(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
-	cid, ok := session.Get(passwordResetCID).(string)
-	if !ok {
-		return render.RenderNotFoundError(ctx)
+	if session.IsLoggedIn() {
+		return ctx.Redirect("/")
 	}
 
-	_, err := h.twoFactorService.GetChallenge(ctx.Context(), cid)
-	if err != nil {
-		return render.RenderNotFoundError(ctx)
+	token := ctx.Query("token")
+	state := ctx.Query("state")
+
+	if state != "" {
+		var claims ResetPasswordClaims
+		if err := decryptState(ctx, state, &claims); err != nil {
+			return render.RenderNotFoundError(ctx)
+		}
+		return render.RenderSetNewPassword(ctx, "")
 	}
 
-	csrfToken := csrf.Get(sessions.Get(ctx)).Token
-	return render.RenderSetNewPassword(ctx, csrfToken, "")
+	if token != "" {
+		claims, err := h.verifyResetPasswordToken(ctx, "", token)
+		if err != nil {
+			return render.RenderNotFoundError(ctx)
+		}
+		session.SetExpiry(15 * time.Minute)
+		return redirect(ctx, "/reset-password", "state", encryptState(ctx, claims))
+	}
+
+	return render.RenderNotFoundError(ctx)
 }
 
 func (h *ResetPasswordHandler) PostResetPassword(ctx *fiber.Ctx) error {
-	token := ctx.Query("token")
+	encryptedState := ctx.Query("state")
 	newPassword := ctx.FormValue("newPassword")
 
-	csrfToken := csrf.Get(sessions.Get(ctx)).Token
+	session := sessions.Get(ctx)
+	if session.IsLoggedIn() {
+		return ctx.Redirect("/")
+	}
+
+	if encryptedState == "" {
+		return render.RenderNotFoundError(ctx)
+	}
+
 	if !csrf.Verify(ctx) {
-		return render.RenderSetNewPassword(ctx, csrfToken, "")
+		return render.RenderNotFoundError(ctx)
+	}
+
+	var claims ResetPasswordClaims
+	if err := decryptState(ctx, encryptedState, &claims); err != nil {
+		return render.RenderNotFoundError(ctx)
 	}
 
 	if err := validatePassword(newPassword); err != nil {
-		return render.RenderSetNewPassword(ctx, csrfToken, err.Error())
+		return render.RenderSetNewPassword(ctx, err.Error())
 	}
 
-	cid, ok := sessions.Get(ctx).Get(passwordResetCID).(string)
-	if !ok {
-		return render.RenderNotFoundError(ctx)
-	}
-
-	claims, err := h.verifyResetPasswordToken(ctx, cid, token)
+	err := h.userService.ResetPassword(ctx.Context(), claims.Email, newPassword)
 	if err != nil {
-		return render.RenderNotFoundError(ctx)
+		return render.RenderInternalServerError(ctx)
 	}
 
-	err = h.userService.ResetPassword(ctx.Context(), claims.Email, newPassword)
-	if err != nil {
-		return render.RenderNotFoundError(ctx)
-	}
-
+	session.Destroy()
 	return render.RenderPasswordUpdated(ctx)
 }
 
@@ -129,7 +130,7 @@ func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	cid, token, err := h.generateResetPasswordToken(ctx, email)
+	token, err := h.generateResetPasswordToken(ctx, email)
 	if err != nil {
 		if errorMsg, ok := mapTwoFactorError(err); ok {
 			pageData.ErrorMsg = errorMsg
@@ -138,7 +139,6 @@ func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	sessions.Get(ctx).Set(passwordResetCID, cid)
 	resetPasswordLink := appendQuery(fmt.Sprintf("%s/reset-password", ctx.BaseURL()), "token", token)
 	err = mail.SendResetPasswordLink(h.mailSender, user.Email, resetPasswordLink)
 	if err != nil {

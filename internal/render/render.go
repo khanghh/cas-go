@@ -178,7 +178,7 @@ func RenderForgotPassword(ctx *fiber.Ctx, pageData ForgotPasswordPageData) error
 	})
 }
 
-func RenderSetNewPassword(ctx *fiber.Ctx, csrfToken string, errorMsg string) error {
+func RenderSetNewPassword(ctx *fiber.Ctx, errorMsg string) error {
 	return ctx.Render("set-new-password", fiber.Map{
 		"siteName":  globalVars["siteName"],
 		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
