@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/gob"
 	"encoding/hex"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -122,7 +121,6 @@ func Reset(ctx *fiber.Ctx, data SessionData) error {
 
 func New(store *session.Store) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
-		fmt.Println("path:", ctx.Path())
 		sess, err := store.Get(ctx)
 		if err != nil {
 			return err

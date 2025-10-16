@@ -254,31 +254,34 @@ func run(ctx *cli.Context) error {
 		Views:         htmlEngine,
 		ErrorHandler:  middlewares.ErrorHandler,
 	})
-	router.Use(sessions.New(sessionStore))
+
+	router.Use(recover.New())
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 	}))
-	router.Use(csrf.New())
-	router.Use(recover.New())
 	router.Static("/static", config.StaticDir)
-	router.Get("/", authHandler.GetHome)
-	router.Get("/authorize", authHandler.GetAuthorize)
-	router.Post("/authorize", authHandler.PostAuthorize)
 	router.Get("/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/p3/serviceValidate", authHandler.GetServiceValidate)
+
+	router.Use(sessions.New(sessionStore))
+	router.Get("/", authHandler.GetHome)
+	router.Post("/logout", loginHandler.PostLogout)
+	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
+	router.Get("/register/verify", registerHandler.GetRegisterVerify)
+
+	router.Use(csrf.New(csrf.Config{}))
+	router.Get("/authorize", authHandler.GetAuthorize)
+	router.Post("/authorize", authHandler.PostAuthorize)
 	router.Get("/login", loginHandler.GetLogin)
 	router.Post("/login", loginHandler.PostLogin)
-	router.Post("/logout", loginHandler.PostLogout)
 	router.Get("/register", registerHandler.GetRegister)
 	router.Post("/register", registerHandler.PostRegister)
 	router.Get("/register/oauth", registerHandler.GetRegisterWithOAuth)
 	router.Post("/register/oauth", registerHandler.PostRegisterWithOAuth)
-	router.Get("/register/verify", registerHandler.GetRegisterVerify)
 	router.Get("/reset-password", resetPasswordHandler.GetResetPassword)
 	router.Post("/reset-password", resetPasswordHandler.PostResetPassword)
 	router.Get("/forgot-password", resetPasswordHandler.GetForogtPassword)
 	router.Post("/forgot-password", resetPasswordHandler.PostForgotPassword)
-	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
 	router.Get("/2fa/challenge", twofactorHandler.GetChallenge)
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)
 	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
