@@ -2,7 +2,10 @@ package twofactor
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -10,42 +13,49 @@ type TokenChallenger struct {
 	svc *TwoFactorService
 }
 
-func (s *TokenChallenger) Create(ctx context.Context, sub Subject, redirecrURL string, expiresIn time.Duration, data interface{}) (string, *Challenge, error) {
-	ch, err := s.svc.CreateChallenge(ctx, sub, redirecrURL, expiresIn)
+func (s *TokenChallenger) generateToken() string {
+	tokenLength := 32
+	data := make([]byte, tokenLength)
+	_, err := rand.Read(data)
+	if err != nil {
+		panic(err)
+	}
+	return base64.RawURLEncoding.EncodeToString(data)[:tokenLength]
+}
+
+func (s *TokenChallenger) Create(ctx context.Context, sub Subject, callbackURL string, data interface{}, expiresIn time.Duration) (string, *Challenge, error) {
+	blob, err := json.Marshal(data)
 	if err != nil {
 		return "", nil, err
 	}
-	token, err := s.Generate(ctx, ch, sub, data)
+	ch, err := s.svc.prepareChallenge(ctx, sub, callbackURL)
 	if err != nil {
-		s.svc.challengeStore.Delete(ctx, ch.ID)
+		return "", nil, err
+	}
+	currentTime := time.Now()
+	token := s.generateToken()
+	ch.ID = s.svc.calculateHash(token)
+	ch.Type = ChallengeTypeToken
+	ch.Secret = string(blob)
+	ch.UpdateAt = currentTime
+	ch.ExpiresAt = currentTime.Add(expiresIn)
+	if err := s.svc.challengeStore.Set(ctx, ch.ID, *ch, expiresIn); err != nil {
 		return "", nil, err
 	}
 	return token, ch, nil
 }
 
 func (s *TokenChallenger) Generate(ctx context.Context, ch *Challenge, sub Subject, data interface{}) (string, error) {
-	blob, err := json.Marshal(data)
-	if err != nil {
-		return "", err
-	}
-	ch.Type = ChallengeTypeToken
-	ch.Secret = string(blob)
-	ch.UpdateAt = time.Now()
-	if err := s.svc.challengeStore.Save(ctx, ch.ID, *ch); err != nil {
-		return "", err
-	}
-	return s.svc.calculateHash(blob, ch.UpdateAt.UnixNano()), nil
+	return "", fmt.Errorf("not supported")
 }
 
-func (s *TokenChallenger) Verify(ctx context.Context, ch *Challenge, token string, data interface{}) error {
-	if ch.Type != ChallengeTypeToken {
+func (s *TokenChallenger) Verify(ctx context.Context, token string, data interface{}) error {
+	ch, err := s.svc.challengeStore.Get(ctx, s.svc.calculateHash(token))
+	if err != nil {
 		return ErrTokenInvalid
 	}
-	if token == s.svc.calculateHash([]byte(ch.Secret), ch.UpdateAt.UnixNano()) {
-		if err := s.svc.challengeStore.Delete(ctx, ch.ID); err != nil {
-			return ErrTokenExpired
-		}
-		return json.Unmarshal([]byte(ch.Secret), data)
+	if err := s.svc.challengeStore.Delete(ctx, ch.ID); err != nil {
+		return ErrTokenExpired
 	}
-	return ErrTokenInvalid
+	return json.Unmarshal([]byte(ch.Secret), data)
 }

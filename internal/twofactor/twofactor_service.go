@@ -63,12 +63,11 @@ func (s *TwoFactorService) getUserState(ctx context.Context, stateID string) (*U
 	return userState, err
 }
 
-func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject, callbackURL string, expiresIn time.Duration) (*Challenge, error) {
+func (s *TwoFactorService) prepareChallenge(ctx context.Context, subject Subject, callbackURL string) (*Challenge, error) {
 	ch := Challenge{
 		ID:          uuid.NewString(),
 		Subject:     s.subjectHash(subject),
 		CallbackURL: callbackURL,
-		ExpiresAt:   time.Now().Add(expiresIn),
 	}
 
 	stateID := s.calculateHash(subject.UserID, subject.IPAddress)
@@ -87,11 +86,16 @@ func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject,
 		return nil, ErrTooManyFailedAttempts
 	}
 	s.userStateStore.ResetChallengeCountAt(ctx, stateID, time.Now().Add(params.TwoFactorChallengeCooldown))
+	return &ch, err
+}
 
-	if err := s.challengeStore.Set(ctx, ch.ID, ch, expiresIn); err != nil {
+func (s *TwoFactorService) CreateChallenge(ctx context.Context, subject Subject, callbackURL string, expiresIn time.Duration) (*Challenge, error) {
+	ch, err := s.prepareChallenge(ctx, subject, callbackURL)
+	if err != nil {
 		return nil, err
 	}
-	return &ch, nil
+	ch.ExpiresAt = time.Now().Add(expiresIn)
+	return ch, s.challengeStore.Set(ctx, ch.ID, *ch, expiresIn)
 }
 
 func (s *TwoFactorService) GetChallenge(ctx context.Context, cid string) (*Challenge, error) {
@@ -103,6 +107,9 @@ func (s *TwoFactorService) GetChallenge(ctx context.Context, cid string) (*Chall
 }
 
 func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge, sub Subject) error {
+	if ch.Success != 0 {
+		return ErrChallengeAlreadyVerified
+	}
 	if ch.IsExpired() {
 		return ErrChallengeExpired
 	}
