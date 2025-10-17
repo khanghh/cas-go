@@ -248,7 +248,7 @@ func (s *UserService) GetOrCreateUserOAuth(ctx context.Context, userOAuth *model
 	return s.userOAuthRepo.CreateIfNotExists(ctx, userOAuth)
 }
 
-func (s *UserService) ResetPassword(ctx context.Context, email string, newPassword string) error {
+func (s *UserService) UpdatePassword(ctx context.Context, email string, newPassword string) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err

@@ -37,7 +37,11 @@ func RenderBadRequestError(ctx *fiber.Ctx) error {
 }
 
 func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
-	return ctx.Render("login", fiber.Map{
+	statusCode := fiber.StatusOK
+	if data.ErrorMsg != "" {
+		statusCode = fiber.StatusUnauthorized
+	}
+	return ctx.Status(statusCode).Render("login", fiber.Map{
 		"siteName":          globalVars["siteName"],
 		"csrfToken":         csrf.Get(sessions.Get(ctx)).Token,
 		"identifier":        data.Identifier,
@@ -189,5 +193,13 @@ func RenderSetNewPassword(ctx *fiber.Ctx, errorMsg string) error {
 func RenderPasswordUpdated(ctx *fiber.Ctx) error {
 	return ctx.Render("password-updated", fiber.Map{
 		"siteName": globalVars["siteName"],
+	})
+}
+
+func RenderChangePassword(ctx *fiber.Ctx, errorMsg string) error {
+	return ctx.Render("change-password", fiber.Map{
+		"siteName":  globalVars["siteName"],
+		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
+		"errorMsg":  errorMsg,
 	})
 }

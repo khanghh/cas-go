@@ -236,12 +236,13 @@ func run(ctx *cli.Context) error {
 
 	// handlers
 	var (
-		authHandler          = handlers.NewAuthHandler(authorizeService, userService, twoFactorService)
-		loginHandler         = handlers.NewLoginHandler(userService, twoFactorService, oauthProviders)
-		registerHandler      = handlers.NewRegisterHandler(userService, mailSender)
-		oauthHandler         = handlers.NewOAuthHandler(userService, oauthProviders)
-		twofactorHandler     = handlers.NewTwoFactorHandler(twoFactorService, userService, mailSender)
-		resetPasswordHandler = handlers.NewResetPasswordHandler(userService, twoFactorService, mailSender)
+		authHandler            = handlers.NewAuthHandler(authorizeService, userService, twoFactorService)
+		loginHandler           = handlers.NewLoginHandler(userService, twoFactorService, oauthProviders)
+		registerHandler        = handlers.NewRegisterHandler(userService, mailSender)
+		oauthHandler           = handlers.NewOAuthHandler(userService, oauthProviders)
+		twofactorHandler       = handlers.NewTwoFactorHandler(twoFactorService, userService, mailSender)
+		resetPasswordHandler   = handlers.NewResetPasswordHandler(userService, twoFactorService, mailSender)
+		accountSettingsHandler = handlers.NewAccountSettingsHandler(userService, twoFactorService, mailSender)
 	)
 
 	router := fiber.New(fiber.Config{
@@ -286,6 +287,9 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)
 	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
+	router.Get("/account/change-password", accountSettingsHandler.GetChangePassword)
+	router.Post("/account/change-password", accountSettingsHandler.PostChangePassword)
+
 	return router.Listen(config.ListenAddr)
 }
 

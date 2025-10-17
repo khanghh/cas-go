@@ -99,7 +99,7 @@ func (h *ResetPasswordHandler) PostResetPassword(ctx *fiber.Ctx) error {
 		return render.RenderSetNewPassword(ctx, err.Error())
 	}
 
-	err := h.userService.ResetPassword(ctx.Context(), claims.Email, newPassword)
+	err := h.userService.UpdatePassword(ctx.Context(), claims.Email, newPassword)
 	if err != nil {
 		return render.RenderInternalServerError(ctx)
 	}

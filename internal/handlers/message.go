@@ -15,6 +15,7 @@ const (
 	MsgTooManyFailedAttempts    = "Too many failed attempts. Please try again later."
 	MsgLoginSessionExpired      = "Session expired. Please log in again."
 	MsgLoginWrongCredentials    = "Invalid username or password."
+	ErrIncorrectPassword        = "Your current password is incorrect."
 	MsgLoginEmailConflict       = "Email already linked to another account."
 	MsgLoginUnsupportedOAuth    = "This OAuth provider is not supported."
 	MsgTwoFactorChallengeFailed = "Two-factor authentication failed."
