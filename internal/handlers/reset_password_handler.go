@@ -113,6 +113,7 @@ func (h *ResetPasswordHandler) GetForogtPassword(ctx *fiber.Ctx) error {
 }
 
 func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
+	username := ctx.FormValue("username")
 	email := ctx.FormValue("email")
 
 	pageData := render.ForgotPasswordPageData{}
@@ -128,6 +129,11 @@ func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
 	}
 	if err != nil {
 		return err
+	}
+
+	if user.Username != username {
+		pageData.ErrorMsg = MsgUserNotFound
+		return render.RenderForgotPassword(ctx, pageData)
 	}
 
 	token, err := h.generateResetPasswordToken(ctx, email)
