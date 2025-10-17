@@ -8,6 +8,14 @@ import (
 	"gorm.io/gen"
 )
 
+type PendingUserRepository interface {
+	WithTx(tx *query.Query) PendingUserRepository
+	First(ctx context.Context, conds ...gen.Condition) (*model.PendingUser, error)
+	Create(ctx context.Context, user *model.PendingUser) error
+	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
+	Delete(ctx context.Context, conds ...gen.Condition) (gen.ResultInfo, error)
+}
+
 type pendingUserRepository struct {
 	query *query.Query
 }

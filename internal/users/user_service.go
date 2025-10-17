@@ -15,32 +15,8 @@ import (
 	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gen"
 	"gorm.io/gorm"
 )
-
-type UserRepository interface {
-	WithTx(tx *query.Query) UserRepository
-	First(ctx context.Context, conds ...gen.Condition) (*model.User, error)
-	Create(ctx context.Context, user *model.User) error
-	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
-}
-
-type UserOAuthRepository interface {
-	WithTx(tx *query.Query) UserOAuthRepository
-	First(ctx context.Context, conds ...gen.Condition) (*model.UserOAuth, error)
-	Upsert(ctx context.Context, userOAuth *model.UserOAuth) error
-	Find(ctx context.Context, conds ...gen.Condition) ([]*model.UserOAuth, error)
-	CreateIfNotExists(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
-}
-
-type PendingUserRepository interface {
-	WithTx(tx *query.Query) PendingUserRepository
-	First(ctx context.Context, conds ...gen.Condition) (*model.PendingUser, error)
-	Create(ctx context.Context, user *model.PendingUser) error
-	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
-	Delete(ctx context.Context, conds ...gen.Condition) (gen.ResultInfo, error)
-}
 
 type CreateUserOptions struct {
 	Username  string

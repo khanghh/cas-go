@@ -8,6 +8,13 @@ import (
 	"gorm.io/gen"
 )
 
+type UserRepository interface {
+	WithTx(tx *query.Query) UserRepository
+	First(ctx context.Context, conds ...gen.Condition) (*model.User, error)
+	Create(ctx context.Context, user *model.User) error
+	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
+}
+
 type userRepository struct {
 	query *query.Query
 }

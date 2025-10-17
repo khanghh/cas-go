@@ -10,6 +10,14 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type UserOAuthRepository interface {
+	WithTx(tx *query.Query) UserOAuthRepository
+	First(ctx context.Context, conds ...gen.Condition) (*model.UserOAuth, error)
+	Upsert(ctx context.Context, userOAuth *model.UserOAuth) error
+	Find(ctx context.Context, conds ...gen.Condition) ([]*model.UserOAuth, error)
+	CreateIfNotExists(ctx context.Context, userOAuth *model.UserOAuth) (*model.UserOAuth, error)
+}
+
 type userOAuthRepository struct {
 	query *query.Query
 }
