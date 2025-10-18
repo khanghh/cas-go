@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
+	"github.com/khanghh/cas-go/internal/middlewares/captcha"
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
@@ -84,6 +85,12 @@ func (h *RegisterHandler) PostRegister(ctx *fiber.Ctx) error {
 		Username: username,
 		Email:    email,
 	}
+
+	if err := captcha.Verify(ctx); err != nil {
+		pageData.ErrorMsg = MsgInvalidCaptcha
+		return render.RenderRegister(ctx, pageData)
+	}
+
 	if !csrf.Verify(ctx) {
 		pageData.ErrorMsg = MsgInvalidRequest
 		return render.RenderRegister(ctx, pageData)
@@ -161,10 +168,17 @@ func (h *RegisterHandler) PostRegisterWithOAuth(ctx *fiber.Ctx) error {
 		Picture:       userOAuth.Picture,
 		OAuthProvider: userOAuth.Provider,
 	}
+
+	if err := captcha.Verify(ctx); err != nil {
+		pageData.ErrorMsg = MsgInvalidCaptcha
+		return render.RenderOAuthRegister(ctx, pageData)
+	}
+
 	if !csrf.Verify(ctx) {
 		pageData.ErrorMsg = MsgInvalidRequest
 		return render.RenderOAuthRegister(ctx, pageData)
 	}
+
 	pageData.FormErrors = validateRegisterForm(username, password, userOAuth.Email)
 	if len(pageData.FormErrors) > 0 {
 		return render.RenderOAuthRegister(ctx, pageData)

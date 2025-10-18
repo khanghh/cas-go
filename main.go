@@ -25,6 +25,7 @@ import (
 	"github.com/khanghh/cas-go/internal/handlers"
 	"github.com/khanghh/cas-go/internal/mail"
 	"github.com/khanghh/cas-go/internal/middlewares"
+	"github.com/khanghh/cas-go/internal/middlewares/captcha"
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
@@ -181,6 +182,13 @@ func mustInitMailSender(config config.MailConfig) mail.MailSender {
 	return nil
 }
 
+func mustInitCaptchaVerifier(config config.CaptchaConfig) captcha.CaptchaVerifier {
+	if config.Provider == "turnstile" {
+		return captcha.NewTurnstileVerifier(config.Turnstile.SecretKey)
+	}
+	return captcha.NewNullVerifier()
+}
+
 func run(ctx *cli.Context) error {
 	config, err := config.LoadConfig(ctx.String(configFileFlag.Name))
 	if err != nil {
@@ -194,10 +202,16 @@ func run(ctx *cli.Context) error {
 		"siteName": config.SiteName,
 		"baseURL":  config.BaseURL,
 	}
+	if config.Captcha.Provider == "turnstile" {
+		globalVars["turnstileSiteKey"] = config.Captcha.Turnstile.SiteKey
+		globalVars["turnstileSecretKey"] = config.Captcha.Turnstile.SecretKey
+	}
+
 	htmlEngine := mustInitHtmlEngine(config.TemplateDir)
 	mail.Initialize(htmlEngine, globalVars)
 	mailSender := mustInitMailSender(config.Mail)
 	query.SetDefault(mustInitDatabase(config.MySQL))
+	captcha.InitVerifier(mustInitCaptchaVerifier(config.Captcha))
 
 	// initialize storage
 	redisStorage := redis.New(redis.Config{URL: config.RedisURL})

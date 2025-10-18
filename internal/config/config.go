@@ -57,6 +57,16 @@ type MailConfig struct {
 	SMTP    SMTPConfig `mapstructure:"smtp"`
 }
 
+type TurnstileConfig struct {
+	SiteKey   string `mapstructure:"siteKey"`
+	SecretKey string `mapstructure:"secretKey"`
+}
+
+type CaptchaConfig struct {
+	Provider  string          `mapstructure:"provider"`
+	Turnstile TurnstileConfig `mapstructure:"turnstile,omitempty"`
+}
+
 type Config struct {
 	Debug         bool          `mapstructure:"debug"`
 	SiteName      string        `mapstructure:"siteName"`
@@ -74,6 +84,7 @@ type Config struct {
 		OAuth map[string]OAuthProviderConfig `mapstructure:"oauth"`
 		Ldap  LdapConfig                     `mapstructure:"ldap"`
 	} `mapstructure:"authProviders"`
+	Captcha CaptchaConfig `mapstructure:"captcha"`
 }
 
 func (c *Config) Sanitize() error {

@@ -7,39 +7,36 @@ It provides a secure, scalable, and easy-to-deploy authentication service for ma
 
 ## 🚀 Features
 
-- ✅ **Centralized Authentication** — single sign-on (SSO) for multiple services  
-- ✅ **User Registration** — built-in account registration flow  
-- ✅ **OAuth Login** — supports login via third-party providers (e.g., Google, Facebook, Discord etc.)  
-- ✅ **Two-Factor Authentication (2FA)** — supports email-based OTP and token-based verification  
-- ✅ **Service Registry** — secure way to register and manage services
-- ✅ **Session Management** — cookie-based session handling  
+✅ **Centralized Authentication** — single sign-on (SSO) for multiple services  
+✅ **User Registration** — built-in account registration flow  
+✅ **OAuth Login** — supports login via third-party providers (e.g., Google, Facebook, Discord etc.)  
+✅ **Two-Factor Authentication (2FA)** — supports email OTP, time-based OTP and token verification
+✅ **Service Registry** — secure way to register and manage services
+✅ **Session Management** — cookie-based session handling  
+✅ **Customizable Templates** — fully customizable HTML pages and email templates
 
 ---
 
 
 ## 🧩 Getting Started
 
-### 1. Clone the repository
+### 1. Clone and build the repository
 ```bash
 git clone https://github.com/khanghh/cas-go.git
 cd cas-go
+make cas-server
 ```
+
 ### 2. Copy and edit the configuration
+Edit config.yaml to match your environment (database, Redis, ports, etc).
 ```bash
 cp config.example.yaml config.yaml
 ```
-
-Then edit config.yaml to match your environment (database, Redis, ports, etc).
-
-### 3. Setup dependencies and build
-Make sure you have Go, MySQL, and Redis installed.
-
-Install Go dependencies:
+### 3. Setup environment and run
+Make sure you stack have MySQL and Redis running then start the server.
 ```bash
-go mod tidy
-make
+./build/bin/cas-server --config ./config.yaml
 ```
-
 ## ⚙️ Configuration
 Edit the config.yaml file to define:
 
@@ -89,31 +86,27 @@ mail:
     keyFile: "./keypem"
     caFile: "./ca.pem"
 
+captcha:
+  provider: turnstile
+  turnstile:
+    siteKey: "YOUR_TURNSTILE_SITE_KEY"
+    secretKey: "YOUR_TURNSTILE_SECRET_KEY"
 ```
 
 ## 🖥️ Screenshots
-### Login
 <p float="left">
   <img src="https://github.com/khanghh/cas-go/blob/screenshots/login.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/home.png?raw=true" width="45%"> 
-</p>
-
-### Two Factor Authentication
-<p float="left">
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/select-2fa.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/otp-challenge.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/otp-email.png?raw=true" width="45%"> 
-</p>
-
-### Regsiter
-<p float="left">
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/register.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/verify-email.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/profile.png?raw=true" width="45%"> 
 </p>
 
 <p float="left">
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/registration-email.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/verify-email-success.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/2fa_challenge.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/verify_otp.png?raw=true" width="45%"> 
+</p>
+
+<p float="left">
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/totp_enrollment.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/totp_enrollment2.png?raw=true" width="45%"> 
 </p>
 
 ---

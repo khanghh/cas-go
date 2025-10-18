@@ -42,3 +42,9 @@ mail:
     certFile: "./cert.pem"
     keyFile: "./keypem"
     caFile: "./ca.pem"
+
+captcha:
+  provider: turnstile
+  turnstile:
+    siteKey: "YOUR_TURNSTILE_SITE_KEY"
+    secretKey: "YOUR_TURNSTILE_SECRET_KEY"

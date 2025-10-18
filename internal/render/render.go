@@ -38,6 +38,7 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 	return ctx.Status(statusCode).Render("login", fiber.Map{
 		"siteName":          ctx.Locals("siteName"),
 		"csrfToken":         csrf.Get(sessions.Get(ctx)).Token,
+		"turnstileSiteKey":  ctx.Locals("turnstileSiteKey"),
 		"identifier":        data.Identifier,
 		"googleOAuthURL":    data.OAuthLoginURLs["google"],
 		"facebookOAuthURL":  data.OAuthLoginURLs["facebook"],
@@ -50,30 +51,32 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 
 func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("register", fiber.Map{
-		"siteName":      ctx.Locals("siteName"),
-		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
-		"username":      data.Username,
-		"email":         data.Email,
-		"usernameError": data.FormErrors["username"],
-		"passwordError": data.FormErrors["password"],
-		"emailError":    data.FormErrors["email"],
-		"errorMsg":      data.ErrorMsg,
+		"siteName":         ctx.Locals("siteName"),
+		"csrfToken":        csrf.Get(sessions.Get(ctx)).Token,
+		"turnstileSiteKey": ctx.Locals("turnstileSiteKey"),
+		"username":         data.Username,
+		"email":            data.Email,
+		"usernameError":    data.FormErrors["username"],
+		"passwordError":    data.FormErrors["password"],
+		"emailError":       data.FormErrors["email"],
+		"errorMsg":         data.ErrorMsg,
 	})
 }
 
 func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("oauth-register", fiber.Map{
-		"siteName":      ctx.Locals("siteName"),
-		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
-		"username":      data.Username,
-		"fullName":      data.FullName,
-		"email":         data.Email,
-		"picture":       data.Picture,
-		"oauthProvider": data.OAuthProvider,
-		"usernameError": data.FormErrors["username"],
-		"passwordError": data.FormErrors["password"],
-		"emailError":    data.FormErrors["email"],
-		"errorMsg":      data.ErrorMsg,
+		"siteName":         ctx.Locals("siteName"),
+		"csrfToken":        csrf.Get(sessions.Get(ctx)).Token,
+		"turnstileSiteKey": ctx.Locals("turnstileSiteKey"),
+		"username":         data.Username,
+		"fullName":         data.FullName,
+		"email":            data.Email,
+		"picture":          data.Picture,
+		"oauthProvider":    data.OAuthProvider,
+		"usernameError":    data.FormErrors["username"],
+		"passwordError":    data.FormErrors["password"],
+		"emailError":       data.FormErrors["email"],
+		"errorMsg":         data.ErrorMsg,
 	})
 }
 
@@ -169,19 +172,21 @@ func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData)
 
 func RenderForgotPassword(ctx *fiber.Ctx, pageData ForgotPasswordPageData) error {
 	return ctx.Render("forgot-password", fiber.Map{
-		"siteName":  ctx.Locals("siteName"),
-		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
-		"email":     pageData.Email,
-		"emailSent": pageData.EmailSent,
-		"errorMsg":  pageData.ErrorMsg,
+		"siteName":         ctx.Locals("siteName"),
+		"csrfToken":        csrf.Get(sessions.Get(ctx)).Token,
+		"turnstileSiteKey": ctx.Locals("turnstileSiteKey"),
+		"email":            pageData.Email,
+		"emailSent":        pageData.EmailSent,
+		"errorMsg":         pageData.ErrorMsg,
 	})
 }
 
 func RenderSetNewPassword(ctx *fiber.Ctx, errorMsg string) error {
 	return ctx.Render("set-new-password", fiber.Map{
-		"siteName":  ctx.Locals("siteName"),
-		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
-		"errorMsg":  errorMsg,
+		"siteName":         ctx.Locals("siteName"),
+		"csrfToken":        csrf.Get(sessions.Get(ctx)).Token,
+		"turnstileSiteKey": ctx.Locals("turnstileSiteKey"),
+		"errorMsg":         errorMsg,
 	})
 }
 
@@ -193,9 +198,10 @@ func RenderPasswordUpdated(ctx *fiber.Ctx) error {
 
 func RenderChangePassword(ctx *fiber.Ctx, errorMsg string) error {
 	return ctx.Render("change-password", fiber.Map{
-		"siteName":  ctx.Locals("siteName"),
-		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
-		"errorMsg":  errorMsg,
+		"siteName":         ctx.Locals("siteName"),
+		"csrfToken":        csrf.Get(sessions.Get(ctx)).Token,
+		"turnstileSiteKey": ctx.Locals("turnstileSiteKey"),
+		"errorMsg":         errorMsg,
 	})
 }
 
