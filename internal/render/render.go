@@ -203,3 +203,19 @@ func RenderChangePassword(ctx *fiber.Ctx, errorMsg string) error {
 		"errorMsg":  errorMsg,
 	})
 }
+
+func RenderTOTPEnrollment(ctx *fiber.Ctx, data TOTPEnrollmentPageData) error {
+	return ctx.Render("totp-enrollment", fiber.Map{
+		"siteName":      globalVars["siteName"],
+		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
+		"secretKey":     data.SecretKey,
+		"enrollmentURL": data.EnrollmentURL,
+		"errorMsg":      data.ErrorMsg,
+	})
+}
+
+func RenderTOTPEnrollSuccess(ctx *fiber.Ctx) error {
+	return ctx.Render("totp-enroll-success", fiber.Map{
+		"siteName": globalVars["siteName"],
+	})
+}

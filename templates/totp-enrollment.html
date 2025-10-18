@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Enable Two-Factor Authentication - {{.siteName}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    .avatar {
+      transition: all 0.3s ease;
+    }
+
+    .avatar:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-input:focus {
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .step-container {
+      transition: all 0.3s ease;
+    }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+
+    .step-active .step-number {
+      background-color: #3b82f6;
+      color: white;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+
+    .step-completed .step-number {
+      background-color: #10b981;
+      color: white;
+    }
+
+    .step-inactive .step-number {
+      background-color: #f3f4f6;
+      color: #9ca3af;
+      border: 1px solid #e5e7eb;
+    }
+
+    .qr-code {
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      padding: 10px;
+      background-color: white;
+    }
+
+    .secret-key {
+      font-family: monospace;
+      background-color: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 8px 12px;
+      letter-spacing: 1px;
+    }
+
+    .copy-btn {
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background-color: #f3f4f6;
+    }
+
+    .copy-btn.copied {
+      color: #10b981;
+    }
+
+    .app-icons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .app-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s ease;
+    }
+
+    .verification-code-input {
+      letter-spacing: 8px;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      text-indent: 0.4em;
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    .step-indicator::before {
+      content: '';
+      position: absolute;
+      top: 18px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: #e5e7eb;
+      z-index: 0;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+      background-color: white;
+      padding: 0 10px;
+    }
+
+    .step-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #6b7280;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .step-active .step-label {
+      color: #3b82f6;
+      font-weight: 600;
+    }
+
+    .step-completed .step-label {
+      color: #10b981;
+    }
+
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 antialiased">
+  <main class="w-full max-w-xl bg-white shadow-lg rounded-2xl overflow-hidden">
+    <div class="px-6 sm:px-10 py-10">
+
+      <div id="enrollmentFlow">
+        <div class="text-center mb-8">
+          <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-blue-100 flex items-center justify-center rounded-full mb-4">
+            <i class="fa-solid fa-shield-alt text-blue-500 text-5xl sm:text-6xl" aria-hidden="true"></i>
+          </div>
+          <h1 class="text-3xl font-bold text-gray-800 mb-4">Setup Authenticator App</h1>
+          <p class="text-gray-600 mt-2 mb-6">
+            Add an extra layer of security to your account by enabling two-factor authentication.
+          </p>
+        </div>
+
+        <div class="step-indicator">
+          <div class="step-item step-active">
+            <div class="step-number">1</div>
+            <span class="step-label">Setup App</span>
+          </div>
+          <div class="step-item step-inactive">
+            <div class="step-number">2</div>
+            <span class="step-label">Scan Code</span>
+          </div>
+          <div class="step-item step-inactive">
+            <div class="step-number">3</div>
+            <span class="step-label">Verify</span>
+          </div>
+        </div>
+
+        {{if .errorMsg}}
+        <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <i class="fas fa-exclamation-circle mr-2"></i>
+          {{.errorMsg}}
+        </div>
+        {{end}}
+
+        <!-- Step 1: App Setup -->
+        <div id="step1" class="step-container">
+          <div class="mb-8">
+            <p class="text-gray-600 text-center mb-6">
+              Install an authenticator app if you don’t already have one.
+            </p>
+            
+            <div class="bg-gray-50 p-6 rounded-lg mb-6">
+              <h4 class="font-medium text-gray-800 mb-4 text-center">Recommended Apps</h4>
+              <div class="app-icons">
+                <div class="app-icon text-blue-500">
+                  <img src="/static/google_authenticator.png" alt="Google Authenticator" class="w-12 h-12 object-contain" />
+                </div>
+                <div class="app-icon text-purple-600">
+                  <img src="/static/microsoft_authenticator.png" alt="Microsoft Authenticator" class="w-12 h-12 object-contain" />
+                </div>
+                <div class="app-icon text-red-500">
+                  <i class="fas fa-mobile-alt fa-2x"></i>
+                </div>
+              </div>
+              <p class="text-center text-gray-600 text-sm mt-4">
+                Google Authenticator, Microsoft Authenticator or any TOTP-compatible app
+              </p>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-lg">
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <i class="fa-solid fa-info-circle text-blue-500 mt-1"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-sm font-medium text-blue-800">How it works</h3>
+                  <div class="mt-2 text-sm text-blue-700">
+                    <p>After enrolling, you’ll be able to use your authenticator app to verify your identity during sign-in or sensitive actions.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button onclick="showStep(2)"
+              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center">
+              Get Started
+              <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Scan QR Code -->
+        <div id="step2" class="step-container hidden">
+          <div class="mb-8">
+            <p class="text-gray-600 text-center mb-6">
+              Open your authenticator app and scan this QR code to enroll your device.
+            </p>
+
+            <div class="flex justify-center mb-6">
+              <canvas id="qrcode"></canvas>
+            </div>
+            
+            <div class="mb-6">
+              <h4 class="font-medium text-gray-800 mb-2 text-center">Can't scan the code?</h4>
+              <p class="text-gray-600 text-sm mb-4 text-center">
+                Enter this secret key manually into your authenticator app:
+              </p>
+              <div class="flex items-center justify-center mb-4">
+                <div class="secret-key">{{ .secretKey }}</div>
+                <button id="copySecretBtn" class="copy-btn text-gray-500 hover:text-gray-700 p-2 rounded-lg">
+                  <i class="far fa-copy"></i>
+                </button>
+              </div>
+            </div>
+            
+          </div>
+
+          <div class="flex justify-between pt-2">
+            <button onclick="showStep(1)"
+              class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center">
+              <i class="fas fa-arrow-left mr-2"></i>
+              Back
+            </button>
+            <button onclick="showStep(3)"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center">
+              Next
+              <i class="fas fa-arrow-right ml-2"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Verification -->
+        <div id="step3" class="step-container hidden">
+          <div class="mb-8">
+            <p class="text-gray-600 text-center mb-6">
+              Enter the 6-digit verification code from your authenticator app to confirm setup.
+            </p>
+
+            <form id="verifyForm" method="POST" class="space-y-4">
+              <input type="hidden" name="_csrf" value="{{.csrfToken}}">
+              <input type="hidden" name="secret" value="{{.secretKey}}">
+              
+              <div>
+                <label for="verificationCode" class="block text-sm font-medium text-gray-700 mb-2 text-center">Verification Code</label>
+                <div class="flex justify-center">
+                  <input type="text" id="verificationCode" name="verificationCode" maxlength="6" required
+                    class="verification-code-input form-input w-48 text-center [text-indent:0.4em] py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition duration-200"
+                    placeholder="000000" autocomplete="one-time-code">
+                </div>
+                <p id="codeError" class="mt-2 text-sm text-red-600 text-center">{{.codeError}}</p>
+              </div>
+
+              <div class="bg-blue-50 p-4 rounded-lg mt-6">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <i class="fa-solid fa-lightbulb text-blue-500 mt-0.5"></i>
+                  </div>
+                  <div class="ml-3">
+                    <h3 class="text-sm font-medium text-blue-800">Don't see a code?</h3>
+                    <div class="mt-1 text-sm text-blue-700">
+                      <p>Make sure the time on your authenticator app is synchronized correctly. The code refreshes every 30 seconds.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div class="flex justify-between pt-2">
+            <button type="button" onclick="showStep(2)"
+              class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center">
+              <i class="fas fa-arrow-left mr-2"></i>
+              Back
+            </button>
+            <button type="submit" form="verifyForm"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200 flex items-center justify-center">
+              <i class="fas fa-check mr-2"></i>
+              Verify & Enable
+            </button>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+    <footer class="bg-gray-50 px-6 py-4 text-center border-t border-gray-100">
+      <p class="text-gray-500 text-xs sm:text-sm">
+        Need help? <a href="#" class="text-blue-600 hover:underline font-medium">Contact Support</a>
+      </p>
+    </footer>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const copySecretBtn = document.getElementById('copySecretBtn');
+      const verificationCodeInput = document.getElementById('verificationCode');
+      const verifyForm = document.getElementById('verifyForm');
+      const codeError = document.getElementById('codeError');
+
+      copySecretBtn.addEventListener('click', function () {
+        const secretKey = "JBSWY3DPEHPK3PXP";
+        navigator.clipboard.writeText(secretKey).then(() => {
+          const icon = this.querySelector('i');
+          icon.classList.remove('fa-copy');
+          icon.classList.add('fa-circle-check');
+          this.classList.add('copied');
+          
+          setTimeout(() => {
+            icon.classList.remove('fa-circle-check');
+            icon.classList.add('fa-copy');
+            this.classList.remove('copied');
+          }, 2000);
+        });
+      });
+
+      // Format verification code input
+      verificationCodeInput.addEventListener('input', function () {
+        this.value = this.value.replace(/\D/g, '');
+        if (this.value.length > 6) {
+          this.value = this.value.slice(0, 6);
+        }
+        codeError.classList.add('hidden');
+      });
+
+      // Form validation
+      verifyForm.addEventListener('submit', function (e) {
+        const code = verificationCodeInput.value;
+        
+        codeError.classList.add('hidden');
+        if (code.length !== 6) {
+          codeError.textContent = 'Please enter a 6-digit verification code.';
+          codeError.classList.remove('hidden');
+          e.preventDefault();
+          return;
+        }
+        
+        if (!/^\d+$/.test(code)) {
+          codeError.textContent = 'Verification code must contain only numbers.';
+          codeError.classList.remove('hidden');
+          e.preventDefault();
+          return;
+        }
+      });
+    });
+
+    function showStep(stepNumber) {
+      document.querySelectorAll('.step-container').forEach(step => {
+        step.classList.add('hidden');
+      });
+      document.getElementById(`step${stepNumber}`).classList.remove('hidden');
+      document.querySelectorAll('.step-item').forEach((item, index) => {
+        const stepIndex = index + 1;
+        item.classList.remove('step-active', 'step-completed', 'step-inactive');
+        if (stepIndex === stepNumber) {
+          item.classList.add('step-active');
+        } else if (stepIndex < stepNumber) {
+          item.classList.add('step-completed');
+        } else {
+          item.classList.add('step-inactive');
+        }
+      });
+      history.replaceState(null, null, `#step${stepNumber}`);
+    }
+
+    const enrollmentURL = "{{ .enrollmentURL }}";
+    QRCode.toCanvas(document.getElementById('qrcode'), enrollmentURL, { width: 250 });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      let initialStep = 1
+      const hash = window.location.hash;
+      if (hash) {
+        const stepMatch = hash.match(/^#step(\d+)$/);
+        if (stepMatch && stepMatch[1]) {
+          const stepNumber = parseInt(stepMatch[1], 10);
+          if (stepNumber >= 1 && stepNumber <= 3) {
+            initialStep = stepNumber;
+          }
+        }
+      }
+      showStep(initialStep);
+    });
+  </script>
+</body>
+
+</html>

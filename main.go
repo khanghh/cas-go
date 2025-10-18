@@ -211,6 +211,7 @@ func run(ctx *cli.Context) error {
 		userRepo        = users.NewUserRepository(query.Q)
 		pendingUserRepo = users.NewPendingUserRepository(query.Q)
 		userOAuthRepo   = users.NewUserOAuthRepository(query.Q)
+		userFactorRepo  = users.NewUserFactorRepository(query.Q)
 		serviceRepo     = auth.NewServiceRepository(query.Q)
 	)
 
@@ -218,7 +219,7 @@ func run(ctx *cli.Context) error {
 	var (
 		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserRepo)
 		authorizeService = auth.NewAuthorizeService(cacheStorage, serviceRepo)
-		twoFactorService = twofactor.NewTwoFactorService(cacheStorage, config.MasterKey)
+		twoFactorService = twofactor.NewTwoFactorService(cacheStorage, userFactorRepo, config.MasterKey)
 	)
 
 	// middlewares and dependencies
@@ -287,6 +288,8 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/challenge", twofactorHandler.PostChallenge)
 	router.Get("/2fa/otp/verify", twofactorHandler.GetVerifyOTP)
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
+	router.Get("/2fa/totp/enroll", twofactorHandler.GetTOTPEnroll)
+	router.Post("/2fa/totp/enroll", twofactorHandler.PostTOTPEnroll)
 	router.Get("/account/change-password", accountSettingsHandler.GetChangePassword)
 	router.Post("/account/change-password", accountSettingsHandler.PostChangePassword)
 

@@ -48,6 +48,12 @@ type ForgotPasswordPageData struct {
 	ErrorMsg  string
 }
 
+type TOTPEnrollmentPageData struct {
+	EnrollmentURL string
+	SecretKey     string
+	ErrorMsg      string
+}
+
 type HomePageData struct {
 	Username string
 	FullName string

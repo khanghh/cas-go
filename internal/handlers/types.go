@@ -27,6 +27,7 @@ type TwoFactorService interface {
 	ValidateChallenge(ctx context.Context, ch *twofactor.Challenge, sub twofactor.Subject) error
 	FinalizeChallenge(ctx context.Context, cid string, sub twofactor.Subject, callbackURL string) error
 	OTP() *twofactor.OTPChallenger
+	TOTP() *twofactor.TOTPChallenger
 	JWT() *twofactor.JWTChallenger
 	Token() *twofactor.TokenChallenger
 }

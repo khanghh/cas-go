@@ -25,7 +25,6 @@ func (s *TOTPChallenger) GenerateSecret() string {
 }
 
 func (s *TOTPChallenger) Enroll(ctx context.Context, userID uint, secret string, code string) error {
-	fmt.Println("secret", secret)
 	if !totp.Validate(code, secret) {
 		return ErrTOTPVerifyFailed
 	}

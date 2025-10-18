@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/base32"
 	"errors"
 	"fmt"
 	"time"
@@ -11,10 +12,15 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
+	"github.com/pquerna/otp/totp"
 )
 
 var (
 	ErrInvalidCSRFToken = errors.New("invalid CSRF token")
+)
+
+const (
+	totpEnrollSecretSessionKey = "_totp_enroll_secret"
 )
 
 type TwoFactorHandler struct {
@@ -258,6 +264,100 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	return h.handleChallengeSuccess(ctx, session, ch, subject)
+}
+
+func (h *TwoFactorHandler) generateTOTPEnrollmentURL(username string, secret string) (string, error) {
+	base32Secret, err := base32.StdEncoding.DecodeString(secret)
+	if err != nil {
+		return "", err
+	}
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "Example",
+		AccountName: username,
+		Period:      30,
+		Secret:      base32Secret,
+	})
+
+	if err != nil {
+		return "", err
+	}
+	return key.String(), nil
+}
+
+func (h *TwoFactorHandler) GetTOTPEnroll(ctx *fiber.Ctx) error {
+	renew := ctx.Query("renew")
+	session := sessions.Get(ctx)
+	if !session.IsAuthenticated() {
+		return forceLogout(ctx, "")
+	}
+
+	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return forceLogout(ctx, "")
+	}
+
+	secret, ok := session.Get(totpEnrollSecretSessionKey).(string)
+	if !ok || renew == "true" {
+		secret = h.twoFactorService.TOTP().GenerateSecret()
+		session.Set(totpEnrollSecretSessionKey, secret)
+	}
+	enrollmentURL, err := h.generateTOTPEnrollmentURL(user.Username, secret)
+	if err != nil {
+		return err
+	}
+
+	pageData := render.TOTPEnrollmentPageData{
+		SecretKey:     secret,
+		EnrollmentURL: enrollmentURL,
+	}
+	return render.RenderTOTPEnrollment(ctx, pageData)
+}
+
+func (h *TwoFactorHandler) PostTOTPEnroll(ctx *fiber.Ctx) error {
+	code := ctx.FormValue("verificationCode")
+
+	session := sessions.Get(ctx)
+	if !session.IsAuthenticated() {
+		return forceLogout(ctx, "")
+	}
+
+	if !csrf.Verify(ctx) {
+		return ctx.Redirect(ctx.OriginalURL(), fiber.StatusFound)
+	}
+
+	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return forceLogout(ctx, "")
+	}
+	if user.TwoFAEnabled {
+		return ctx.Redirect("/")
+	}
+
+	secret, ok := session.Get(totpEnrollSecretSessionKey).(string)
+	if !ok {
+		return ctx.Redirect(ctx.OriginalURL(), fiber.StatusFound)
+	}
+
+	err = h.twoFactorService.TOTP().Enroll(ctx.Context(), session.UserID, secret, code)
+	if err != nil {
+		if errors.Is(err, twofactor.ErrTOTPVerifyFailed) {
+			errMsg := MsgTOTPEnrollFailed
+			enrollmentURL, err := h.generateTOTPEnrollmentURL(user.Username, secret)
+			if err != nil {
+				return err
+			}
+			pageData := render.TOTPEnrollmentPageData{
+				SecretKey:     secret,
+				EnrollmentURL: enrollmentURL,
+				ErrorMsg:      errMsg,
+			}
+			return render.RenderTOTPEnrollment(ctx, pageData)
+		}
+		return err
+	}
+
+	session.Delete(totpEnrollSecretSessionKey)
+	return render.RenderTOTPEnrollSuccess(ctx)
 }
 
 func NewTwoFactorHandler(twoFactorService TwoFactorService, userService UserService, mailSender mail.MailSender) *TwoFactorHandler {
