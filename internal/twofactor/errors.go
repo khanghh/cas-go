@@ -13,6 +13,7 @@ var (
 	ErrChallengeAlreadyVerified     = errors.New("challenge already verified")
 	ErrChallengeNotVerified         = errors.New("challenge not verified")
 	ErrChallengeSubjectMismatch     = errors.New("challenge subject mismatch")
+	ErrChallengeTypeMismatch        = errors.New("challenge type mismatch")
 	ErrChallengeCallbackURLMismatch = errors.New("challenge callback url mismatch")
 	ErrInvalidFinalizeToken         = errors.New("invalid finalize token")
 	ErrTooManyFailedAttempts        = errors.New("too many failed attempts")

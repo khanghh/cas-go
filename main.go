@@ -296,6 +296,8 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
 	router.Get("/2fa/totp/enroll", twofactorHandler.GetTOTPEnroll)
 	router.Post("/2fa/totp/enroll", twofactorHandler.PostTOTPEnroll)
+	router.Get("/2fa/totp/verify", twofactorHandler.GetTOTVerify)
+	router.Post("/2fa/totp/verify", twofactorHandler.PostTOTPVerify)
 	router.Get("/2fa/settings", twofactorHandler.GetTwoFASettings)
 	router.Post("/2fa/settings", twofactorHandler.PostTwoFASettings)
 	router.Get("/account/change-password", accountSettingsHandler.GetChangePassword)

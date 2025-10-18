@@ -225,3 +225,11 @@ func Render2FASettings(ctx *fiber.Ctx, data TwoFASettingsPageData) error {
 		"errorMsg":     data.ErrorMsg,
 	})
 }
+
+func RenderVerifyTOTP(ctx *fiber.Ctx, errorMsg string) error {
+	return ctx.Render("verify-totp", fiber.Map{
+		"siteName":  ctx.Locals("siteName"),
+		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
+		"errorMsg":  errorMsg,
+	})
+}

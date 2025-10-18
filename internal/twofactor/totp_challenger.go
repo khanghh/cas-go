@@ -46,6 +46,9 @@ func (s *TOTPChallenger) Create(ctx context.Context, sub Subject, callbackURL st
 	ch.Type = ChallengeTypeTOTP
 	ch.UpdateAt = currentTime
 	ch.ExpiresAt = currentTime.Add(expiresIn)
+	if err := s.svc.challengeStore.Set(ctx, ch.ID, *ch, expiresIn); err != nil {
+		return nil, err
+	}
 	return ch, nil
 }
 
@@ -59,6 +62,13 @@ func (c *TOTPChallenger) Verify(ctx context.Context, ch *Challenge, sub Subject,
 		if err != nil {
 			return false, ErrTOTPNotEnrolled
 		}
-		return totp.Validate(code, totpFactor.Secret), nil
+		success := totp.Validate(code, totpFactor.Secret)
+		currentWindow := int(time.Now().Unix() / 30)
+		if success && currentWindow > userState.TOTPVerifiedWindow {
+			userState.TOTPVerifiedWindow = currentWindow
+			c.svc.userStateStore.SetTOTPVerifiedWindow(ctx, userState.ID, currentWindow)
+			return true, nil
+		}
+		return false, nil
 	})
 }

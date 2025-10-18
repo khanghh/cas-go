@@ -53,10 +53,7 @@ func (r *userFactorRepository) Delete(ctx context.Context, conds ...gen.Conditio
 
 func (r *userFactorRepository) Upsert(ctx context.Context, userFactor *model.UserFactor) error {
 	return r.query.UserFactor.WithContext(ctx).
-		Clauses(clause.OnConflict{
-			Columns:   []clause.Column{{Name: query.ColUserFactorUserID}, {Name: query.ColUserFactorType}},          // conflict target
-			DoUpdates: clause.AssignmentColumns([]string{query.ColUserFactorEnabled, query.ColUserFactorUpdatedAt}), // only these fields updated
-		}).
+		Clauses(clause.OnConflict{UpdateAll: true}).
 		Returning(&userFactor).
 		Create(userFactor)
 }

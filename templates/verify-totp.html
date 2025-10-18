@@ -18,7 +18,7 @@
           <i class="fas fa-shield-alt text-2xl"></i>
         </div>
         <h1 class="text-2xl font-bold text-gray-800">Enter Verification Code</h1>
-        <p class="text-gray-600 mt-2">We sent a code to <b>{{.emailOrPhone}}</b></p>
+        <p class="text-gray-600 mt-2">Enter the 6-digit code from your authenticator app </p>
       </div>
 
       <form method="POST" class="space-y-6" id="otpForm">
@@ -41,13 +41,20 @@
             class="otp-box w-12 h-12 border rounded-lg text-center text-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
         </div>
 
-        <div class="flex justify-between items-center text-sm">
-          <span class="text-gray-600">Didn’t get the code?</span>
-          <button id="resendBtn" type="submit" name="resend" value="true" disabled>
-            <span id="resendLink" class="text-blue-600 hover:text-blue-500 font-medium">Resend</span>
-            <span id="countdown" class="text-gray-600"> in 60s</span>
-          </button>
+        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-yellow-800">Trouble with your code?</h3>
+              <div class="mt-2 text-sm text-yellow-700">
+                <p>Make sure the time on your device is synchronized.</p>
+              </div>
+            </div>
+          </div>
         </div>
+
 
         {{if .errorMsg}}
         <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -62,7 +69,8 @@
         </button>
       </form>
     </div>
-     <footer class="bg-gray-50 px-6 py-4 text-center border-t border-gray-100">
+
+    <footer class="bg-gray-50 px-6 py-4 text-center border-t border-gray-100">
       <p class="text-gray-500 text-xs sm:text-sm">
         Need help? <a href="#" class="text-blue-600 hover:underline font-medium">Contact Support</a>
       </p>
@@ -108,34 +116,6 @@
         }
       });
     });
-
-    // Countdown + resend logic
-    let countdown;
-    const countdownEl = document.getElementById("countdown");
-    const resendLink = document.getElementById("resendLink");
-    const resendBtn = document.getElementById("resendBtn");
-
-    const startTimer = () => {
-      countdown = 60;
-      resendLink.classList.add("text-gray-400", "pointer-events-none");
-      resendLink.classList.remove("text-blue-600", "hover:text-blue-500");
-      countdownEl.textContent = `in ${countdown}s`;
-
-      const timer = setInterval(() => {
-        countdown--;
-        if (countdown > 0) {
-          countdownEl.textContent = `in ${countdown}s`;
-        } else {
-          clearInterval(timer);
-          countdownEl.textContent = "";
-          resendLink.classList.remove("text-gray-400", "pointer-events-none");
-          resendLink.classList.add("text-blue-600", "hover:text-blue-500");
-          resendBtn.disabled = false;
-        }
-      }, 1000);
-    };
-
-    startTimer();
 
     form.addEventListener("submit", (e) => {
       const otp = Array.from(inputs).map(i => i.value).join("");

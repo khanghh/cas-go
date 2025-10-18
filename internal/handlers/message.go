@@ -23,6 +23,7 @@ const (
 	MsgTooManyFailedLogin       = "Too many failed login attempts. Please try again later."
 	MsgUserNotFound             = "No account found with that username and email address."
 	MsgTOTPEnrollFailed         = "Verification failed. Please try again."
+	MsgInvalid2FAMethod         = "The selected 2FA method is invalid or not supported."
 )
 
 func formatDuration(d time.Duration) string {

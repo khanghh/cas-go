@@ -57,7 +57,7 @@ func (s *TwoFactorService) calculateHash(inputs ...interface{}) string {
 func (s *TwoFactorService) getUserState(ctx context.Context, stateID string) (*UserState, error) {
 	userState, err := s.userStateStore.Get(ctx, stateID)
 	if errors.Is(err, store.ErrNotFound) {
-		userState = &UserState{}
+		userState = &UserState{ID: stateID}
 		err = s.userStateStore.Set(ctx, stateID, *userState, params.TwoFactorStateMaxAge)
 	}
 	if err != nil {
