@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/khanghh/cas-go/internal/mail"
+	"github.com/khanghh/cas-go/internal/middlewares/captcha"
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
@@ -86,13 +87,17 @@ func (h *ResetPasswordHandler) PostResetPassword(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 
-	if !csrf.Verify(ctx) {
-		return render.RenderNotFoundError(ctx)
-	}
-
 	var claims ResetPasswordClaims
 	if err := decryptState(ctx, encryptedState, &claims); err != nil {
 		return render.RenderNotFoundError(ctx)
+	}
+
+	if err := captcha.Verify(ctx); err != nil {
+		return render.RenderSetNewPassword(ctx, MsgInvalidCaptcha)
+	}
+
+	if !csrf.Verify(ctx) {
+		return render.RenderSetNewPassword(ctx, MsgInvalidRequest)
 	}
 
 	if err := validatePassword(newPassword); err != nil {
@@ -101,7 +106,7 @@ func (h *ResetPasswordHandler) PostResetPassword(ctx *fiber.Ctx) error {
 
 	err := h.userService.UpdatePassword(ctx.Context(), claims.Email, newPassword)
 	if err != nil {
-		return render.RenderInternalServerError(ctx)
+		return err
 	}
 
 	session.Destroy()
@@ -109,10 +114,20 @@ func (h *ResetPasswordHandler) PostResetPassword(ctx *fiber.Ctx) error {
 }
 
 func (h *ResetPasswordHandler) GetForogtPassword(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
+	if session.IsLoggedIn() {
+		return ctx.Redirect("/")
+	}
+
 	return render.RenderForgotPassword(ctx, render.ForgotPasswordPageData{})
 }
 
 func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
+	if session.IsLoggedIn() {
+		return ctx.Redirect("/")
+	}
+
 	username := ctx.FormValue("username")
 	email := ctx.FormValue("email")
 
@@ -122,9 +137,19 @@ func (h *ResetPasswordHandler) PostForgotPassword(ctx *fiber.Ctx) error {
 		return render.RenderForgotPassword(ctx, pageData)
 	}
 
+	if err := captcha.Verify(ctx); err != nil {
+		pageData.ErrorMsg = MsgInvalidCaptcha
+		return render.RenderForgotPassword(ctx, pageData)
+	}
+
+	if !csrf.Verify(ctx) {
+		pageData.ErrorMsg = MsgInvalidRequest
+		return render.RenderForgotPassword(ctx, pageData)
+	}
+
 	user, err := h.userService.GetUserByEmail(ctx.Context(), email)
 	if errors.Is(err, users.ErrUserNotFound) {
-		pageData.ErrorMsg = err.Error()
+		pageData.ErrorMsg = MsgUserNotFound
 		return render.RenderForgotPassword(ctx, pageData)
 	}
 	if err != nil {

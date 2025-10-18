@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/khanghh/cas-go/internal/middlewares/captcha"
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
@@ -107,6 +108,11 @@ func (h *LoginHandler) PostLogin(ctx *fiber.Ctx) error {
 
 	pageData := render.LoginPageData{
 		OAuthLoginURLs: h.getOAuthLoginURLs(serviceURL),
+	}
+
+	if err := captcha.Verify(ctx); err != nil {
+		pageData.ErrorMsg = MsgInvalidCaptcha
+		return render.RenderLogin(ctx, pageData)
 	}
 
 	if !csrf.Verify(ctx) {
