@@ -21,6 +21,7 @@ var (
 	Service     *service
 	Token       *token
 	User        *user
+	UserFactor  *userFactor
 	UserOAuth   *userOAuth
 )
 
@@ -30,6 +31,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Service = &Q.Service
 	Token = &Q.Token
 	User = &Q.User
+	UserFactor = &Q.UserFactor
 	UserOAuth = &Q.UserOAuth
 }
 
@@ -40,6 +42,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Service:     newService(db, opts...),
 		Token:       newToken(db, opts...),
 		User:        newUser(db, opts...),
+		UserFactor:  newUserFactor(db, opts...),
 		UserOAuth:   newUserOAuth(db, opts...),
 	}
 }
@@ -51,6 +54,7 @@ type Query struct {
 	Service     service
 	Token       token
 	User        user
+	UserFactor  userFactor
 	UserOAuth   userOAuth
 }
 
@@ -63,6 +67,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Service:     q.Service.clone(db),
 		Token:       q.Token.clone(db),
 		User:        q.User.clone(db),
+		UserFactor:  q.UserFactor.clone(db),
 		UserOAuth:   q.UserOAuth.clone(db),
 	}
 }
@@ -82,6 +87,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Service:     q.Service.replaceDB(db),
 		Token:       q.Token.replaceDB(db),
 		User:        q.User.replaceDB(db),
+		UserFactor:  q.UserFactor.replaceDB(db),
 		UserOAuth:   q.UserOAuth.replaceDB(db),
 	}
 }
@@ -91,6 +97,7 @@ type queryCtx struct {
 	Service     *serviceDo
 	Token       *tokenDo
 	User        *userDo
+	UserFactor  *userFactorDo
 	UserOAuth   *userOAuthDo
 }
 
@@ -100,6 +107,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Service:     q.Service.WithContext(ctx),
 		Token:       q.Token.WithContext(ctx),
 		User:        q.User.WithContext(ctx),
+		UserFactor:  q.UserFactor.WithContext(ctx),
 		UserOAuth:   q.UserOAuth.WithContext(ctx),
 	}
 }

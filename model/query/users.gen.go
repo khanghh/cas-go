@@ -43,6 +43,12 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 		RelationField: field.NewRelation("OAuths", "model.UserOAuth"),
 	}
 
+	_user.Factors = userHasManyFactors{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("Factors", "model.UserFactor"),
+	}
+
 	_user.fillFieldMap()
 
 	return _user
@@ -64,6 +70,8 @@ type user struct {
 	UpdatedAt    field.Time
 	DeletedAt    field.Field
 	OAuths       userHasManyOAuths
+
+	Factors userHasManyFactors
 
 	fieldMap map[string]field.Expr
 }
@@ -107,7 +115,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 12)
+	u.fieldMap = make(map[string]field.Expr, 13)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["username"] = u.Username
 	u.fieldMap["full_name"] = u.FullName
@@ -126,12 +134,15 @@ func (u user) clone(db *gorm.DB) user {
 	u.userDo.ReplaceConnPool(db.Statement.ConnPool)
 	u.OAuths.db = db.Session(&gorm.Session{Initialized: true})
 	u.OAuths.db.Statement.ConnPool = db.Statement.ConnPool
+	u.Factors.db = db.Session(&gorm.Session{Initialized: true})
+	u.Factors.db.Statement.ConnPool = db.Statement.ConnPool
 	return u
 }
 
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
 	u.OAuths.db = db.Session(&gorm.Session{})
+	u.Factors.db = db.Session(&gorm.Session{})
 	return u
 }
 
@@ -212,6 +223,87 @@ func (a userHasManyOAuthsTx) Count() int64 {
 }
 
 func (a userHasManyOAuthsTx) Unscoped() *userHasManyOAuthsTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type userHasManyFactors struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a userHasManyFactors) Where(conds ...field.Expr) *userHasManyFactors {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a userHasManyFactors) WithContext(ctx context.Context) *userHasManyFactors {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a userHasManyFactors) Session(session *gorm.Session) *userHasManyFactors {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a userHasManyFactors) Model(m *model.User) *userHasManyFactorsTx {
+	return &userHasManyFactorsTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a userHasManyFactors) Unscoped() *userHasManyFactors {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type userHasManyFactorsTx struct{ tx *gorm.Association }
+
+func (a userHasManyFactorsTx) Find() (result []*model.UserFactor, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a userHasManyFactorsTx) Append(values ...*model.UserFactor) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a userHasManyFactorsTx) Replace(values ...*model.UserFactor) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a userHasManyFactorsTx) Delete(values ...*model.UserFactor) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a userHasManyFactorsTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a userHasManyFactorsTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a userHasManyFactorsTx) Unscoped() *userHasManyFactorsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }

@@ -1,11 +1,14 @@
 package model
 
-import "github.com/bwmarrin/snowflake"
+import (
+	"github.com/bwmarrin/snowflake"
+	"gorm.io/gorm"
+)
 
 var snowflakeNode *snowflake.Node
 
 var Models = []interface{}{
-	&User{}, &UserOAuth{}, &Service{}, &Token{}, &PendingUser{},
+	&User{}, &UserOAuth{}, &Service{}, &Token{}, &PendingUser{}, &UserFactor{},
 }
 
 func init() {
@@ -18,4 +21,8 @@ func init() {
 
 func GenerateID() uint {
 	return uint(snowflakeNode.Generate())
+}
+
+func AutoMigrate(db *gorm.DB) error {
+	return db.AutoMigrate(Models...)
 }
