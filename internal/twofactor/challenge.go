@@ -10,7 +10,7 @@ import (
 
 const (
 	ChallengeTypeOTP   = "otp"
-	ChallenegeTypeTOTP = "totp"
+	ChallengeTypeTOTP  = "totp"
 	ChallengeTypeToken = "token"
 	ChallengeTypeJWT   = "jwt"
 )

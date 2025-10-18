@@ -2,8 +2,6 @@ package twofactor
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -11,16 +9,6 @@ import (
 
 type TokenChallenger struct {
 	svc *TwoFactorService
-}
-
-func (s *TokenChallenger) generateToken() string {
-	tokenLength := 32
-	data := make([]byte, tokenLength)
-	_, err := rand.Read(data)
-	if err != nil {
-		panic(err)
-	}
-	return base64.RawURLEncoding.EncodeToString(data)[:tokenLength]
 }
 
 func (s *TokenChallenger) Create(ctx context.Context, sub Subject, callbackURL string, data interface{}, expiresIn time.Duration) (string, *Challenge, error) {
@@ -33,7 +21,7 @@ func (s *TokenChallenger) Create(ctx context.Context, sub Subject, callbackURL s
 		return "", nil, err
 	}
 	currentTime := time.Now()
-	token := s.generateToken()
+	token := randomSecretKey(32)
 	ch.ID = s.svc.calculateHash(token)
 	ch.Type = ChallengeTypeToken
 	ch.Secret = string(blob)

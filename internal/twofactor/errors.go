@@ -22,6 +22,8 @@ var (
 	ErrOTPCodeExpired               = errors.New("OTP code is expired")
 	ErrOTPRequestLimitReached       = errors.New("OTP request limit reached")
 	ErrOTPRequestRateLimited        = errors.New("otp request rate limited")
+	ErrTOTPNotEnrolled              = errors.New("TOTP not enrolled")
+	ErrTOTPVerifyFailed             = errors.New("TOTP verification failed")
 )
 
 type UserLockedError struct {

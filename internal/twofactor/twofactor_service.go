@@ -11,12 +11,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/khanghh/cas-go/internal/store"
+	"github.com/khanghh/cas-go/internal/users"
 	"github.com/khanghh/cas-go/params"
 )
 
 type TwoFactorService struct {
 	userStateStore *userStateStore
 	challengeStore *challengeStore
+	userFactorRepo users.UserFactorRepository
 	masterKey      string
 }
 
@@ -192,6 +194,10 @@ func (s *TwoFactorService) OTP() *OTPChallenger {
 	return &OTPChallenger{s}
 }
 
+func (s *TwoFactorService) TOTP() *TOTPChallenger {
+	return &TOTPChallenger{s}
+}
+
 func (s *TwoFactorService) JWT() *JWTChallenger {
 	return &JWTChallenger{s}
 }
@@ -200,10 +206,11 @@ func (s *TwoFactorService) Token() *TokenChallenger {
 	return &TokenChallenger{s}
 }
 
-func NewTwoFactorService(storage store.Storage, masterKey string) *TwoFactorService {
+func NewTwoFactorService(storage store.Storage, userFactorRepo users.UserFactorRepository, masterKey string) *TwoFactorService {
 	return &TwoFactorService{
 		userStateStore: newUserStateStore(storage),
 		challengeStore: newChallengeStore(storage),
+		userFactorRepo: userFactorRepo,
 		masterKey:      masterKey,
 	}
 }
