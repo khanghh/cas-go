@@ -28,50 +28,99 @@
       margin-right: 0.75rem;
     }
 
+    .avatar-initial {
+      font-size: 0;
+      height: 32px;
+      text-transform: uppercase;
+    }
+
+    .avatar-initial:first-letter {
+      font-size: 24px;
+    }
+
   </style>
 </head>
 
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 antialiased">
-  <div class="w-full max-w-lg bg-white rounded-2xl shadow-lg overflow-hidden">
+  <div class="w-full max-w-md sm:max-w-lg bg-white shadow-lg rounded-2xl overflow-hidden">
     <div class="p-8">
       <div class="text-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Welcome, {{.displayName}}!</h1>
-        <p class="text-gray-600 mt-1">
-          <span class="font-medium text-blue-600">{{.email}}</span>
-        </p>
-        <p class="text-gray-500 mt-2">
-          Access your services and manage your account
-        </p>
+
+        <div class="text-center mb-6">
+          <div id="avatar"
+            class="relative w-20 h-20 mx-auto rounded-full border-4 border-blue-100 overflow-hidden flex items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-2xl font-bold">
+            <img src="{{.picture}}" alt="Profile" class="w-full h-full object-cover absolute top-0 left-0"
+              onerror="this.style.display='none';">
+            <span class="avatar-initial">{{.displayName}}</span>
+          </div>
+          <h1 class="text-3xl font-bold text-gray-800 mt-4">Welcome, {{.displayName}}!</h1>
+          <p class="text-gray-600 mt-1">
+            <span class="font-medium text-blue-600">{{.email}}</span>
+          </p>
+          <p class="text-gray-500 mt-2">
+            Access your services and manage your account
+          </p>
+        </div>
+
       </div>
 
       <div class="space-y-4">
-        <a href="/profile" class="nav-link text-gray-700 hover:text-blue-600">
-          <i class="fas fa-user text-blue-500"></i>
-          View/Edit Profile
+        <a href="/profile"
+          class="flex items-center p-3 border border-gray-200 rounded-xl mb-2 text-gray-700 shadow-sm hover:text-blue-600 hover:bg-sky-50 hover:border-blue-300">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 mr-3">
+            <i class="fas fa-user text-blue-600"></i>
+          </div>
+          <div class="flex-1">
+            <span class="font-medium">View/Edit Profile</span>
+            <p class="text-xs text-gray-500 mt-1">Update your personal information</p>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
         </a>
 
-        <a href="/account/change-password" class="nav-link text-gray-700 hover:text-blue-600">
-          <i class="fas fa-key text-blue-500"></i>
-          Change Password
+        <a href="/account/change-password"
+          class="flex items-center p-3 border border-gray-200 rounded-xl mb-2 text-gray-700 shadow-sm hover:text-blue-600 hover:bg-sky-50 hover:border-blue-300">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-green-100 mr-3">
+            <i class="fas fa-key text-green-600"></i>
+          </div>
+          <div class="flex-1">
+            <span class="font-medium">Change Password</span>
+            <p class="text-xs text-gray-500 mt-1">Update your account password</p>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
         </a>
 
-        <a href="/2fa/settings" class="nav-link text-gray-700 hover:text-blue-600 justify-between">
-          <div class="flex items-center">
-            <i class="fas fa-mobile-alt text-blue-500"></i>
-            <span class="ml-3">Two-Factor Authentication</span>
+        <a href="/2fa/settings"
+          class="flex items-center p-3 border border-gray-200 rounded-xl mb-2 text-gray-700 shadow-sm hover:text-blue-600 hover:bg-sky-50 hover:border-blue-300">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 mr-3">
+            <i class="fas fa-mobile-alt text-purple-600"></i>
+          </div>
+          <div class="flex-1">
+            <span class="font-medium">Two-Factor Authentication</span>
+            <p class="text-xs text-gray-500 mt-1">Manage your 2FA settings</p>
           </div>
           {{if .twoFAEnabled}}
-          <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-            <span class="leading-none">Enabled</span>
+          <span
+            class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 ml-2">
+            <i class="fas fa-check-circle mr-1 text-xs"></i>
+            <span>Enabled</span>
           </span>
           {{end}}
+          <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
         </a>
 
-        <a href="/logout/all" class="nav-link text-gray-700 hover:text-blue-600">
-          <i class="fas fa-sign-out-alt text-red-500"></i>
-          Log Out from All Services
+        <a href="/logout/all"
+          class="flex items-center p-3 border border-gray-200 rounded-xl text-gray-700 shadow-sm hover:text-red-600 hover:bg-red-50 hover:border-red-300">
+          <div class="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 mr-3">
+            <i class="fas fa-sign-out-alt text-red-600"></i>
+          </div>
+          <div class="flex-1">
+            <span class="font-medium">Log Out from All Services</span>
+            <p class="text-xs text-gray-500 mt-1">Sign out from all connected devices</p>
+          </div>
+          <i class="fas fa-chevron-right text-gray-400 ml-2"></i>
         </a>
       </div>
+
     </div>
 
     <div class="bg-gray-50 px-8 py-4 text-center">

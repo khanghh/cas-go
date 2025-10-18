@@ -46,6 +46,8 @@
       {{end}}
 
       <form id="twofa-form" method="POST" class="space-y-6">
+        <input type="hidden" name="_csrf" value="{{.csrfToken}}"></input>
+
         <!-- Email Authentication -->
         <div class="p-4 border rounded-lg">
           <div class="flex items-center justify-between">

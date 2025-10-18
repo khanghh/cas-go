@@ -6,33 +6,27 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 )
 
-var globalVars fiber.Map
-
-func Initialize(data fiber.Map) {
-	globalVars = data
-}
-
 func RenderInternalServerError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-internal", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderNotFoundError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-not-found", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderForbiddenError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-forbidden", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderBadRequestError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-bad-request", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
@@ -42,7 +36,7 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 		statusCode = fiber.StatusUnauthorized
 	}
 	return ctx.Status(statusCode).Render("login", fiber.Map{
-		"siteName":          globalVars["siteName"],
+		"siteName":          ctx.Locals("siteName"),
 		"csrfToken":         csrf.Get(sessions.Get(ctx)).Token,
 		"identifier":        data.Identifier,
 		"googleOAuthURL":    data.OAuthLoginURLs["google"],
@@ -56,7 +50,7 @@ func RenderLogin(ctx *fiber.Ctx, data LoginPageData) error {
 
 func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("register", fiber.Map{
-		"siteName":      globalVars["siteName"],
+		"siteName":      ctx.Locals("siteName"),
 		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
 		"username":      data.Username,
 		"email":         data.Email,
@@ -69,7 +63,7 @@ func RenderRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 
 func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 	return ctx.Render("oauth-register", fiber.Map{
-		"siteName":      globalVars["siteName"],
+		"siteName":      ctx.Locals("siteName"),
 		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
 		"username":      data.Username,
 		"fullName":      data.FullName,
@@ -85,19 +79,20 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 
 func RenderDeniedError(ctx *fiber.Ctx) error {
 	return ctx.Render("error-denied", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
-func RnderProfilePage(ctx *fiber.Ctx, data ProfilePageData) error {
+func RenderProfilePage(ctx *fiber.Ctx, data ProfilePageData) error {
 	displayName := data.FullName
 	if displayName == "" {
 		displayName = data.Username
 	}
 	return ctx.Render("profile", fiber.Map{
-		"siteName":     globalVars["siteName"],
+		"siteName":     ctx.Locals("siteName"),
 		"displayName":  displayName,
 		"email":        data.Email,
+		"picture":      data.Picture,
 		"twoFAEnabled": data.TwoFAEnabled,
 	})
 }
@@ -110,7 +105,7 @@ func RenderVerificationRequired(ctx *fiber.Ctx, data VerificationRequiredPageDat
 		phone = maskPhone(phone)
 	}
 	return ctx.Render("verification-required", fiber.Map{
-		"siteName":     globalVars["siteName"],
+		"siteName":     ctx.Locals("siteName"),
 		"csrfToken":    csrf.Get(sessions.Get(ctx)).Token,
 		"emailEnabled": data.EmailEnabled,
 		"smsEnabled":   data.SMSEnableled,
@@ -134,7 +129,7 @@ func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
 		emailOrPhone = phone
 	}
 	return ctx.Render("verify-otp", fiber.Map{
-		"siteName":     globalVars["siteName"],
+		"siteName":     ctx.Locals("siteName"),
 		"csrfToken":    csrf.Get(sessions.Get(ctx)).Token,
 		"emailOrPhone": emailOrPhone,
 		"errorMsg":     pageData.ErrorMsg,
@@ -143,14 +138,14 @@ func RenderVerifyOTP(ctx *fiber.Ctx, pageData VerifyOTPPageData) error {
 
 func RenderRegisterVerifyEmail(ctx *fiber.Ctx, email string) error {
 	return ctx.Render("verify-email", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 		"email":    email,
 	})
 }
 
 func RenderEmailVerificationSuccess(ctx *fiber.Ctx, email string) error {
 	return ctx.Render("verify-email-result", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 		"success":  true,
 		"email":    email,
 	})
@@ -158,14 +153,14 @@ func RenderEmailVerificationSuccess(ctx *fiber.Ctx, email string) error {
 
 func RenderEmailVerificationFailure(ctx *fiber.Ctx) error {
 	return ctx.Render("verify-email-result", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 		"success":  false,
 	})
 }
 
 func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData) error {
 	return ctx.Render("authorize-service", fiber.Map{
-		"siteName":    globalVars["siteName"],
+		"siteName":    ctx.Locals("siteName"),
 		"email":       data.Email,
 		"serviceName": data.ServiceName,
 		"serviceURL":  data.ServiceURL,
@@ -174,7 +169,7 @@ func RenderAuthorizeServiceAccess(ctx *fiber.Ctx, data AuthorizeServicePageData)
 
 func RenderForgotPassword(ctx *fiber.Ctx, pageData ForgotPasswordPageData) error {
 	return ctx.Render("forgot-password", fiber.Map{
-		"siteName":  globalVars["siteName"],
+		"siteName":  ctx.Locals("siteName"),
 		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
 		"email":     pageData.Email,
 		"emailSent": pageData.EmailSent,
@@ -184,7 +179,7 @@ func RenderForgotPassword(ctx *fiber.Ctx, pageData ForgotPasswordPageData) error
 
 func RenderSetNewPassword(ctx *fiber.Ctx, errorMsg string) error {
 	return ctx.Render("set-new-password", fiber.Map{
-		"siteName":  globalVars["siteName"],
+		"siteName":  ctx.Locals("siteName"),
 		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
 		"errorMsg":  errorMsg,
 	})
@@ -192,13 +187,13 @@ func RenderSetNewPassword(ctx *fiber.Ctx, errorMsg string) error {
 
 func RenderPasswordUpdated(ctx *fiber.Ctx) error {
 	return ctx.Render("password-updated", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderChangePassword(ctx *fiber.Ctx, errorMsg string) error {
 	return ctx.Render("change-password", fiber.Map{
-		"siteName":  globalVars["siteName"],
+		"siteName":  ctx.Locals("siteName"),
 		"csrfToken": csrf.Get(sessions.Get(ctx)).Token,
 		"errorMsg":  errorMsg,
 	})
@@ -206,7 +201,7 @@ func RenderChangePassword(ctx *fiber.Ctx, errorMsg string) error {
 
 func RenderTOTPEnrollment(ctx *fiber.Ctx, data TOTPEnrollmentPageData) error {
 	return ctx.Render("totp-enrollment", fiber.Map{
-		"siteName":      globalVars["siteName"],
+		"siteName":      ctx.Locals("siteName"),
 		"csrfToken":     csrf.Get(sessions.Get(ctx)).Token,
 		"secretKey":     data.SecretKey,
 		"enrollmentURL": data.EnrollmentURL,
@@ -216,13 +211,14 @@ func RenderTOTPEnrollment(ctx *fiber.Ctx, data TOTPEnrollmentPageData) error {
 
 func RenderTOTPEnrollSuccess(ctx *fiber.Ctx) error {
 	return ctx.Render("totp-enroll-success", fiber.Map{
-		"siteName": globalVars["siteName"],
+		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func Render2FASettings(ctx *fiber.Ctx, data TwoFASettingsPageData) error {
 	return ctx.Render("twofactor-settings", fiber.Map{
-		"siteName":     globalVars["siteName"],
+		"siteName":     ctx.Locals("siteName"),
+		"csrfToken":    csrf.Get(sessions.Get(ctx)).Token,
 		"email":        data.Email,
 		"emailEnabled": data.EmailEnabled,
 		"totpEnabled":  data.TOTPEnabled,

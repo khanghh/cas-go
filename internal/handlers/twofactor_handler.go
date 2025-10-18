@@ -274,13 +274,14 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	return h.handleChallengeSuccess(ctx, session, ch, subject)
 }
 
-func (h *TwoFactorHandler) generateTOTPEnrollmentURL(username string, secret string) (string, error) {
+func (h *TwoFactorHandler) generateTOTPEnrollmentURL(issuer string, username string, secret string) (string, error) {
 	base32Secret, err := base32.StdEncoding.DecodeString(secret)
 	if err != nil {
 		return "", err
 	}
+
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "Example",
+		Issuer:      issuer,
 		AccountName: username,
 		Period:      30,
 		Secret:      base32Secret,
@@ -309,7 +310,9 @@ func (h *TwoFactorHandler) GetTOTPEnroll(ctx *fiber.Ctx) error {
 		secret = h.twoFactorService.TOTP().GenerateSecret()
 		session.Set(totpEnrollSecretSessionKey, secret)
 	}
-	enrollmentURL, err := h.generateTOTPEnrollmentURL(user.Username, secret)
+
+	issuer := ctx.Locals("siteName").(string)
+	enrollmentURL, err := h.generateTOTPEnrollmentURL(issuer, user.Username, secret)
 	if err != nil {
 		return err
 	}
@@ -347,7 +350,8 @@ func (h *TwoFactorHandler) PostTOTPEnroll(ctx *fiber.Ctx) error {
 	if err != nil {
 		if errors.Is(err, twofactor.ErrTOTPVerifyFailed) {
 			errMsg := MsgTOTPEnrollFailed
-			enrollmentURL, err := h.generateTOTPEnrollmentURL(user.Username, secret)
+			issuer := ctx.Locals("siteName").(string)
+			enrollmentURL, err := h.generateTOTPEnrollmentURL(issuer, user.Username, secret)
 			if err != nil {
 				return err
 			}
@@ -404,6 +408,10 @@ func (h *TwoFactorHandler) PostTwoFASettings(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
 	if !session.IsAuthenticated() {
 		return forceLogout(ctx, "")
+	}
+
+	if !csrf.Verify(ctx) {
+		return ctx.Redirect(ctx.OriginalURL(), fiber.StatusFound)
 	}
 
 	_, err := h.userService.GetUserByID(ctx.Context(), session.UserID)

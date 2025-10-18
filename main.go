@@ -28,7 +28,6 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/csrf"
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/oauth"
-	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/internal/twofactor"
 	"github.com/khanghh/cas-go/internal/users"
@@ -130,21 +129,14 @@ func mustInitOAuthProviders(config *config.Config) []oauth.OAuthProvider {
 	return providers
 }
 
-func mustInitHtmlEngine(config *config.Config) fiber.Views {
+func mustInitHtmlEngine(templateDir string) *html.Engine {
 	var htmlEngine *html.Engine
-	if config.TemplateDir != "" {
-		htmlEngine = html.NewFileSystem(http.Dir(config.TemplateDir), ".html")
+	if templateDir != "" {
+		htmlEngine = html.NewFileSystem(http.Dir(templateDir), ".html")
 	} else {
 		renderFS, _ := fs.Sub(templateFS, "templates")
 		htmlEngine = html.NewFileSystem(http.FS(renderFS), ".html")
 	}
-
-	templateVars := fiber.Map{
-		"siteName": config.SiteName,
-		"baseURL":  config.BaseURL,
-	}
-	render.Initialize(templateVars)
-	mail.Initialize(htmlEngine, templateVars)
 	return htmlEngine
 }
 
@@ -198,7 +190,12 @@ func run(ctx *cli.Context) error {
 
 	mustInitLogger(config.Debug || ctx.IsSet(debugFlag.Name))
 
-	htmlEngine := mustInitHtmlEngine(config)
+	globalVars := fiber.Map{
+		"siteName": config.SiteName,
+		"baseURL":  config.BaseURL,
+	}
+	htmlEngine := mustInitHtmlEngine(config.TemplateDir)
+	mail.Initialize(htmlEngine, globalVars)
 	mailSender := mustInitMailSender(config.Mail)
 	query.SetDefault(mustInitDatabase(config.MySQL))
 
@@ -233,6 +230,12 @@ func run(ctx *cli.Context) error {
 			KeyLookup:      fmt.Sprintf("cookie:%s", config.Session.CookieName),
 			KeyGenerator:   sessions.GenerateSessionID,
 		})
+		globalVarsMiddleware = func(ctx *fiber.Ctx) error {
+			for key, val := range globalVars {
+				ctx.Locals(key, val)
+			}
+			return ctx.Next()
+		}
 	)
 
 	// handlers
@@ -260,7 +263,9 @@ func run(ctx *cli.Context) error {
 	router.Use(recover.New())
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
+		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
+	router.Use(globalVarsMiddleware)
 	router.Static("/static", config.StaticDir)
 	router.Get("/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/p3/serviceValidate", authHandler.GetServiceValidate)

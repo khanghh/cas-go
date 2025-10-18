@@ -154,10 +154,11 @@ func (h *AuthHandler) GetProfile(ctx *fiber.Ctx) error {
 		return err
 	}
 
-	return render.RnderProfilePage(ctx, render.ProfilePageData{
+	return render.RenderProfilePage(ctx, render.ProfilePageData{
 		Username:     user.Username,
 		FullName:     user.FullName,
 		Email:        user.Email,
+		Picture:      user.Picture,
 		TwoFAEnabled: isTwoFAEnabled,
 	})
 }

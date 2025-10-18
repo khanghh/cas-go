@@ -64,5 +64,6 @@ type ProfilePageData struct {
 	Username     string
 	FullName     string
 	Email        string
+	Picture      string
 	TwoFAEnabled bool
 }
