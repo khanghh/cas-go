@@ -89,12 +89,12 @@ func RenderDeniedError(ctx *fiber.Ctx) error {
 	})
 }
 
-func RenderHomePage(ctx *fiber.Ctx, data HomePageData) error {
+func RnderProfilePage(ctx *fiber.Ctx, data HomePageData) error {
 	displayName := data.FullName
 	if displayName == "" {
 		displayName = data.Username
 	}
-	return ctx.Render("home", fiber.Map{
+	return ctx.Render("profile", fiber.Map{
 		"siteName":    globalVars["siteName"],
 		"displayName": displayName,
 		"email":       data.Email,

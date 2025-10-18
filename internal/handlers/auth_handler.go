@@ -133,6 +133,14 @@ func (h *AuthHandler) PostAuthorize(ctx *fiber.Ctx) error {
 
 func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 	session := sessions.Get(ctx)
+	if session.IsAuthenticated() {
+		return redirect(ctx, "/profile")
+	}
+	return redirect(ctx, "/login")
+}
+
+func (h *AuthHandler) GetProfile(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
 	if !session.IsAuthenticated() {
 		return redirect(ctx, "/login")
 	}
@@ -142,7 +150,7 @@ func (h *AuthHandler) GetHome(ctx *fiber.Ctx) error {
 		return forceLogout(ctx, "")
 	}
 
-	return render.RenderHomePage(ctx, render.HomePageData{
+	return render.RnderProfilePage(ctx, render.HomePageData{
 		Username: user.Username,
 		FullName: user.FullName,
 		Email:    user.Email,
