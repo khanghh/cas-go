@@ -109,7 +109,7 @@ func (s *TwoFactorService) GetChallenge(ctx context.Context, cid string) (*Chall
 	return &ch, err
 }
 
-func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge, sub Subject) error {
+func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge, sub Subject, chType string) error {
 	if ch.Success != 0 {
 		return ErrChallengeAlreadyVerified
 	}
@@ -121,6 +121,9 @@ func (s *TwoFactorService) ValidateChallenge(ctx context.Context, ch *Challenge,
 	}
 	if ch.Subject != s.subjectHash(sub) {
 		return ErrChallengeSubjectMismatch
+	}
+	if ch.Type != chType {
+		return ErrChallengeTypeMismatch
 	}
 	return nil
 }

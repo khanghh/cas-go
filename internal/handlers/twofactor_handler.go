@@ -206,7 +206,7 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 	}
 
 	sub := getChallengeSubject(ctx, session)
-	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, sub); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, sub, twofactor.ChallengeTypeOTP); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -215,7 +215,7 @@ func (h *TwoFactorHandler) GetVerifyOTP(ctx *fiber.Ctx) error {
 
 func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 	cid := ctx.FormValue("cid")
-	otp := ctx.FormValue("otp")
+	code := ctx.FormValue("code")
 	resend := ctx.FormValue("resend") != ""
 
 	session := sessions.Get(ctx)
@@ -227,7 +227,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return forceLogout(ctx, "")
 	}
 
-	if !resend && otp == "" {
+	if !resend && code == "" {
 		return h.renderVerifyOTP(ctx, user.Email, MsgOTPCodeEmpty)
 	}
 	if !csrf.Verify(ctx) {
@@ -239,7 +239,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return render.RenderNotFoundError(ctx)
 	}
 	subject := getChallengeSubject(ctx, session)
-	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, subject); err != nil {
+	if err := h.twoFactorService.ValidateChallenge(ctx.Context(), ch, subject, twofactor.ChallengeTypeOTP); err != nil {
 		return render.RenderNotFoundError(ctx)
 	}
 
@@ -267,7 +267,7 @@ func (h *TwoFactorHandler) PostVerifyOTP(ctx *fiber.Ctx) error {
 		return redirect(ctx, "/2fa/verify-otp", "cid", ch.ID)
 	}
 
-	if err := h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, otp); err != nil {
+	if err := h.twoFactorService.OTP().Verify(ctx.Context(), ch, subject, code); err != nil {
 		return handleTwoFactorError(ctx, err)
 	}
 
