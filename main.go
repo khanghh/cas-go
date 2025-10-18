@@ -217,7 +217,7 @@ func run(ctx *cli.Context) error {
 
 	// services
 	var (
-		userService      = users.NewUserService(userRepo, userOAuthRepo, pendingUserRepo)
+		userService      = users.NewUserService(userRepo, userOAuthRepo, userFactorRepo, pendingUserRepo)
 		authorizeService = auth.NewAuthorizeService(cacheStorage, serviceRepo)
 		twoFactorService = twofactor.NewTwoFactorService(cacheStorage, userFactorRepo, config.MasterKey)
 	)
@@ -267,6 +267,7 @@ func run(ctx *cli.Context) error {
 
 	router.Use(sessions.New(sessionStore))
 	router.Get("/", authHandler.GetHome)
+	router.Get("/profile", authHandler.GetProfile)
 	router.Post("/logout", loginHandler.PostLogout)
 	router.Get("/oauth/:provider/callback", oauthHandler.GetOAuthCallback)
 	router.Get("/register/verify", registerHandler.GetRegisterVerify)
@@ -290,6 +291,8 @@ func run(ctx *cli.Context) error {
 	router.Post("/2fa/otp/verify", twofactorHandler.PostVerifyOTP)
 	router.Get("/2fa/totp/enroll", twofactorHandler.GetTOTPEnroll)
 	router.Post("/2fa/totp/enroll", twofactorHandler.PostTOTPEnroll)
+	router.Get("/2fa/settings", twofactorHandler.GetTwoFASettings)
+	router.Post("/2fa/settings", twofactorHandler.PostTwoFASettings)
 	router.Get("/account/change-password", accountSettingsHandler.GetChangePassword)
 	router.Post("/account/change-password", accountSettingsHandler.PostChangePassword)
 

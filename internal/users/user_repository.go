@@ -6,11 +6,13 @@ import (
 	"github.com/khanghh/cas-go/model"
 	"github.com/khanghh/cas-go/model/query"
 	"gorm.io/gen"
+	"gorm.io/gen/field"
 )
 
 type UserRepository interface {
 	WithTx(tx *query.Query) UserRepository
 	First(ctx context.Context, conds ...gen.Condition) (*model.User, error)
+	FirstPreload(ctx context.Context, preload field.RelationField, conds ...gen.Condition) (*model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Updates(ctx context.Context, columns map[string]interface{}, conds ...gen.Condition) (gen.ResultInfo, error)
 }
@@ -21,6 +23,10 @@ type userRepository struct {
 
 func (r *userRepository) First(ctx context.Context, conds ...gen.Condition) (*model.User, error) {
 	return r.query.User.WithContext(ctx).Where(conds...).First()
+}
+
+func (r *userRepository) FirstPreload(ctx context.Context, preload field.RelationField, conds ...gen.Condition) (*model.User, error) {
+	return r.query.User.WithContext(ctx).Preload(preload).Where(conds...).First()
 }
 
 func (r *userRepository) Create(ctx context.Context, user *model.User) error {

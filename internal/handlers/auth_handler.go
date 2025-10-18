@@ -149,11 +149,16 @@ func (h *AuthHandler) GetProfile(ctx *fiber.Ctx) error {
 	if err != nil {
 		return forceLogout(ctx, "")
 	}
+	isTwoFAEnabled, err := h.twoFactorService.IsTwoFAEnabled(ctx.Context(), user.ID)
+	if err != nil {
+		return err
+	}
 
-	return render.RnderProfilePage(ctx, render.HomePageData{
-		Username: user.Username,
-		FullName: user.FullName,
-		Email:    user.Email,
+	return render.RnderProfilePage(ctx, render.ProfilePageData{
+		Username:     user.Username,
+		FullName:     user.FullName,
+		Email:        user.Email,
+		TwoFAEnabled: isTwoFAEnabled,
 	})
 }
 

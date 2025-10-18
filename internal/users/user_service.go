@@ -30,11 +30,16 @@ type CreateUserOptions struct {
 type UserService struct {
 	userRepo        UserRepository
 	userOAuthRepo   UserOAuthRepository
+	userFactorRepo  UserFactorRepository
 	pendingUserRepo PendingUserRepository
 }
 
 func (s *UserService) GetUserByID(ctx context.Context, userID uint) (*model.User, error) {
 	return s.userRepo.First(ctx, query.User.ID.Eq(userID))
+}
+
+func (s *UserService) GetAuthFactors(ctx context.Context, userID uint) ([]*model.UserFactor, error) {
+	return s.userFactorRepo.Find(ctx, query.UserFactor.UserID.Eq(userID))
 }
 
 func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
@@ -236,10 +241,38 @@ func (s *UserService) UpdatePassword(ctx context.Context, email string, newPassw
 	return err
 }
 
-func NewUserService(userRepo UserRepository, userOAuthRepo UserOAuthRepository, pendingUserRepo PendingUserRepository) *UserService {
+func (s *UserService) SetAuthFactorEnabled(ctx context.Context, userID uint, factorType AuthFactor, enabled bool) error {
+	if factorType == AuthFactorEmail {
+		emailFactor := model.UserFactor{
+			UserID:  userID,
+			Type:    string(factorType),
+			Enabled: enabled,
+		}
+		if err := s.userFactorRepo.Upsert(ctx, &emailFactor); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if factorType == AuthFactorTOTP {
+		updates := map[string]interface{}{
+			query.ColUserFactorEnabled: enabled,
+		}
+		var mysqlErr *mysql.MySQLError
+		ret, err := s.userFactorRepo.Updates(ctx, updates, query.UserFactor.UserID.Eq(userID), query.UserFactor.Type.Eq(string(factorType)))
+		if errors.As(err, &mysqlErr) && mysqlErr.Number == 1062 || ret.RowsAffected == 0 {
+			return ErrAuthFactorNotSetup
+		}
+		return err
+	}
+	return ErrAuthFactorNotSupported
+}
+
+func NewUserService(userRepo UserRepository, userOAuthRepo UserOAuthRepository, userFactorRepo UserFactorRepository, pendingUserRepo PendingUserRepository) *UserService {
 	return &UserService{
 		userRepo:        userRepo,
 		userOAuthRepo:   userOAuthRepo,
+		userFactorRepo:  userFactorRepo,
 		pendingUserRepo: pendingUserRepo,
 	}
 }

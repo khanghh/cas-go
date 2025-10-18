@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2FA Settings - {{.siteName}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #2563eb;
+    }
+
+    .toggle-checkbox:checked+.toggle-label {
+      background-color: #2563eb;
+    }
+
+  </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 antialiased">
+  <main class="w-full max-w-md sm:max-w-lg bg-white shadow-lg rounded-2xl overflow-hidden">
+    <div class="p-8">
+      <div class="text-center mb-6">
+        <div class="w-24 h-24 sm:w-28 sm:h-28 mx-auto bg-blue-100 flex items-center justify-center rounded-full mb-6">
+          <i class="fas fa-shield-alt text-blue-600 text-5xl sm:text-6xl" aria-hidden="true"></i>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-3">Two-Factor Authentication</h1>
+        <p class="text-gray-600 mt-2">Manage your security verification methods</p>
+      </div>
+
+      {{if .errorMsg}}
+      <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <i class="fas fa-exclamation-circle mr-2"></i>
+        {{.errorMsg}}
+      </div>
+      {{end}}
+
+      {{if .successMsg}}
+      <div class="mb-6 p-4 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
+        <i class="fas fa-check-circle mr-2"></i>
+        {{.successMsg}}
+      </div>
+      {{end}}
+
+      <form id="twofa-form" method="POST" class="space-y-6">
+        <!-- Email Authentication -->
+        <div class="p-4 border rounded-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <i class="fas fa-envelope fa-fw text-blue-600 text-xl mr-3"></i>
+              <span class="text-gray-800 font-medium">Email Authentication</span>
+            </div>
+            <div class="relative inline-block w-12 h-6">
+              <input type="checkbox" id="email-toggle" name="emailEnabled" value="true"
+                class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer"
+                {{if .emailEnabled}}checked{{end}}
+              >
+              <label for="email-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+            </div>
+          </div>
+          <p class="text-gray-600 text-sm ml-9">
+            {{if .email}}
+            {{.email}}
+            {{else}}
+            No email address configured
+            {{end}}
+          </p>
+        </div>
+
+        <!-- Authenticator App -->
+        <div class="p-4 border rounded-lg">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <i class="fas fa-mobile-screen fa-fw text-blue-600 text-xl mr-3"></i>
+              <span class="text-gray-800 font-medium">Authenticator App</span>
+            </div>
+            <div class="relative inline-block w-12 h-6">
+              <input type="checkbox" id="totp-toggle" name="totpEnabled" value="true"
+                class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer"
+                {{if .totpEnabled}}checked{{end}}
+              >
+              <label for="totp-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+            </div>
+          </div>
+          <div class="ml-9">
+            <a href="/2fa/totp/enroll" class="text-blue-600 hover:text-blue-500 text-sm font-medium" type="button">
+              Set up authenticator
+            </a>
+          </div>
+        </div>
+      </form>
+
+    </div>
+
+    <footer class="bg-gray-50 px-6 py-4 text-center border-t border-gray-100">
+      <a href="/profile" class="text-blue-600 hover:underline text-sm font-medium">
+        <i class="fas fa-arrow-left mr-1"></i>
+        Back to Profile
+      </a>
+    </footer>
+  </main>
+
+  <script>
+    document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', function () {
+        document.getElementById('twofa-form').submit();
+      });
+    });
+
+  </script>
+</body>
+
+</html>

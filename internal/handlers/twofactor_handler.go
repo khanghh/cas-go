@@ -12,6 +12,8 @@ import (
 	"github.com/khanghh/cas-go/internal/middlewares/sessions"
 	"github.com/khanghh/cas-go/internal/render"
 	"github.com/khanghh/cas-go/internal/twofactor"
+	"github.com/khanghh/cas-go/internal/users"
+	"github.com/khanghh/cas-go/model"
 	"github.com/pquerna/otp/totp"
 )
 
@@ -89,9 +91,15 @@ func (h *TwoFactorHandler) GetChallenge(ctx *fiber.Ctx) error {
 		return forceLogout(ctx, "")
 	}
 
+	authFactors, err := h.userService.GetAuthFactors(ctx.Context(), session.UserID)
+	if err != nil {
+		return err
+	}
+
 	pageData := render.VerificationRequiredPageData{
-		EmailEnabled: true,
 		Email:        user.Email,
+		EmailEnabled: isFactorEnabled(authFactors, string(users.AuthFactorEmail)),
+		TOTPEnabled:  isFactorEnabled(authFactors, string(users.AuthFactorTOTP)),
 		IsMasked:     true,
 	}
 	return render.RenderVerificationRequired(ctx, pageData)
@@ -329,9 +337,6 @@ func (h *TwoFactorHandler) PostTOTPEnroll(ctx *fiber.Ctx) error {
 	if err != nil {
 		return forceLogout(ctx, "")
 	}
-	if user.TwoFAEnabled {
-		return ctx.Redirect("/")
-	}
 
 	secret, ok := session.Get(totpEnrollSecretSessionKey).(string)
 	if !ok {
@@ -358,6 +363,65 @@ func (h *TwoFactorHandler) PostTOTPEnroll(ctx *fiber.Ctx) error {
 
 	session.Delete(totpEnrollSecretSessionKey)
 	return render.RenderTOTPEnrollSuccess(ctx)
+}
+
+func isFactorEnabled(authFactors []*model.UserFactor, factorType string) bool {
+	for _, factor := range authFactors {
+		if factor.Type == factorType && factor.Enabled {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *TwoFactorHandler) GetTwoFASettings(ctx *fiber.Ctx) error {
+	session := sessions.Get(ctx)
+	if !session.IsAuthenticated() {
+		return forceLogout(ctx, "")
+	}
+
+	user, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return forceLogout(ctx, "")
+	}
+	authFactors, err := h.userService.GetAuthFactors(ctx.Context(), session.UserID)
+	if err != nil {
+		return err
+	}
+
+	pageData := render.TwoFASettingsPageData{
+		Email:        user.Email,
+		EmailEnabled: isFactorEnabled(authFactors, "email"),
+		TOTPEnabled:  isFactorEnabled(authFactors, "totp"),
+	}
+	return render.Render2FASettings(ctx, pageData)
+}
+
+func (h *TwoFactorHandler) PostTwoFASettings(ctx *fiber.Ctx) error {
+	emailEnabled := ctx.FormValue("emailEnabled") == "true"
+	totpEnabled := ctx.FormValue("totpEnabled") == "true"
+
+	session := sessions.Get(ctx)
+	if !session.IsAuthenticated() {
+		return forceLogout(ctx, "")
+	}
+
+	_, err := h.userService.GetUserByID(ctx.Context(), session.UserID)
+	if err != nil {
+		return forceLogout(ctx, "")
+	}
+
+	err = h.userService.SetAuthFactorEnabled(ctx.Context(), session.UserID, users.AuthFactorEmail, emailEnabled)
+	if err != nil {
+		return err
+	}
+
+	err = h.userService.SetAuthFactorEnabled(ctx.Context(), session.UserID, users.AuthFactorTOTP, totpEnabled)
+	if errors.Is(err, users.ErrAuthFactorNotSetup) {
+		return ctx.Redirect("/2fa/totp/enroll", fiber.StatusFound)
+	}
+
+	return ctx.Redirect(ctx.OriginalURL(), fiber.StatusFound)
 }
 
 func NewTwoFactorHandler(twoFactorService TwoFactorService, userService UserService, mailSender mail.MailSender) *TwoFactorHandler {

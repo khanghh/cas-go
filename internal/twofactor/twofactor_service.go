@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/khanghh/cas-go/internal/store"
 	"github.com/khanghh/cas-go/internal/users"
+	"github.com/khanghh/cas-go/model/query"
 	"github.com/khanghh/cas-go/params"
 )
 
@@ -188,6 +189,19 @@ func (s *TwoFactorService) FinalizeChallenge(ctx context.Context, cid string, su
 		return ErrChallengeNotFound
 	}
 	return nil
+}
+
+func (s *TwoFactorService) IsTwoFAEnabled(ctx context.Context, uid uint) (bool, error) {
+	authFactors, err := s.userFactorRepo.Find(ctx, query.UserFactor.UserID.Eq(uid))
+	if err != nil {
+		return false, err
+	}
+	for _, factor := range authFactors {
+		if factor.Enabled {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (s *TwoFactorService) OTP() *OTPChallenger {

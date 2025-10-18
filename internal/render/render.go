@@ -89,15 +89,16 @@ func RenderDeniedError(ctx *fiber.Ctx) error {
 	})
 }
 
-func RnderProfilePage(ctx *fiber.Ctx, data HomePageData) error {
+func RnderProfilePage(ctx *fiber.Ctx, data ProfilePageData) error {
 	displayName := data.FullName
 	if displayName == "" {
 		displayName = data.Username
 	}
 	return ctx.Render("profile", fiber.Map{
-		"siteName":    globalVars["siteName"],
-		"displayName": displayName,
-		"email":       data.Email,
+		"siteName":     globalVars["siteName"],
+		"displayName":  displayName,
+		"email":        data.Email,
+		"twoFAEnabled": data.TwoFAEnabled,
 	})
 }
 
@@ -111,7 +112,6 @@ func RenderVerificationRequired(ctx *fiber.Ctx, data VerificationRequiredPageDat
 	return ctx.Render("verification-required", fiber.Map{
 		"siteName":     globalVars["siteName"],
 		"csrfToken":    csrf.Get(sessions.Get(ctx)).Token,
-		"challengeID":  data.ChallengeID,
 		"emailEnabled": data.EmailEnabled,
 		"smsEnabled":   data.SMSEnableled,
 		"totpEnabled":  data.TOTPEnabled,
@@ -217,5 +217,15 @@ func RenderTOTPEnrollment(ctx *fiber.Ctx, data TOTPEnrollmentPageData) error {
 func RenderTOTPEnrollSuccess(ctx *fiber.Ctx) error {
 	return ctx.Render("totp-enroll-success", fiber.Map{
 		"siteName": globalVars["siteName"],
+	})
+}
+
+func Render2FASettings(ctx *fiber.Ctx, data TwoFASettingsPageData) error {
+	return ctx.Render("twofactor-settings", fiber.Map{
+		"siteName":     globalVars["siteName"],
+		"email":        data.Email,
+		"emailEnabled": data.EmailEnabled,
+		"totpEnabled":  data.TOTPEnabled,
+		"errorMsg":     data.ErrorMsg,
 	})
 }

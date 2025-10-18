@@ -71,14 +71,19 @@ func (h *LoginHandler) handleLogin2FA(ctx *fiber.Ctx, session *sessions.Session,
 		redirectURL = appendQuery("/authorize", "service", serviceURL)
 	}
 
+	isTwoFAEnabled, err := h.twoFactorService.IsTwoFAEnabled(ctx.Context(), user.ID)
+	if err != nil {
+		return err
+	}
+
 	session.Reset(sessions.SessionData{
 		IP:            ctx.IP(),
 		UserID:        user.ID,
 		LoginTime:     time.Now(),
-		TwoFARequired: user.TwoFAEnabled,
+		TwoFARequired: isTwoFAEnabled,
 	})
 
-	if !user.TwoFAEnabled {
+	if !isTwoFAEnabled {
 		return redirect(ctx, redirectURL)
 	}
 

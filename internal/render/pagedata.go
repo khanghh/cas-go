@@ -17,13 +17,12 @@ type RegisterPageData struct {
 }
 
 type VerificationRequiredPageData struct {
-	ChallengeID  string
+	Email        string
+	Phone        string
+	IsMasked     bool
 	EmailEnabled bool
 	SMSEnableled bool
 	TOTPEnabled  bool
-	IsMasked     bool
-	Email        string
-	Phone        string
 	ErrorMsg     string
 }
 
@@ -54,8 +53,16 @@ type TOTPEnrollmentPageData struct {
 	ErrorMsg      string
 }
 
-type HomePageData struct {
-	Username string
-	FullName string
-	Email    string
+type TwoFASettingsPageData struct {
+	Email        string
+	EmailEnabled bool
+	TOTPEnabled  bool
+	ErrorMsg     string
+}
+
+type ProfilePageData struct {
+	Username     string
+	FullName     string
+	Email        string
+	TwoFAEnabled bool
 }

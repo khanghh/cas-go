@@ -32,7 +32,6 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.Email = field.NewString(tableName, "email")
 	_user.Password = field.NewString(tableName, "password")
 	_user.Picture = field.NewString(tableName, "picture")
-	_user.TwoFAEnabled = field.NewBool(tableName, "two_fa_enabled")
 	_user.Disabled = field.NewBool(tableName, "disabled")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
@@ -43,10 +42,10 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 		RelationField: field.NewRelation("OAuths", "model.UserOAuth"),
 	}
 
-	_user.Factors = userHasManyFactors{
+	_user.AuthFactors = userHasManyAuthFactors{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("Factors", "model.UserFactor"),
+		RelationField: field.NewRelation("AuthFactors", "model.UserFactor"),
 	}
 
 	_user.fillFieldMap()
@@ -57,21 +56,20 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo
 
-	ALL          field.Asterisk
-	ID           field.Uint
-	Username     field.String
-	FullName     field.String
-	Email        field.String
-	Password     field.String
-	Picture      field.String
-	TwoFAEnabled field.Bool
-	Disabled     field.Bool
-	CreatedAt    field.Time
-	UpdatedAt    field.Time
-	DeletedAt    field.Field
-	OAuths       userHasManyOAuths
+	ALL       field.Asterisk
+	ID        field.Uint
+	Username  field.String
+	FullName  field.String
+	Email     field.String
+	Password  field.String
+	Picture   field.String
+	Disabled  field.Bool
+	CreatedAt field.Time
+	UpdatedAt field.Time
+	DeletedAt field.Field
+	OAuths    userHasManyOAuths
 
-	Factors userHasManyFactors
+	AuthFactors userHasManyAuthFactors
 
 	fieldMap map[string]field.Expr
 }
@@ -94,7 +92,6 @@ func (u *user) updateTableName(table string) *user {
 	u.Email = field.NewString(table, "email")
 	u.Password = field.NewString(table, "password")
 	u.Picture = field.NewString(table, "picture")
-	u.TwoFAEnabled = field.NewBool(table, "two_fa_enabled")
 	u.Disabled = field.NewBool(table, "disabled")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
@@ -115,14 +112,13 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 13)
+	u.fieldMap = make(map[string]field.Expr, 12)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["username"] = u.Username
 	u.fieldMap["full_name"] = u.FullName
 	u.fieldMap["email"] = u.Email
 	u.fieldMap["password"] = u.Password
 	u.fieldMap["picture"] = u.Picture
-	u.fieldMap["two_fa_enabled"] = u.TwoFAEnabled
 	u.fieldMap["disabled"] = u.Disabled
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
@@ -134,15 +130,15 @@ func (u user) clone(db *gorm.DB) user {
 	u.userDo.ReplaceConnPool(db.Statement.ConnPool)
 	u.OAuths.db = db.Session(&gorm.Session{Initialized: true})
 	u.OAuths.db.Statement.ConnPool = db.Statement.ConnPool
-	u.Factors.db = db.Session(&gorm.Session{Initialized: true})
-	u.Factors.db.Statement.ConnPool = db.Statement.ConnPool
+	u.AuthFactors.db = db.Session(&gorm.Session{Initialized: true})
+	u.AuthFactors.db.Statement.ConnPool = db.Statement.ConnPool
 	return u
 }
 
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
 	u.OAuths.db = db.Session(&gorm.Session{})
-	u.Factors.db = db.Session(&gorm.Session{})
+	u.AuthFactors.db = db.Session(&gorm.Session{})
 	return u
 }
 
@@ -227,13 +223,13 @@ func (a userHasManyOAuthsTx) Unscoped() *userHasManyOAuthsTx {
 	return &a
 }
 
-type userHasManyFactors struct {
+type userHasManyAuthFactors struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a userHasManyFactors) Where(conds ...field.Expr) *userHasManyFactors {
+func (a userHasManyAuthFactors) Where(conds ...field.Expr) *userHasManyAuthFactors {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -246,32 +242,32 @@ func (a userHasManyFactors) Where(conds ...field.Expr) *userHasManyFactors {
 	return &a
 }
 
-func (a userHasManyFactors) WithContext(ctx context.Context) *userHasManyFactors {
+func (a userHasManyAuthFactors) WithContext(ctx context.Context) *userHasManyAuthFactors {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a userHasManyFactors) Session(session *gorm.Session) *userHasManyFactors {
+func (a userHasManyAuthFactors) Session(session *gorm.Session) *userHasManyAuthFactors {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a userHasManyFactors) Model(m *model.User) *userHasManyFactorsTx {
-	return &userHasManyFactorsTx{a.db.Model(m).Association(a.Name())}
+func (a userHasManyAuthFactors) Model(m *model.User) *userHasManyAuthFactorsTx {
+	return &userHasManyAuthFactorsTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a userHasManyFactors) Unscoped() *userHasManyFactors {
+func (a userHasManyAuthFactors) Unscoped() *userHasManyAuthFactors {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type userHasManyFactorsTx struct{ tx *gorm.Association }
+type userHasManyAuthFactorsTx struct{ tx *gorm.Association }
 
-func (a userHasManyFactorsTx) Find() (result []*model.UserFactor, err error) {
+func (a userHasManyAuthFactorsTx) Find() (result []*model.UserFactor, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a userHasManyFactorsTx) Append(values ...*model.UserFactor) (err error) {
+func (a userHasManyAuthFactorsTx) Append(values ...*model.UserFactor) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -279,7 +275,7 @@ func (a userHasManyFactorsTx) Append(values ...*model.UserFactor) (err error) {
 	return a.tx.Append(targetValues...)
 }
 
-func (a userHasManyFactorsTx) Replace(values ...*model.UserFactor) (err error) {
+func (a userHasManyAuthFactorsTx) Replace(values ...*model.UserFactor) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -287,7 +283,7 @@ func (a userHasManyFactorsTx) Replace(values ...*model.UserFactor) (err error) {
 	return a.tx.Replace(targetValues...)
 }
 
-func (a userHasManyFactorsTx) Delete(values ...*model.UserFactor) (err error) {
+func (a userHasManyAuthFactorsTx) Delete(values ...*model.UserFactor) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -295,15 +291,15 @@ func (a userHasManyFactorsTx) Delete(values ...*model.UserFactor) (err error) {
 	return a.tx.Delete(targetValues...)
 }
 
-func (a userHasManyFactorsTx) Clear() error {
+func (a userHasManyAuthFactorsTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a userHasManyFactorsTx) Count() int64 {
+func (a userHasManyAuthFactorsTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a userHasManyFactorsTx) Unscoped() *userHasManyFactorsTx {
+func (a userHasManyAuthFactorsTx) Unscoped() *userHasManyAuthFactorsTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
