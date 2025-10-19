@@ -10,10 +10,10 @@ It provides a secure, scalable, and easy-to-deploy authentication service for ma
 ✅ **Centralized Authentication** — single sign-on (SSO) for multiple services  
 ✅ **User Registration** — built-in account registration flow  
 ✅ **OAuth Login** — supports login via third-party providers (e.g., Google, Facebook, Discord etc.)  
-✅ **Two-Factor Authentication (2FA)** — supports email OTP, time-based OTP and token verification
-✅ **Service Registry** — secure way to register and manage services
+✅ **Two-Factor Authentication (2FA)** — supports email OTP, time-based OTP and token verification  
+✅ **Service Registry** — secure way to register and manage services  
 ✅ **Session Management** — cookie-based session handling  
-✅ **Customizable Templates** — fully customizable HTML pages and email templates
+✅ **Customizable Templates** — fully customizable HTML pages and email templates  
 
 ---
 
@@ -28,12 +28,12 @@ make cas-server
 ```
 
 ### 2. Copy and edit the configuration
-Edit config.yaml to match your environment (database, Redis, ports, etc).
+Edit config.yaml to match your environment.
 ```bash
 cp config.example.yaml config.yaml
 ```
 ### 3. Setup environment and run
-Make sure you stack have MySQL and Redis running then start the server.
+Make sure your stack have MySQL and Redis running then start the server.
 ```bash
 ./build/bin/cas-server --config ./config.yaml
 ```
