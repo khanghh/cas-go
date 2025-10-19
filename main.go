@@ -244,12 +244,6 @@ func run(ctx *cli.Context) error {
 			KeyLookup:      fmt.Sprintf("cookie:%s", config.Session.CookieName),
 			KeyGenerator:   sessions.GenerateSessionID,
 		})
-		globalVarsMiddleware = func(ctx *fiber.Ctx) error {
-			for key, val := range globalVars {
-				ctx.Locals(key, val)
-			}
-			return ctx.Next()
-		}
 	)
 
 	// handlers
@@ -279,8 +273,9 @@ func run(ctx *cli.Context) error {
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 	}))
-	router.Use(globalVarsMiddleware)
+	router.Use(middlewares.GlobalVars(globalVars))
 	router.Static("/static", config.StaticDir)
+	router.Get("/livez", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 	router.Get("/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/p3/serviceValidate", authHandler.GetServiceValidate)
 
