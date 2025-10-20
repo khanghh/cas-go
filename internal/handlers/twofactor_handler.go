@@ -524,7 +524,7 @@ func (h *TwoFactorHandler) PostTwoFASettings(ctx *fiber.Ctx) error {
 	}
 
 	err = h.userService.SetAuthFactorEnabled(ctx.Context(), session.UserID, users.AuthFactorTOTP, totpEnabled)
-	if errors.Is(err, users.ErrAuthFactorNotSetup) {
+	if totpEnabled && errors.Is(err, users.ErrAuthFactorNotSetup) {
 		return ctx.Redirect("/2fa/totp/enroll", fiber.StatusFound)
 	}
 
