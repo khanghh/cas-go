@@ -95,18 +95,18 @@ captcha:
 
 ## 🖥️ Screenshots
 <p float="left">
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/login.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/profile.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/login.png?raw=true" width="49%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/profile.png?raw=true" width="49%"> 
 </p>
 
 <p float="left">
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/2fa_challenge.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/verify_otp.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/2fa_challenge.png?raw=true" width="49%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/verify_otp.png?raw=true" width="49%"> 
 </p>
 
 <p float="left">
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/totp_enrollment.png?raw=true" width="45%"> 
-  <img src="https://github.com/khanghh/cas-go/blob/screenshots/totp_enrollment2.png?raw=true" width="45%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/totp_enrollment.png?raw=true" width="49%"> 
+  <img src="https://github.com/khanghh/cas-go/blob/screenshots/totp_enrollment2.png?raw=true" width="49%"> 
 </p>
 
 ---
