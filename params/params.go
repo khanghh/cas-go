@@ -23,4 +23,5 @@ const (
 	TwoFactorStateMaxAge          = 24 * time.Hour  // time to live for user state
 	TwoFactorJWTExpiration        = 1 * time.Hour   // jwt token expiration duration
 	CSRFTokenExpiration           = 5 * time.Minute // csrf token expiration duration
+	HealthCheckServerAddr         = ":3001"
 )

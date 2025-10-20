@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"embed"
@@ -211,7 +212,8 @@ func run(ctx *cli.Context) error {
 	htmlEngine := mustInitHtmlEngine(config.TemplateDir)
 	mail.Initialize(htmlEngine, globalVars)
 	mailSender := mustInitMailSender(config.Mail)
-	query.SetDefault(mustInitDatabase(config.MySQL))
+	db := mustInitDatabase(config.MySQL)
+	query.SetDefault(db)
 	captcha.InitVerifier(mustInitCaptchaVerifier(config.Captcha))
 
 	// initialize storage
@@ -281,7 +283,6 @@ func run(ctx *cli.Context) error {
 	}))
 	router.Use(middlewares.GlobalVars(globalVars))
 	router.Static("/static", config.StaticDir)
-	router.Get("/livez", func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusOK) })
 	router.Get("/serviceValidate", authHandler.GetServiceValidate)
 	router.Get("/p3/serviceValidate", authHandler.GetServiceValidate)
 
@@ -318,6 +319,13 @@ func run(ctx *cli.Context) error {
 	router.Get("/account/change-password", accountSettingsHandler.GetChangePassword)
 	router.Post("/account/change-password", accountSettingsHandler.PostChangePassword)
 
+	healthCheckCtx, term := context.WithCancel(ctx.Context)
+	done := make(chan struct{})
+	go common.StartHealthCheckServer(healthCheckCtx, done, redisStorage.Conn(), db)
+	defer func() {
+		term()
+		<-done
+	}()
 	return router.Listen(config.ListenAddr)
 }
 
