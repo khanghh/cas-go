@@ -7,25 +7,25 @@ import (
 )
 
 func RenderInternalServerError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-internal", fiber.Map{
+	return ctx.Status(fiber.StatusInternalServerError).Render("error-internal", fiber.Map{
 		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderNotFoundError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-not-found", fiber.Map{
+	return ctx.Status(fiber.StatusNotFound).Render("error-not-found", fiber.Map{
 		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderForbiddenError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-forbidden", fiber.Map{
+	return ctx.Status(fiber.StatusForbidden).Render("error-forbidden", fiber.Map{
 		"siteName": ctx.Locals("siteName"),
 	})
 }
 
 func RenderBadRequestError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-bad-request", fiber.Map{
+	return ctx.Status(fiber.StatusBadRequest).Render("error-bad-request", fiber.Map{
 		"siteName": ctx.Locals("siteName"),
 	})
 }
@@ -81,7 +81,7 @@ func RenderOAuthRegister(ctx *fiber.Ctx, data RegisterPageData) error {
 }
 
 func RenderDeniedError(ctx *fiber.Ctx) error {
-	return ctx.Render("error-denied", fiber.Map{
+	return ctx.Status(fiber.StatusForbidden).Render("error-denied", fiber.Map{
 		"siteName": ctx.Locals("siteName"),
 	})
 }
