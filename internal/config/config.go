@@ -67,6 +67,12 @@ type CaptchaConfig struct {
 	Turnstile TurnstileConfig `mapstructure:"turnstile,omitempty"`
 }
 
+type RedisConfig struct {
+	URL         string `mapstructure:"url"`
+	PoolSize    int    `mapstructure:"poolSize"`
+	ClusterMode bool   `mapstructure:"clusterMode"`
+}
+
 type Config struct {
 	Debug         bool          `mapstructure:"debug"`
 	SiteName      string        `mapstructure:"siteName"`
@@ -76,7 +82,7 @@ type Config struct {
 	StaticDir     string        `mapstructure:"staticDir"`
 	TemplateDir   string        `mapstructure:"templateDir"`
 	AllowOrigins  []string      `mapstructure:"allowOrigins"`
-	RedisURL      string        `mapstructure:"redisURL"`
+	Redis         RedisConfig   `mapstructure:"redis"`
 	Session       SessionConfig `mapstructure:"session"`
 	Mail          MailConfig    `mapstructure:"mail"`
 	MySQL         MySQLConfig   `mapstructure:"mysql"`

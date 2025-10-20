@@ -15,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/gofiber/storage/redis/v3"
@@ -214,7 +215,11 @@ func run(ctx *cli.Context) error {
 	captcha.InitVerifier(mustInitCaptchaVerifier(config.Captcha))
 
 	// initialize storage
-	redisStorage := redis.New(redis.Config{URL: config.RedisURL})
+	redisStorage := redis.New(redis.Config{
+		URL:           config.Redis.URL,
+		PoolSize:      config.Redis.PoolSize,
+		IsClusterMode: config.Redis.ClusterMode,
+	})
 	cacheStorage := store.NewRedisStorage(redisStorage.Conn())
 
 	// repositories
@@ -269,6 +274,7 @@ func run(ctx *cli.Context) error {
 	})
 
 	router.Use(recover.New())
+	router.Use(logger.New())
 	router.Use(cors.New(cors.Config{
 		AllowOrigins: strings.Join(config.AllowOrigins, ", "),
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
