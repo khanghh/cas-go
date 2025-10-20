@@ -13,7 +13,7 @@ session:
   cookieHttpOnly: true
 
 redis:
-  endpoint: redis://default:123456@localhost:6379/0
+  url: redis://default:123456@localhost:6379/0
   poolSize: 20
   clusterMode: true
 
