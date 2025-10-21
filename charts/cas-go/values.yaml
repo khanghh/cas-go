@@ -1,0 +1,159 @@
+# Default values for cas-go.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
+replicaCount: 3
+
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
+image:
+  repository: registry.mineviet.com/cas-go
+  # This sets the pull policy for images.
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+# This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: "cas-dev"
+
+# This section builds out the service account more information can be found here: https://kubernetes.io/docs/concepts/security/service-accounts/
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# This is for setting Kubernetes Annotations to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+# For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
+service:
+  # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  type: ClusterIP
+  # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
+  port: 3000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 15
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 1
+  successThreshold: 1
+
+# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes:
+- name: mail-tls
+  secret:
+    secretName: mail-tls
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts:
+- name: mail-tls
+  mountPath: "/app/certs/"
+  readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+config: |
+  debug: false
+  baseURL: http://localhost:3000
+  listenAddr : ":3000" 
+  staticDir: "./static"
+  templateDir: "./templates"
+  allowOrigins: 
+  - http://localhost:8080
+  session:
+    sessionMaxAge: "24h"
+    cookieName: "sid"
+    cookieSecure: false
+    cookieHttpOnly: true
+  redis:
+    url: redis://default:123456@localhost:6379/0
+    poolSize: 20
+    clusterMode: true
+  mysql:
+    dsn: user:password@tcp(localhost:3306)/cas?charset=utf8mb4&parseTime=True&loc=Local
+    maxIdleConns: 10
+    maxOpenConns: 10
+    connMaxIdleTime: 10
+    connMaxLifetime: 10
+
+  authProviders: 
+    oauth:
+      google:
+        clientId: xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+        clientSecret: xxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+  mail:
+    backend: smtp
+    smtp:
+      host: smtp.example.com
+      port: 587
+      username: admin@example.com
+      password: password
+      from: noreply@example.com
+      tls: true
+      certFile: "/app/certs/cert.pem"
+      keyFile: "/app/certs/keypem"
+      caFile: "/app/certs/ca.pem"
+  captcha:
+    provider: turnstile
+    turnstile:
+      siteKey: "YOUR_TURNSTILE_SITE_KEY"
+      secretKey: "YOUR_TURNSTILE_SECRET_KEY"
